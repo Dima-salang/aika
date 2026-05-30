@@ -15,7 +15,6 @@ export const user = pgTable("user", {
     createdAt: timestamp("createdAt").notNull(),
     updatedAt: timestamp("updatedAt").notNull(),
     
-    // Custom columns for Aika
     is_admin: boolean("is_admin").notNull().default(false),
     last_active_team_id: text("last_active_team_id"),
     deleted_at: timestamp("deleted_at"),

@@ -36,6 +36,12 @@
     "tsx": "^4.22.3",
     "typescript": "^5"
   },
+  "overrides": {
+    "kysely": "0.28.17"
+  },
+  "resolutions": {
+    "kysely": "0.28.17"
+  },
   "ignoreScripts": [
     "sharp",
     "unrs-resolver"
@@ -45,3 +51,4 @@
     "unrs-resolver"
   ]
 }
+
