@@ -10,6 +10,9 @@ export const auth = betterAuth({
     provider: isSQLite ? "sqlite" : "pg",
     schema: schema,
   }),
+  emailAndPassword: {
+    enabled: true,
+  },
   socialProviders: {
     github: {
       clientId: process.env.GITHUB_CLIENT_ID || "placeholder",
