@@ -1,5 +1,6 @@
 import { pgTable, text, timestamp, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
 import { sqliteTable, text as sqliteText, integer as sqliteInteger, primaryKey as sqlitePrimaryKey } from "drizzle-orm/sqlite-core";
+import { z } from "zod";
 
 // ==========================================
 // 1. POSTGRESQL SCHEMA DEFINITIONS
@@ -503,3 +504,253 @@ export type NotificationSqlite = typeof notificationsSqlite.$inferSelect;
 export type NewNotificationSqlite = typeof notificationsSqlite.$inferInsert;
 export type AuditLogSqlite = typeof auditLogsSqlite.$inferSelect;
 export type NewAuditLogSqlite = typeof auditLogsSqlite.$inferInsert;
+
+// ==========================================
+// 4. ZOD SCHEMA SCHEMAS
+// ==========================================
+
+export const userZodSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  email: z.string().email(),
+  emailVerified: z.boolean(),
+  image: z.string().nullable().optional(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  is_admin: z.boolean().default(false),
+  last_active_team_id: z.string().nullable().optional(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+export const newUserZodSchema = userZodSchema.omit({ createdAt: true, updatedAt: true }).partial({
+  id: true,
+  emailVerified: true,
+  is_admin: true,
+});
+
+export const sessionZodSchema = z.object({
+  id: z.string(),
+  expiresAt: z.coerce.date(),
+  token: z.string(),
+  createdAt: z.coerce.date(),
+  updatedAt: z.coerce.date(),
+  ipAddress: z.string().nullable().optional(),
+  userAgent: z.string().nullable().optional(),
+  userId: z.string(),
+});
+
+export const organizationZodSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  logo: z.string().nullable().optional(),
+  createdAt: z.coerce.date(),
+  metadata: z.string().nullable().optional(),
+});
+export const newOrganizationZodSchema = organizationZodSchema.omit({ createdAt: true }).partial({
+  id: true,
+});
+
+export const memberZodSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  userId: z.string(),
+  role: z.string(),
+  createdAt: z.coerce.date(),
+});
+
+export const teamZodSchema = z.object({
+  id: z.string(),
+  organization_id: z.string(),
+  name: z.string().min(1),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+export const newTeamZodSchema = teamZodSchema.omit({ created_at: true, updated_at: true }).partial({
+  id: true,
+});
+
+export const teamMemberZodSchema = z.object({
+  id: z.string(),
+  team_id: z.string(),
+  user_id: z.string(),
+  role: z.enum(["leader", "member"]),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+
+export const projectZodSchema = z.object({
+  id: z.string(),
+  team_id: z.string().nullable().optional(),
+  organization_id: z.string(),
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  start_date: z.coerce.date().nullable().optional(),
+  end_date: z.coerce.date().nullable().optional(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+export const newProjectZodSchema = projectZodSchema.omit({ created_at: true, updated_at: true }).partial({
+  id: true,
+});
+
+export const taskZodSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  description: z.string().nullable().optional(),
+  status: z.enum(["todo", "in_progress", "done"]),
+  due_date: z.coerce.date().nullable().optional(),
+  priority: z.enum(["low", "medium", "high"]).nullable().optional(),
+  project_id: z.string().nullable().optional(),
+  user_id: z.string(),
+  team_id: z.string().nullable().optional(),
+  organization_id: z.string(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+export const newTaskZodSchema = taskZodSchema.omit({ created_at: true, updated_at: true }).partial({
+  id: true,
+  status: true,
+});
+
+export const timeLogZodSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  team_id: z.string().nullable().optional(),
+  organization_id: z.string(),
+  project_id: z.string().nullable().optional(),
+  start_time: z.coerce.date(),
+  end_time: z.coerce.date(),
+  description: z.string().min(1),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+export const newTimeLogZodSchema = timeLogZodSchema.omit({ created_at: true, updated_at: true }).partial({
+  id: true,
+});
+
+export const timerZodSchema = z.object({
+  user_id: z.string(),
+  start_time: z.coerce.date(),
+  description: z.string().nullable().optional(),
+  project_id: z.string().nullable().optional(),
+  created_at: z.coerce.date(),
+});
+export const newTimerZodSchema = timerZodSchema.omit({ created_at: true }).partial({
+  start_time: true,
+});
+
+export const documentEvidenceZodSchema = z.object({
+  id: z.string(),
+  time_log_id: z.string(),
+  file_url: z.string().url(),
+  file_key: z.string(),
+  file_name: z.string(),
+  file_size: z.number().int().positive(),
+  mime_type: z.string(),
+  created_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+export const newDocumentEvidenceZodSchema = documentEvidenceZodSchema.omit({ created_at: true }).partial({
+  id: true,
+});
+
+export const notificationZodSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  title: z.string(),
+  message: z.string(),
+  type: z.enum(["team_invitation", "task_update", "time_log", "team_switch"]),
+  is_read: z.boolean(),
+  related_id: z.string().nullable().optional(),
+  created_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable().optional(),
+});
+
+export const auditLogZodSchema = z.object({
+  id: z.string(),
+  user_id: z.string().nullable().optional(),
+  event: z.string(),
+  table_name: z.string().nullable().optional(),
+  record_id: z.string().nullable().optional(),
+  description: z.string(),
+  ip_address: z.string().nullable().optional(),
+  user_agent: z.string().nullable().optional(),
+  payload: z.string().nullable().optional(),
+  created_at: z.coerce.date(),
+});
+export const newAuditLogZodSchema = auditLogZodSchema.omit({ created_at: true }).partial({
+  id: true,
+});
+
+// ==========================================
+// 5. INPUT/OUTPUT LOG VARIATIONS (ZOD)
+// ==========================================
+
+export const evidenceInputSchema = z.object({
+  fileUrl: z.string().url(),
+  fileKey: z.string(),
+  fileName: z.string(),
+  fileSize: z.number().int().positive(),
+  mimeType: z.string(),
+});
+
+export const createLogInputZodSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string(),
+  teamId: z.string().nullable().optional(),
+  projectId: z.string().nullable().optional(),
+  startTime: z.coerce.date(),
+  endTime: z.coerce.date(),
+  description: z.string().min(1),
+  taskIds: z.array(z.string()).optional(),
+  evidence: z.array(evidenceInputSchema).min(1),
+});
+
+export const updateLogInputZodSchema = z.object({
+  organizationId: z.string().optional(),
+  teamId: z.string().nullable().optional(),
+  projectId: z.string().nullable().optional(),
+  startTime: z.coerce.date().optional(),
+  endTime: z.coerce.date().optional(),
+  description: z.string().min(1).optional(),
+  taskIds: z.array(z.string()).optional(),
+  evidence: z.array(evidenceInputSchema).min(1).optional(),
+});
+
+export const readLogZodSchema = z.object({
+  id: z.string(),
+  user_id: z.string(),
+  team_id: z.string().nullable(),
+  organization_id: z.string(),
+  project_id: z.string().nullable(),
+  start_time: z.coerce.date(),
+  end_time: z.coerce.date(),
+  description: z.string(),
+  created_at: z.coerce.date(),
+  updated_at: z.coerce.date(),
+  deleted_at: z.coerce.date().nullable(),
+  tasks: z.array(z.string()),
+  evidence: z.array(
+    z.object({
+      id: z.string(),
+      time_log_id: z.string(),
+      file_url: z.string(),
+      file_key: z.string(),
+      file_name: z.string(),
+      file_size: z.number(),
+      mime_type: z.string(),
+      created_at: z.coerce.date(),
+      deleted_at: z.coerce.date().nullable(),
+    })
+  ),
+});
+
+export type CreateLogInput = z.infer<typeof createLogInputZodSchema>;
+export type UpdateLogInput = z.infer<typeof updateLogInputZodSchema>;
+export type ReadLog = z.infer<typeof readLogZodSchema>;
+
