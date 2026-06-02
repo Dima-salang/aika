@@ -1,4 +1,9 @@
 import { auth } from "@/lib/auth";
+import { ensureSeed } from "@/db/seed";
 
-export const GET = auth.handler;
-export const POST = auth.handler;
+const handler = async (req: Request) => {
+  await ensureSeed();
+  return auth.handler(req);
+};
+
+export { handler as GET, handler as POST };
