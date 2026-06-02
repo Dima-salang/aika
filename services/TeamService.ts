@@ -12,8 +12,11 @@ import {
   TeamMemberSqlite,
   NewTeamMember,
   NewTeamMemberSqlite,
+  user,
+  userSqlite,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
+
 
 export class TeamService {
   async getTeamMembers(teamId: string, tx: any = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
@@ -31,17 +34,36 @@ export class TeamService {
     tx: any = db
   ): Promise<TeamMember | TeamMemberSqlite | null> {
     const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const usersTable = isSQLite ? userSqlite : user;
     const id = `${teamId}-${userId}`;
 
-    // check if the team member already exists and that user is not deleted
+    // check if the user is not deleted
+    const userExists = await tx.select()
+      .from(usersTable)
+      .where(and(eq(usersTable.id, userId), isNull(usersTable.deleted_at)))
+      .limit(1);
+    
+    if (userExists.length === 0) {
+      throw new Error("User is inactive or does not exist");
+    }
+
+    // check if the team member already exists
     const existingMember = await tx
       .select()
       .from(table)
-      .where(and(eq(table.id, id), isNull(table.deleted_at)))
-      .limit(1);
-
+      .where(eq(table.id, id))
+      .limit(1)
     if (existingMember.length > 0) {
-      return existingMember[0];
+        // set deleted_at to null to reactivate the member if they were soft-deleted
+        const [reactivated] = await tx
+            .update(table)
+            .set({
+                deleted_at: null,
+            })
+            .where(eq(table.id, id))
+            .returning();
+
+        return reactivated || existingMember[0];
     }
     const [res] = await tx
       .insert(table)
@@ -57,11 +79,28 @@ export class TeamService {
     return res || null;
   }
 
-  async removeTeamMember(teamId: string, userId: string, tx: any = db): Promise<TeamMember | TeamMemberSqlite | null> {
+  async updateTeamMember(
+    team_member: Partial<TeamMember | TeamMemberSqlite>,
+    tx: any = db
+  ): Promise<TeamMember | TeamMemberSqlite | null> {
     const table = isSQLite ? teamMembersSqlite : teamMembers;
     const [res] = await tx
+      .update(table)
+      .set({
+        ...team_member,
+        updated_at: new Date(),
+      })
+      .where(eq(table.id, team_member.id!))
+      .returning();
+    return res || null;
+  }
+
+  async removeTeamMember(teamId: string, userId: string, tx: any = db): Promise<TeamMember | TeamMemberSqlite | null> {
+    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const id = `${teamId}-${userId}`;
+    const [res] = await tx
       .delete(table)
-      .where(and(eq(table.team_id, teamId), eq(table.user_id, userId)))
+      .where(eq(table.id, id))
       .returning();
     return res || null;
   }
