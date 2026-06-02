@@ -151,6 +151,7 @@ export const timeLogs = pgTable("time_logs", {
     project_id: text("project_id").references(() => projects.id),
     start_time: timestamp("start_time").notNull(),
     end_time: timestamp("end_time").notNull(),
+    title: text("title").notNull().default(""),
     description: text("description").notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
@@ -365,6 +366,7 @@ export const timeLogsSqlite = sqliteTable("time_logs", {
     project_id: sqliteText("project_id").references(() => projectsSqlite.id),
     start_time: sqliteInteger("start_time", { mode: "timestamp" }).notNull(),
     end_time: sqliteInteger("end_time", { mode: "timestamp" }).notNull(),
+    title: sqliteText("title").notNull().default(""),
     description: sqliteText("description").notNull(),
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
@@ -624,6 +626,7 @@ export const timeLogZodSchema = z.object({
   project_id: z.string().nullable().optional(),
   start_time: z.coerce.date(),
   end_time: z.coerce.date(),
+  title: z.string().min(1),
   description: z.string().min(1),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
@@ -706,6 +709,7 @@ export const createLogInputZodSchema = z.object({
   projectId: z.string().nullable().optional(),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
+  title: z.string().min(1).optional().default("Untitled Task"),
   description: z.string().min(1),
   taskIds: z.array(z.string()).optional(),
   evidence: z.array(evidenceInputSchema).min(1),
@@ -717,6 +721,7 @@ export const updateLogInputZodSchema = z.object({
   projectId: z.string().nullable().optional(),
   startTime: z.coerce.date().optional(),
   endTime: z.coerce.date().optional(),
+  title: z.string().min(1).optional(),
   description: z.string().min(1).optional(),
   taskIds: z.array(z.string()).optional(),
   evidence: z.array(evidenceInputSchema).min(1).optional(),
@@ -730,6 +735,7 @@ export const readLogZodSchema = z.object({
   project_id: z.string().nullable(),
   start_time: z.coerce.date(),
   end_time: z.coerce.date(),
+  title: z.string(),
   description: z.string(),
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
@@ -750,7 +756,53 @@ export const readLogZodSchema = z.object({
   ),
 });
 
-export type CreateLogInput = z.infer<typeof createLogInputZodSchema>;
-export type UpdateLogInput = z.infer<typeof updateLogInputZodSchema>;
+export type CreateLogInput = Omit<z.infer<typeof createLogInputZodSchema>, "title"> & { title?: string };
+export type UpdateLogInput = Omit<z.infer<typeof updateLogInputZodSchema>, "title"> & { title?: string };
 export type ReadLog = z.infer<typeof readLogZodSchema>;
+
+// User inputs & filters
+export const createUserInputZodSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  email: z.string().email(),
+  image: z.string().nullable().optional(),
+  is_admin: z.boolean().optional(),
+  last_active_team_id: z.string().nullable().optional(),
+});
+export const updateUserInputZodSchema = createUserInputZodSchema.partial().omit({ id: true });
+export const userFilterZodSchema = z.object({
+  email: z.string().email().optional(),
+  organizationId: z.string().optional(),
+  teamId: z.string().optional(),
+  deleted: z.boolean().optional(),
+});
+
+// Team inputs & filters
+export const createTeamInputZodSchema = z.object({
+  id: z.string(),
+  organization_id: z.string(),
+  name: z.string().min(1),
+});
+export const updateTeamInputZodSchema = createTeamInputZodSchema.partial().omit({ id: true, organization_id: true });
+export const teamFilterZodSchema = z.object({
+  id: z.string().optional(),
+  organizationId: z.string().optional(),
+  organizations: z.array(z.string()).optional(),
+  deleted: z.boolean().optional(),
+});
+
+// Organization inputs & filters
+export const createOrganizationInputZodSchema = z.object({
+  id: z.string(),
+  name: z.string().min(1),
+  slug: z.string().min(1),
+  logo: z.string().nullable().optional(),
+  metadata: z.string().nullable().optional(),
+});
+export const updateOrganizationInputZodSchema = createOrganizationInputZodSchema.partial().omit({ id: true });
+export const organizationFilterZodSchema = z.object({
+  slug: z.string().optional(),
+  metadataSearch: z.string().optional(),
+});
+
 
