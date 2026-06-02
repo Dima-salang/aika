@@ -805,4 +805,48 @@ export const organizationFilterZodSchema = z.object({
   metadataSearch: z.string().optional(),
 });
 
+// Project inputs & filters
+export const createProjectInputZodSchema = z.object({
+  id: z.string(),
+  team_id: z.string().nullable().optional(),
+  organization_id: z.string(),
+  name: z.string().min(1),
+  description: z.string().nullable().optional(),
+  start_date: z.coerce.date().nullable().optional(),
+  end_date: z.coerce.date().nullable().optional(),
+});
+export const updateProjectInputZodSchema = createProjectInputZodSchema.partial().omit({ id: true, organization_id: true });
+export const projectFilterZodSchema = z.object({
+  id: z.string().optional(),
+  teamId: z.string().nullable().optional(),
+  organizationId: z.string().optional(),
+  deleted: z.boolean().optional(),
+});
+
+// Task inputs & filters
+export const createTaskInputZodSchema = z.object({
+  id: z.string(),
+  title: z.string().min(1),
+  description: z.string().nullable().optional(),
+  status: z.enum(["todo", "in_progress", "done"]),
+  due_date: z.coerce.date().nullable().optional(),
+  priority: z.enum(["low", "medium", "high"]).nullable().optional(),
+  project_id: z.string().nullable().optional(),
+  user_id: z.string(),
+  team_id: z.string().nullable().optional(),
+  organization_id: z.string(),
+});
+export const updateTaskInputZodSchema = createTaskInputZodSchema.partial().omit({ id: true, organization_id: true });
+export const taskFilterZodSchema = z.object({
+  id: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  userId: z.string().optional(),
+  teamId: z.string().nullable().optional(),
+  organizationId: z.string().optional(),
+  status: z.enum(["todo", "in_progress", "done"]).optional(),
+  priority: z.enum(["low", "medium", "high"]).optional(),
+  deleted: z.boolean().optional(),
+});
+
+
 
