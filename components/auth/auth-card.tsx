@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { authClient } from "@/lib/auth-client";
-import { AlertCircle, Loader2 } from "lucide-react";
+import { AlertCircle, Loader2, Key, Mail, UserCircle } from "lucide-react";
 
 export function AuthCard() {
   const router = useRouter();
@@ -45,7 +45,7 @@ export function AuthCard() {
             },
             onError: (ctx) => {
               setLoading(false);
-              setError(ctx.error.message || "An error occurred during registration.");
+              setError(ctx.error.message || "Could not register. Please try again.");
             },
           }
         );
@@ -64,7 +64,7 @@ export function AuthCard() {
             },
             onError: (ctx) => {
               setLoading(false);
-              setError(ctx.error.message || "Invalid credentials. Please try again.");
+              setError(ctx.error.message || "Incorrect email or password.");
             },
           }
         );
@@ -88,68 +88,84 @@ export function AuthCard() {
   };
 
   return (
-    <Card className="w-full max-w-md overflow-hidden transition-all duration-300 hover:shadow-2xl hover:shadow-zinc-500/10 dark:hover:shadow-zinc-950/50">
-      <CardHeader className="space-y-1 text-center">
-        <CardTitle className="text-3xl font-extrabold tracking-tight">
-          {mode === "signin" ? "Welcome back" : "Create an account"}
+    <Card className="w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl rounded-2xl transition-all duration-300">
+      <CardHeader className="space-y-1 text-center pb-6 pt-8">
+        <CardTitle className="text-2xl font-bold tracking-tight">
+          {mode === "signin" ? "Welcome Back!" : "Create an Account"}
         </CardTitle>
-        <CardDescription>
+        <CardDescription className="text-xs text-zinc-550 dark:text-zinc-400 font-medium">
           {mode === "signin"
-            ? "Enter your credentials to access your account"
-            : "Sign up now to get started with Aika"}
+            ? "Sign in to view and log your work hours"
+            : "Sign up now to start tracking your time"}
         </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      
+      <CardContent className="space-y-4 px-6 pb-6">
         {error && (
-          <Alert variant="destructive" className="animate-in fade-in zoom-in duration-200">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Authentication Failed</AlertTitle>
-            <AlertDescription>{error}</AlertDescription>
+          <Alert variant="destructive" className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <AlertTitle className="font-bold text-xs">Error</AlertTitle>
+            <AlertDescription className="text-[11px] font-medium">{error}</AlertDescription>
           </Alert>
         )}
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "signup" && (
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="name" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+                <UserCircle className="h-4 w-4 text-zinc-400" /> Full Name
+              </Label>
               <Input
                 id="name"
                 type="text"
-                placeholder="John Doe"
+                placeholder="e.g. John Doe"
+                className="bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
               />
             </div>
           )}
-          <div className="space-y-2">
-            <Label htmlFor="email">Email address</Label>
+          
+          <div className="space-y-1.5">
+            <Label htmlFor="email" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+              <Mail className="h-4 w-4 text-zinc-400" /> Email address
+            </Label>
             <Input
               id="email"
               type="email"
-              placeholder="you@example.com"
+              placeholder="name@example.com"
+              className="bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="password" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
+              <Key className="h-4 w-4 text-zinc-400" /> Password
+            </Label>
             <Input
               id="password"
               type="password"
               placeholder="••••••••"
+              className="bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
             />
           </div>
           
-          <Button type="submit" className="w-full" disabled={loading}>
+          <Button
+            type="submit"
+            className="w-full bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 rounded-xl font-bold text-xs h-10.5 shadow-md shadow-zinc-900/10 dark:shadow-zinc-50/5 transition-all"
+            disabled={loading}
+          >
             {loading ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Please wait
+                Please wait...
               </>
             ) : mode === "signin" ? (
               "Sign In"
@@ -160,37 +176,40 @@ export function AuthCard() {
         </form>
 
         <div className="relative flex py-2 items-center">
-          <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
-          <span className="flex-shrink mx-4 text-xs text-zinc-400 uppercase tracking-widest">
+          <div className="flex-grow border-t border-zinc-200 dark:border-zinc-850"></div>
+          <span className="flex-shrink mx-4 text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
             or continue with
           </span>
-          <div className="flex-grow border-t border-zinc-200 dark:border-zinc-800"></div>
+          <div className="flex-grow border-t border-zinc-200 dark:border-zinc-850"></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Button variant="outline" onClick={() => handleSocialSignIn("google")} className="gap-2">
-            <svg className="h-4 w-4 text-red-500" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12.24 10.285V14.4h6.887c-.648 2.41-2.519 4.114-5.136 4.114-3.41 0-6.19-2.77-6.19-6.19 0-3.42 2.78-6.19 6.19-6.19 1.583 0 3.018.59 4.114 1.564l3.18-3.18C19.14 1.83 15.9 0 12.24 0c-6.627 0-12 5.373-12 12s5.373 12 12 12c6.233 0 11.537-4.499 11.96-10.428h-11.96z"/>
-            </svg>
+          <Button
+            variant="outline"
+            onClick={() => handleSocialSignIn("google")}
+            className="rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-bold bg-white dark:bg-zinc-900 hover:bg-zinc-50 transition-all"
+          >
             Google
           </Button>
-          <Button variant="outline" onClick={() => handleSocialSignIn("github")} className="gap-2">
-            <svg className="h-4 w-4 text-zinc-800 dark:text-zinc-200" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 0C5.37 0 0 5.37 0 12c0 5.3 3.438 9.8 8.205 11.385.6.11.82-.26.82-.577v-2.234c-3.338.724-4.042-1.61-4.042-1.61C4.422 18.07 3.633 17.7 3.633 17.7c-1.087-.744.084-.729.084-.729 1.205.084 1.838 1.236 1.838 1.236 1.07 1.835 2.809 1.305 3.495.998.108-.776.417-1.305.76-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.465-2.38 1.235-3.22-.135-.303-.54-1.523.105-3.176 0 0 1.005-.322 3.3 1.23.96-.267 1.98-.399 3-.405 1.02.006 2.04.138 3 .405 2.28-1.552 3.285-1.23 3.285-1.23.645 1.653.24 2.873.12 3.176.765.84 1.23 1.91 1.23 3.22 0 4.61-2.805 5.625-5.475 5.92.42.36.81 1.096.81 2.22v3.293c0 .319.22.694.825.576C20.565 21.795 24 17.3 24 12c0-6.63-5.37-12-12-12z"/>
-            </svg>
+          <Button
+            variant="outline"
+            onClick={() => handleSocialSignIn("github")}
+            className="rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-bold bg-white dark:bg-zinc-900 hover:bg-zinc-50 transition-all"
+          >
             GitHub
           </Button>
         </div>
       </CardContent>
-      <CardFooter className="justify-center border-t border-zinc-100 bg-zinc-50/50 py-4 dark:border-zinc-900 dark:bg-zinc-900/10">
-        <p className="text-sm text-zinc-500">
+      
+      <CardFooter className="justify-center border-t border-zinc-100 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-900/10 p-4">
+        <p className="text-xs text-zinc-500 font-medium">
           {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
           <button
             onClick={() => {
               setMode(mode === "signin" ? "signup" : "signin");
               setError(null);
             }}
-            className="font-semibold text-black dark:text-white underline hover:no-underline transition-all"
+            className="font-bold text-zinc-950 dark:text-zinc-50 underline hover:no-underline transition-all"
           >
             {mode === "signin" ? "Register here" : "Sign in here"}
           </button>
