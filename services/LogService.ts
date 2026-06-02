@@ -146,6 +146,7 @@ export class LogService {
         project_id: input.projectId || null,
         start_time: input.startTime,
         end_time: input.endTime,
+        title: input.title || "Untitled Task",
         description: input.description,
         created_at: new Date(),
         updated_at: new Date(),
@@ -302,6 +303,7 @@ export class LogService {
         project_id: input.projectId !== undefined ? input.projectId : existing.project_id,
         start_time: startTime,
         end_time: endTime,
+        title: input.title ?? existing.title,
         description: input.description ?? existing.description,
         updated_at: new Date(),
       };
@@ -567,7 +569,6 @@ export class LogService {
         await tx.delete(timers).where(eq(timers.user_id, userId));
       }
 
-      // 2. Create the log passing the transaction tx
       const log = await this.createLog(
         {
           userId,
@@ -576,7 +577,8 @@ export class LogService {
           projectId: active.project_id,
           startTime,
           endTime,
-          description: description || active.description || "Timer-logged hours",
+          title: description || active.description || "Timer-logged hours",
+          description: "Logged via active running timer.",
           taskIds,
           evidence,
         },
