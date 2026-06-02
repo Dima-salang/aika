@@ -5,6 +5,8 @@ import { AuditService } from "../services/AuditService";
 import { NotificationService } from "../services/NotificationService";
 import { TaskService } from "../services/TaskService";
 import { UserService } from "../services/UserService";
+import { OrganizationService } from "../services/OrganizationService";
+import { TeamService } from "../services/TeamService";
 import { eq } from "drizzle-orm";
 
 async function main() {
@@ -13,9 +15,11 @@ async function main() {
 
   // 1. Initialize Services
   const auditService = new AuditService();
+  const organizationService = new OrganizationService();
+  const teamService = new TeamService();
   const notificationService = new NotificationService();
   const taskService = new TaskService();
-  const userService = new UserService();
+  const userService = new UserService(organizationService, teamService);
   const logService = new LogService(auditService, notificationService, taskService, userService);
 
   const testUserId = `user-${crypto.randomUUID()}`;
