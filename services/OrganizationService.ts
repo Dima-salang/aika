@@ -12,6 +12,7 @@ import {
   MemberSqlite,
   NewMember,
   NewMemberSqlite,
+  newOrganizationZodSchema,
 } from "@/db/schema";
 import { eq, and, like } from "drizzle-orm";
 
@@ -26,7 +27,7 @@ export class OrganizationService {
   }
 
   async createOrganization(
-    data: NewOrganization | NewOrganizationSqlite,
+    data: Omit<NewOrganization, "createdAt"> | Omit<NewOrganizationSqlite, "createdAt">,
     tx: any = db
   ): Promise<Organization | OrganizationSqlite | null> {
     const table = isSQLite ? organizationSqlite : organization;
