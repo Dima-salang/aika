@@ -55,6 +55,11 @@ export class LogService {
       throw new Error("Validation Error: Start time must be before end time");
     }
 
+    // check end time is greater than today
+    if (endTime > new Date()) {
+      throw new Error("Validation Error: End time cannot be in the future.");
+    }
+
     if (isSQLite) {
       const conditions = [
         eq(timeLogsSqlite.user_id, userId),
@@ -138,7 +143,7 @@ export class LogService {
       const logId = crypto.randomUUID();
 
 
-      const logData:NewTimeLog = {
+      const logData: NewTimeLog = {
         id: logId,
         user_id: input.userId,
         organization_id: input.organizationId,
