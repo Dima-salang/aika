@@ -2,16 +2,22 @@ import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { db, isSQLite } from "@/db";
 import {
+  user,
+  userSqlite,
+  organization,
+  organizationSqlite,
   tasks,
   tasksSqlite,
   projects,
   projectsSqlite,
-  organization,
-  organizationSqlite,
   createLogInputZodSchema,
   updateLogInputZodSchema,
 } from "@/db/schema";
 import { eq, and, isNull } from "drizzle-orm";
+import { ensureSeed } from "@/db/seed";
+
+// Router Imports
+import { adminRouter } from "./admin";
 
 // Service Imports
 import { LogService } from "@/services/LogService";
@@ -31,32 +37,23 @@ const taskService = new TaskService();
 const userService = new UserService(organizationService, teamService);
 const logService = new LogService(auditService, notificationService, taskService, userService);
 
-// Seeding helper to ensure org-default exists to resolve DB foreign key constraints
-async function ensureDefaultOrg() {
-  const table = isSQLite ? organizationSqlite : organization;
-  const existing = await db.select().from(table).where(eq(table.id, "org-default"));
-  if (existing.length === 0) {
-    await db.insert(table).values({
-      id: "org-default",
-      name: "Default Workspace",
-      slug: "default-workspace",
-      createdAt: new Date(),
-    });
-  }
-}
-
 export const appRouter = router({
-  healthCheck: publicProcedure.query(() => {
+  healthCheck: publicProcedure.query(async () => {
+    await ensureSeed();
     return {
       status: "ok",
       timestamp: new Date().toISOString(),
     };
   }),
 
+  // Merge modular admin router
+  admin: adminRouter,
+
   // Task procedures
   getTasks: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input }) => {
+      await ensureSeed();
       if (isSQLite) {
         return await db
           .select()
@@ -74,7 +71,7 @@ export const appRouter = router({
   getProjects: publicProcedure
     .input(z.object({ organizationId: z.string() }))
     .query(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       if (isSQLite) {
         return await db
           .select()
@@ -99,7 +96,7 @@ export const appRouter = router({
       })
     )
     .query(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       const logs = await logService.getUserLogs(input.userId, {
         organizationId: input.organizationId,
         startDate: input.startDate,
@@ -122,7 +119,7 @@ export const appRouter = router({
   createLog: publicProcedure
     .input(createLogInputZodSchema)
     .mutation(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       return await logService.createLog(input);
     }),
 
@@ -135,14 +132,14 @@ export const appRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       return await logService.updateLog(input.logId, input.userId, input.input);
     }),
 
   deleteLog: publicProcedure
     .input(z.object({ logId: z.string(), userId: z.string() }))
     .mutation(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       return await logService.deleteLog(input.logId, input.userId);
     }),
 
@@ -156,7 +153,7 @@ export const appRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       return await logService.startTimer(input.userId, input.projectId, input.description);
     }),
 
@@ -180,7 +177,7 @@ export const appRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       return await logService.stopTimer(
         input.userId,
         input.organizationId,
@@ -194,7 +191,7 @@ export const appRouter = router({
   getRunningTimer: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input }) => {
-      await ensureDefaultOrg();
+      await ensureSeed();
       return await logService.getRunningTimer(input.userId);
     }),
 });
