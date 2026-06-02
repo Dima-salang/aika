@@ -12,12 +12,12 @@ export function Heatmap({ logs }: HeatmapProps) {
   // Compute the full calendar layout alignment
   const { grid, monthLabels } = useMemo(() => {
     const today = new Date();
-    
+
     // GitHub grids align rows strictly to weekdays. 
     // Let's find the Saturday ending our current week to map backward cleanly.
     const currentDayOfWeek = today.getDay(); // 0 = Sun, 6 = Sat
     const daysUntilSaturday = 6 - currentDayOfWeek;
-    
+
     const endDate = new Date(today);
     endDate.setDate(today.getDate() + daysUntilSaturday);
 
@@ -67,16 +67,16 @@ export function Heatmap({ logs }: HeatmapProps) {
   // Fast hash-map to quickly query logs per date without O(N^2) filtering overhead inside loops
   const durationMap = useMemo(() => {
     const map: Record<string, number> = {};
-    
+
     logs.forEach((log) => {
       if (!log.start_time || !log.end_time) return;
       const dateStr = new Date(log.start_time).toDateString();
       const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
       const hours = diff > 0 ? diff / 3600000 : 0;
-      
+
       map[dateStr] = (map[dateStr] || 0) + hours;
     });
-    
+
     return map;
   }, [logs]);
 
@@ -88,7 +88,7 @@ export function Heatmap({ logs }: HeatmapProps) {
     return "bg-primary text-on-primary";
   };
 
-  const dayLabels = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
     <div className="glass-card rounded-xl p-unit-4 flex flex-col justify-between min-h-[190px] w-full max-w-xl">
@@ -112,8 +112,8 @@ export function Heatmap({ logs }: HeatmapProps) {
         {/* Month Headings Row */}
         <div className="flex pl-7 w-full text-[10px] text-outline select-none mb-1">
           {monthLabels.map((label, idx) => (
-            <div 
-              key={idx} 
+            <div
+              key={idx}
               style={{ width: `${(label.colSpan / weeksToShow) * 100}%` }}
               className="truncate"
             >
