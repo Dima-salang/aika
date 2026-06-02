@@ -3,6 +3,8 @@
 import React, { useState } from "react";
 import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, PlayCircle, Folder, Tag } from "lucide-react";
 import { TimeLogCard } from "./time-log-card";
+import { toast } from "sonner";
+import { useConfirmStore } from "@/lib/store";
 
 interface TimeLogsListProps {
   logsByDay: { [key: string]: any[] };
@@ -24,7 +26,8 @@ export function TimeLogsList({
   onManualLog,
 }: TimeLogsListProps) {
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
-  
+  const { showConfirm } = useConfirmStore();
+
   const getFriendlyDuration = (start: Date, end: Date) => {
     const ms = new Date(end).getTime() - new Date(start).getTime();
     const minutes = Math.floor(ms / 60000);
@@ -41,6 +44,15 @@ export function TimeLogsList({
     }, 0);
     const totalHrs = (totalMs / 3600000).toFixed(1);
     return `${totalHrs}h`;
+  };
+
+  const handleDelete = async (logId: string) => {
+    try {
+      await onDelete(logId);
+      toast.success("Time log entry deleted successfully!");
+    } catch (err: any) {
+      toast.error(err.message || "Failed to delete log.");
+    }
   };
 
   if (Object.keys(logsByDay).length === 0) {
@@ -212,9 +224,11 @@ export function TimeLogsList({
                         </button>
                         <button
                           onClick={() => {
-                            if (confirm("Are you sure you want to delete this log?")) {
-                              onDelete(log.id);
-                            }
+                            showConfirm({
+                              title: "Delete time log entry?",
+                              description: `Are you sure you want to delete the time log "${log.title}"? This action cannot be undone.`,
+                              onConfirm: () => handleDelete(log.id)
+                            });
                           }}
                           className="material-symbols-outlined text-outline hover:text-error transition-colors p-1 hover:bg-surface-container-high rounded"
                           title="Delete Log"
@@ -239,9 +253,11 @@ export function TimeLogsList({
                       tasks={tasks}
                       onEdit={onEdit}
                       onDelete={(id) => {
-                        if (confirm("Are you sure you want to delete this log?")) {
-                          onDelete(id);
-                        }
+                        showConfirm({
+                          title: "Delete time log entry?",
+                          description: `Are you sure you want to delete the time log "${log.title}"? This action cannot be undone.`,
+                          onConfirm: () => handleDelete(id)
+                        });
                       }}
                     />
                   );
@@ -255,4 +271,3 @@ export function TimeLogsList({
     </div>
   );
 }
-

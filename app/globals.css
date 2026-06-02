@@ -354,3 +354,16 @@
   display: inline-block;
   line-height: 1;
 }
+
+/* Dynamically styled Sonner Toasts based on active theme tokens */
+[data-sonner-toast] {
+  background-color: var(--surface) !important;
+  color: var(--on-surface) !important;
+  border-color: var(--outline-variant) !important;
+}
+
+.dark [data-sonner-toast] {
+  background-color: var(--surface-container-low) !important;
+  color: var(--on-surface) !important;
+  border-color: var(--outline-variant) !important;
+}

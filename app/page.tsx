@@ -8,9 +8,11 @@ import { trpc } from "@/utils/trpc";
 import { TimeLogDialog } from "@/components/time-log-dialog";
 import { TimeLogsList } from "@/components/time-logs-list";
 import { Sidebar } from "@/components/sidebar";
+import { TimerSidebar } from "@/components/timer-sidebar";
 import { Header } from "@/components/header";
 import { Heatmap } from "@/components/heatmap";
 import { WeeklyChart } from "@/components/weekly-chart";
+import { ProjectsTasksTab } from "@/components/projects-tasks-tab";
 import {
   Loader2,
   User,
@@ -33,7 +35,7 @@ export default function Home() {
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"logs" | "profile" | "org">("logs");
+  const [activeTab, setActiveTab] = useState<"logs" | "profile" | "org" | "projects">("logs");
   const [searchQuery, setSearchQuery] = useState("");
   
   // Timer States
@@ -261,126 +263,66 @@ export default function Home() {
       
       {session ? (
         <>
-          {/* SideNavBar (Authority: Shared Components JSON & Protocol) */}
-          <aside className="w-sidebar-width h-screen sticky left-0 top-0 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant flex flex-col p-unit-4 gap-unit-2 shrink-0">
-            <div className="flex items-center gap-unit-3 mb-unit-6">
-              <span className="text-headline-sm font-headline-sm font-bold text-on-surface">Aika</span>
-            </div>
-            <nav className="flex-1 space-y-1">
-              <button
-                onClick={() => setActiveTab("logs")}
-                className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-                  activeTab === "logs"
-                    ? "bg-secondary-container text-on-secondary-container"
-                    : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                }`}
-              >
-                <span className="material-symbols-outlined" data-icon="timer">timer</span>
-                <span className="font-label-md text-label-md">Tracker</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("profile")}
-                className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-                  activeTab === "profile"
-                    ? "bg-secondary-container text-on-secondary-container"
-                    : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                }`}
-              >
-                <span className="material-symbols-outlined" data-icon="person">person</span>
-                <span className="font-label-md text-label-md">Profile</span>
-              </button>
-              <button
-                onClick={() => setActiveTab("org")}
-                className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-                  activeTab === "org"
-                    ? "bg-secondary-container text-on-secondary-container"
-                    : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-                }`}
-              >
-                <span className="material-symbols-outlined" data-icon="work">work</span>
-                <span className="font-label-md text-label-md">Organization</span>
-              </button>
-            </nav>
-            <div className="mt-auto pt-unit-4 border-t border-outline-variant">
-              <div className="flex flex-col gap-1">
-                <button
-                  onClick={toggleTheme}
-                  className="w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg text-left"
-                >
-                  <span className="material-symbols-outlined">{isDark ? "light_mode" : "dark_mode"}</span>
-                  <span className="font-label-md text-label-md">{isDark ? "Light Mode" : "Dark Mode"}</span>
-                </button>
-                <button
-                  onClick={handleSignOut}
-                  className="w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 text-on-surface-variant hover:bg-surface-container-high transition-colors rounded-lg text-left hover:text-red-400"
-                >
-                  <span className="material-symbols-outlined">logout</span>
-                  <span className="font-label-md text-label-md">Logout</span>
-                </button>
-              </div>
-              {/* Keyboard Shortcut Legend */}
-              <div className="mt-unit-6 px-unit-3">
-                <p className="font-label-md text-[10px] uppercase tracking-widest text-outline mb-unit-3">Shortcuts</p>
-                <div className="space-y-2">
-                  <div className="flex justify-between items-center text-[11px] text-on-surface-variant">
-                    <span>Start/Stop</span>
-                    <kbd className="px-1.5 py-0.5 bg-surface-container-highest border border-outline-variant rounded font-mono-timer">S</kbd>
-                  </div>
-                  <div className="flex justify-between items-center text-[11px] text-on-surface-variant">
-                    <span>Focus Task</span>
-                    <kbd className="px-1.5 py-0.5 bg-surface-container-highest border border-outline-variant rounded font-mono-timer">T</kbd>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </aside>
+          <Sidebar
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            session={session}
+            handleSignOut={handleSignOut}
+            isDark={isDark}
+            toggleTheme={toggleTheme}
+          />
 
           {/* Main Content & Right Sidebar Workspace Container */}
           <div className="flex-1 flex overflow-hidden h-screen w-full">
             {/* Main Content Canvas */}
             <main className="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden h-screen">
-              <Header
-                searchQuery={searchQuery}
-                setSearchQuery={setSearchQuery}
-                isDark={isDark}
-                toggleTheme={toggleTheme}
-                runningTimer={runningTimer}
-                handleStartTimer={handleStartTimer}
-                setIsDialogOpen={setIsDialogOpen}
-                setEditingLog={setEditingLog}
-                session={session}
-              />
+              {activeTab !== "projects" && (
+                <Header
+                  searchQuery={searchQuery}
+                  setSearchQuery={setSearchQuery}
+                  isDark={isDark}
+                  toggleTheme={toggleTheme}
+                  runningTimer={runningTimer}
+                  handleStartTimer={handleStartTimer}
+                  setIsDialogOpen={setIsDialogOpen}
+                  setEditingLog={setEditingLog}
+                  session={session}
+                />
+              )}
 
-              {/* Scrollable Main Area */}
-              <section className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 max-w-container-max mx-auto w-full">
-                {activeTab === "logs" && (
-                  <div className="space-y-6">
-                    {/* Top Analytics Panel (GitHub heatmap and Weekly progression side-by-side) */}
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                      <Heatmap logs={rawLogs || []} />
-                      <WeeklyChart logs={rawLogs || []} />
-                    </div>
+              {activeTab === "projects" ? (
+                <ProjectsTasksTab userId={userId} organizationId={organizationId} />
+              ) : (
+                /* Scrollable Main Area */
+                <section className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 max-w-container-max mx-auto w-full">
+                  {activeTab === "logs" && (
+                    <div className="space-y-6">
+                      {/* Top Analytics Panel (GitHub heatmap and Weekly progression side-by-side) */}
+                      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                        <Heatmap logs={rawLogs || []} />
+                        <WeeklyChart logs={rawLogs || []} />
+                      </div>
 
-                    {/* Timeline logs */}
-                    <div>
-                      <TimeLogsList
-                        logsByDay={logsByDay}
-                        projects={projects || []}
-                        tasks={tasks || []}
-                        onEdit={(log) => {
-                          setEditingLog(log);
-                          setIsDialogOpen(true);
-                        }}
-                        onDelete={handleDeleteLog}
-                        searchQuery={searchQuery}
-                        onManualLog={() => {
-                          setEditingLog(null);
-                          setIsDialogOpen(true);
-                        }}
-                      />
+                      {/* Timeline logs */}
+                      <div>
+                        <TimeLogsList
+                          logsByDay={logsByDay}
+                          projects={projects || []}
+                          tasks={tasks || []}
+                          onEdit={(log) => {
+                            setEditingLog(log);
+                            setIsDialogOpen(true);
+                          }}
+                          onDelete={handleDeleteLog}
+                          searchQuery={searchQuery}
+                          onManualLog={() => {
+                            setEditingLog(null);
+                            setIsDialogOpen(true);
+                          }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
                 {/* Profile Panel */}
                 {activeTab === "profile" && (
@@ -446,88 +388,22 @@ export default function Home() {
                   </div>
                 )}
               </section>
+            )}
             </main>
 
-            {/* Right Timer Sidebar */}
-            <aside className="w-80 h-screen bg-surface-container-low dark:bg-surface-dim border-l border-outline-variant flex flex-col p-unit-6 shrink-0 overflow-y-auto">
-              <div className="space-y-unit-6">
-                <div className="space-y-unit-4">
-                  <label className="font-label-md text-[10px] uppercase tracking-widest text-primary font-bold block">
-                    What are you working on?
-                  </label>
-                  <input
-                    className="w-full bg-transparent border-none text-headline-sm font-headline-sm p-0 focus:ring-0 placeholder:text-surface-container-highest text-on-surface focus:outline-none"
-                    id="task-input"
-                    placeholder="Refactoring authentication middleware..."
-                    type="text"
-                    value={runningTimer ? (runningTimer.description || "") : timerDesc}
-                    onChange={(e) => {
-                      if (!runningTimer) setTimerDesc(e.target.value);
-                    }}
-                  />
-                  <div className="flex flex-col gap-unit-2 pt-unit-2">
-                    {projects && projects.length > 0 && (
-                      <div className="flex items-center gap-1.5 px-2 py-1 bg-surface-container-high rounded border border-outline-variant">
-                        <span className="material-symbols-outlined text-[14px] text-outline" data-icon="folder">
-                          folder
-                        </span>
-                        <select
-                          value={runningTimer ? (runningTimer.project_id || "") : timerProjId}
-                          onChange={(e) => {
-                            if (!runningTimer) setTimerProjId(e.target.value);
-                          }}
-                          className="bg-transparent border-none text-label-md text-on-surface-variant font-medium focus:ring-0 focus:outline-none cursor-pointer py-0.5 w-full bg-surface-container-high"
-                        >
-                          <option value="" className="bg-surface">No Project</option>
-                          {projects.map((p: any) => (
-                            <option key={p.id} value={p.id} className="bg-surface">
-                              {p.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    )}
-                    <button
-                      onClick={() => {
-                        setEditingLog(null);
-                        setIsDialogOpen(true);
-                      }}
-                      className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-surface-container-high rounded border border-outline-variant hover:border-primary transition-colors group w-full"
-                    >
-                      <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-primary" data-icon="sell">
-                        sell
-                      </span>
-                      <span className="font-label-md text-label-md text-on-surface-variant">Link Tasks</span>
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-unit-4 border-t border-outline-variant pt-unit-6">
-                  <div className="font-mono-timer text-headline-lg font-extrabold tracking-tighter tabular-nums text-on-surface" id="timer-display">
-                    {runningTimer ? formatDuration(timerSeconds) : "00:00:00"}
-                  </div>
-                  <button
-                    onClick={() => {
-                      if (runningTimer) {
-                        setEditingLog(null);
-                        setIsDialogOpen(true);
-                      } else {
-                        handleStartTimer();
-                      }
-                    }}
-                    className={`w-full py-3 ${
-                      runningTimer ? "bg-error text-on-error" : "bg-primary text-on-primary"
-                    } rounded-lg font-headline-sm flex items-center justify-center gap-unit-2 hover:brightness-110 active:scale-[0.97] transition-all shadow-[0_0_20px_rgba(192,193,255,0.2)]`}
-                    id="main-timer-btn"
-                  >
-                    <span className="material-symbols-outlined">
-                      {runningTimer ? "stop" : "play_arrow"}
-                    </span>
-                    {runningTimer ? "Stop Timer" : "Start Tracking"}
-                  </button>
-                </div>
-              </div>
-            </aside>
+            <TimerSidebar
+              runningTimer={runningTimer}
+              timerDesc={timerDesc}
+              setTimerDesc={setTimerDesc}
+              timerProjId={timerProjId}
+              setTimerProjId={setTimerProjId}
+              projects={projects || []}
+              setEditingLog={setEditingLog}
+              setIsDialogOpen={setIsDialogOpen}
+              timerSeconds={timerSeconds}
+              formatDuration={formatDuration}
+              handleStartTimer={handleStartTimer}
+            />
           </div>
         </>
       ) : (

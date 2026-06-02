@@ -19,6 +19,9 @@ export const metadata: Metadata = {
   description: "Web-based team-oriented time logging and task management platform",
 };
 
+import { Toaster } from "sonner";
+import { ConfirmDialog } from "@/components/confirm-dialog";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -49,6 +52,8 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen flex bg-background text-foreground antialiased overflow-hidden font-sans">
         <Providers>{children}</Providers>
+        <Toaster richColors position="top-right" />
+        <ConfirmDialog />
       </body>
     </html>
   );
