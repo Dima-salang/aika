@@ -10,6 +10,15 @@ export const auth = betterAuth({
     provider: isSQLite ? "sqlite" : "pg",
     schema: schema,
   }),
+  user: {
+    additionalFields: {
+      is_admin: {
+        type: "boolean",
+        required: false,
+        defaultValue: false,
+      },
+    },
+  },
   emailAndPassword: {
     enabled: true,
   },
