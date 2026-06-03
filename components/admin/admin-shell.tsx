@@ -95,103 +95,95 @@ export function AdminShell({
 
   return (
     <div className="relative min-h-screen w-full flex bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
-      
+
       {/* Sidebar navigation */}
       <aside className="w-sidebar-width h-screen sticky left-0 top-0 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant flex flex-col p-unit-4 gap-unit-2 shrink-0">
         <div className="flex items-center gap-unit-3 mb-unit-6">
           <span className="text-headline-sm font-bold tracking-tight text-on-surface flex items-center gap-2">
-            <Shield className="h-5 w-5 text-primary" /> Admin Shell
+            <Shield className="h-5 w-5 text-primary" /> Aika Admin
           </span>
         </div>
-        
+
         <nav className="flex-1 space-y-1">
           <button
             onClick={() => setActiveSection("users")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "users"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "users"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <Users className="h-4 w-4" />
             <span className="font-label-md text-label-md">Users Pool</span>
           </button>
           <button
             onClick={() => setActiveSection("orgs")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "orgs"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "orgs"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <Building className="h-4 w-4" />
             <span className="font-label-md text-label-md">Workspaces</span>
           </button>
           <button
             onClick={() => setActiveSection("teams")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "teams"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "teams"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <Layers className="h-4 w-4" />
             <span className="font-label-md text-label-md">Teams</span>
           </button>
           <button
             onClick={() => setActiveSection("projects")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "projects"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "projects"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <FolderKanban className="h-4 w-4" />
             <span className="font-label-md text-label-md">Projects</span>
           </button>
           <button
             onClick={() => setActiveSection("tasks")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "tasks"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "tasks"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <CheckSquare className="h-4 w-4" />
             <span className="font-label-md text-label-md">Tasks Backlog</span>
           </button>
           <button
             onClick={() => setActiveSection("timelogs")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "timelogs"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "timelogs"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <Clock className="h-4 w-4" />
             <span className="font-label-md text-label-md">Time Sheets</span>
           </button>
           <button
             onClick={() => setActiveSection("notifications")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "notifications"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "notifications"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <Bell className="h-4 w-4" />
             <span className="font-label-md text-label-md">Alert Delivery</span>
           </button>
           <button
             onClick={() => setActiveSection("auditlogs")}
-            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${
-              activeSection === "auditlogs"
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "auditlogs"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
-            }`}
+              }`}
           >
             <Activity className="h-4 w-4" />
-            <span className="font-label-md text-label-md">Mutation Trail</span>
+            <span className="font-label-md text-label-md">Audit Trail</span>
           </button>
         </nav>
 
@@ -214,7 +206,7 @@ export function AdminShell({
 
       {/* Main page area */}
       <main className="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden h-screen">
-        
+
         {/* Top Header */}
         <header className="h-16 sticky top-0 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-unit-6 z-10 shrink-0">
           <div className="flex items-center gap-2">
@@ -237,7 +229,7 @@ export function AdminShell({
 
         {/* Scrollable Canvas area */}
         <section className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 max-w-container-max mx-auto w-full space-y-6">
-          
+
           {/* Quick-glance metrics summaries */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
             <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 text-left">
@@ -270,7 +262,7 @@ export function AdminShell({
           <div className="glass-card rounded-2xl p-unit-6 bg-surface-container-low border border-outline-variant">
             {renderSection()}
           </div>
-          
+
         </section>
       </main>
     </div>
