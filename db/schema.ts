@@ -218,6 +218,27 @@ export const auditLogs = pgTable("audit_logs", {
     created_at: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Secure Join Tokens (self-service onboarding links)
+export const joinTokens = pgTable("join_tokens", {
+    id: text("id").primaryKey(), // The cryptographically secure token string
+    organizationId: text("organization_id").notNull().references(() => organization.id),
+    teamId: text("team_id").references(() => teams.id),
+    createdBy: text("created_by").notNull().references(() => user.id),
+    expiresAt: timestamp("expires_at").notNull(),
+    maxUses: integer("max_uses"),
+    usesCount: integer("uses_count").notNull().default(0),
+});
+
+// Join Requests (requests submitted via join tokens for admin review)
+export const joinRequests = pgTable("join_requests", {
+    id: text("id").primaryKey(),
+    userId: text("user_id").notNull().references(() => user.id),
+    organizationId: text("organization_id").notNull().references(() => organization.id),
+    teamId: text("team_id").references(() => teams.id),
+    status: text("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 
 // ==========================================
 // 2. SQLITE SCHEMA DEFINITIONS (TESTING)
@@ -436,6 +457,27 @@ export const auditLogsSqlite = sqliteTable("audit_logs", {
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
 });
 
+// Secure Join Tokens (self-service onboarding links)
+export const joinTokensSqlite = sqliteTable("join_tokens", {
+    id: sqliteText("id").primaryKey(),
+    organizationId: sqliteText("organization_id").notNull().references(() => organizationSqlite.id),
+    teamId: sqliteText("team_id").references(() => teamsSqlite.id),
+    createdBy: sqliteText("created_by").notNull().references(() => userSqlite.id),
+    expiresAt: sqliteInteger("expires_at", { mode: "timestamp" }).notNull(),
+    maxUses: sqliteInteger("max_uses"),
+    usesCount: sqliteInteger("uses_count").notNull().default(0),
+});
+
+// Join Requests (requests submitted via join tokens for admin review)
+export const joinRequestsSqlite = sqliteTable("join_requests", {
+    id: sqliteText("id").primaryKey(),
+    userId: sqliteText("user_id").notNull().references(() => userSqlite.id),
+    organizationId: sqliteText("organization_id").notNull().references(() => organizationSqlite.id),
+    teamId: sqliteText("team_id").references(() => teamsSqlite.id),
+    status: sqliteText("status").notNull().default("pending"),
+    createdAt: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
+});
+
 
 // ==========================================
 // 3. DOMAIN TYPE INFERENCES
@@ -512,6 +554,14 @@ export type NotificationSqlite = typeof notificationsSqlite.$inferSelect;
 export type NewNotificationSqlite = typeof notificationsSqlite.$inferInsert;
 export type AuditLogSqlite = typeof auditLogsSqlite.$inferSelect;
 export type NewAuditLogSqlite = typeof auditLogsSqlite.$inferInsert;
+export type JoinToken = typeof joinTokens.$inferSelect;
+export type NewJoinToken = typeof joinTokens.$inferInsert;
+export type JoinRequest = typeof joinRequests.$inferSelect;
+export type NewJoinRequest = typeof joinRequests.$inferInsert;
+export type JoinTokenSqlite = typeof joinTokensSqlite.$inferSelect;
+export type NewJoinTokenSqlite = typeof joinTokensSqlite.$inferInsert;
+export type JoinRequestSqlite = typeof joinRequestsSqlite.$inferSelect;
+export type NewJoinRequestSqlite = typeof joinRequestsSqlite.$inferInsert;
 
 // ==========================================
 // 4. ZOD SCHEMA SCHEMAS
@@ -696,6 +746,25 @@ export const auditLogZodSchema = z.object({
 });
 export const newAuditLogZodSchema = auditLogZodSchema.omit({ created_at: true }).partial({
   id: true,
+});
+
+export const joinTokenZodSchema = z.object({
+  id: z.string(),
+  organizationId: z.string(),
+  teamId: z.string().nullable().optional(),
+  createdBy: z.string(),
+  expiresAt: z.coerce.date(),
+  maxUses: z.number().int().positive().nullable().optional(),
+  usesCount: z.number().int().nonnegative().default(0),
+});
+
+export const joinRequestZodSchema = z.object({
+  id: z.string(),
+  userId: z.string(),
+  organizationId: z.string(),
+  teamId: z.string().nullable().optional(),
+  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
+  createdAt: z.coerce.date(),
 });
 
 // ==========================================
