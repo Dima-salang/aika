@@ -32,6 +32,31 @@ export const auth = betterAuth({
       clientSecret: process.env.GOOGLE_CLIENT_SECRET || "placeholder",
     },
   },
-  plugins: [organization()],
+  plugins: [
+    organization({
+      teams: {
+        enabled: true,
+      },
+      schema: {
+        team: {
+          modelName: "teams",
+          fields: {
+            organizationId: "organization_id",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+          },
+        },
+        teamMember: {
+          modelName: "team_members",
+          fields: {
+            teamId: "team_id",
+            userId: "user_id",
+            createdAt: "created_at",
+            updatedAt: "updated_at",
+          },
+        },
+      },
+    }),
+  ],
 });
 export type Auth = typeof auth;

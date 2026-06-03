@@ -31,6 +31,8 @@ export const session = pgTable("session", {
     ipAddress: text("ipAddress"),
     userAgent: text("userAgent"),
     userId: text("userId").notNull().references(() => user.id),
+    activeOrganizationId: text("activeOrganizationId"),
+    activeTeamId: text("activeTeamId"),
 });
 
 // Better Auth: Account table
@@ -88,6 +90,7 @@ export const invitation = pgTable("invitation", {
     status: text("status").notNull(),
     expiresAt: timestamp("expiresAt").notNull(),
     inviterId: text("inviterId").notNull().references(() => user.id),
+    teamId: text("teamId"),
 });
 
 // Custom Aika: Teams table (Nested inside Organization)
@@ -105,7 +108,7 @@ export const teamMembers = pgTable("team_members", {
     id: text("id").primaryKey(),
     team_id: text("team_id").notNull().references(() => teams.id),
     user_id: text("user_id").notNull().references(() => user.id),
-    role: text("role").notNull(), // 'leader' | 'member'
+    role: text("role").notNull().default("member"), // 'leader' | 'member'
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
@@ -246,6 +249,8 @@ export const sessionSqlite = sqliteTable("session", {
     ipAddress: sqliteText("ipAddress"),
     userAgent: sqliteText("userAgent"),
     userId: sqliteText("userId").notNull().references(() => userSqlite.id),
+    activeOrganizationId: sqliteText("activeOrganizationId"),
+    activeTeamId: sqliteText("activeTeamId"),
 });
 
 // Better Auth: Account table
@@ -303,6 +308,7 @@ export const invitationSqlite = sqliteTable("invitation", {
     status: sqliteText("status").notNull(),
     expiresAt: sqliteInteger("expiresAt", { mode: "timestamp" }).notNull(),
     inviterId: sqliteText("inviterId").notNull().references(() => userSqlite.id),
+    teamId: sqliteText("teamId"),
 });
 
 // Custom Aika: Teams table (Nested inside Organization)
@@ -320,7 +326,7 @@ export const teamMembersSqlite = sqliteTable("team_members", {
     id: sqliteText("id").primaryKey(),
     team_id: sqliteText("team_id").notNull().references(() => teamsSqlite.id),
     user_id: sqliteText("user_id").notNull().references(() => userSqlite.id),
-    role: sqliteText("role").notNull(),
+    role: sqliteText("role").notNull().default("member"),
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
@@ -538,6 +544,8 @@ export const sessionZodSchema = z.object({
   ipAddress: z.string().nullable().optional(),
   userAgent: z.string().nullable().optional(),
   userId: z.string(),
+  activeOrganizationId: z.string().nullable().optional(),
+  activeTeamId: z.string().nullable().optional(),
 });
 
 export const organizationZodSchema = z.object({
