@@ -89,4 +89,33 @@ describe("AuditService", () => {
     expect(log.table_name).toBeNull();
     expect(log.record_id).toBeNull();
   });
+
+  test("should successfully retrieve and list audit logs", async () => {
+    const log1 = await auditService.createAuditLog(
+      "user-1",
+      "user_login",
+      "user",
+      "1",
+      "User logged in"
+    );
+    const log2 = await auditService.createAuditLog(
+      "user-2",
+      "user_logout",
+      "user",
+      "2",
+      "User logged out"
+    );
+
+    const retrievedLog1 = await auditService.getAuditLogById(log1.id);
+    expect(retrievedLog1).toBeDefined();
+    expect(retrievedLog1.id).toBe(log1.id);
+    expect(retrievedLog1.event).toBe("user_login");
+
+    const allLogs = await auditService.listAuditLogs(10, 0);
+    expect(allLogs.length).toBeGreaterThanOrEqual(2);
+    const ids = allLogs.map(l => l.id);
+    expect(ids).toContain(log1.id);
+    expect(ids).toContain(log2.id);
+  });
 });
+
