@@ -246,6 +246,7 @@ export function UsersManager({ initialData }: UsersManagerProps) {
                   <option value="member">Organization Member</option>
                   <option value="owner">Organization Owner</option>
                   <option value="admin">Organization Administrator</option>
+                  <option value="system_admin">Organization System Administrator</option>
                 </select>
               </div>
             </div>
