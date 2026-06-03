@@ -13,6 +13,8 @@ import { Header } from "@/components/header";
 import { Heatmap } from "@/components/heatmap";
 import { WeeklyChart } from "@/components/weekly-chart";
 import { ProjectsTasksTab } from "@/components/projects-tasks-tab";
+import { DashboardView } from "@/components/dashboard-view";
+import { DetailViewDialog } from "@/components/detail-view-dialog";
 import {
   Loader2,
   User,
@@ -35,8 +37,13 @@ export default function Home() {
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"logs" | "profile" | "org" | "projects">("logs");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects">("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
+
+  // Detailed view / dynamically inspect task or log
+  const [detailLog, setDetailLog] = useState<any>(null);
+  const [detailTask, setDetailTask] = useState<any>(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
   
   // Timer States
   const [timerDesc, setTimerDesc] = useState("");
@@ -45,6 +52,7 @@ export default function Home() {
   
   // Theme State
   const [isDark, setIsDark] = useState(false);
+  const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
   // tRPC Queries & Mutations
   const userId = session?.user?.id || "";
@@ -137,6 +145,118 @@ export default function Home() {
     return () => clearInterval(interval);
   }, [runningTimer]);
 
+  // Keyboard Shortcuts for Power Users
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const isInput =
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement ||
+        (e.target as HTMLElement).isContentEditable;
+
+      // Global shortcuts (Work even inside input fields)
+      
+      // CMD/CTRL + K: Focus Search
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        const searchInput = document.getElementById("global-search-input");
+        if (searchInput) {
+          searchInput.focus();
+          // Select search text for quick overwrite
+          (searchInput as HTMLInputElement).select();
+        }
+        return;
+      }
+
+      // Alt + H or ?: Toggle Keyboard Shortcut Help Overlay
+      if (e.altKey && e.key.toLowerCase() === "h") {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+        return;
+      }
+      if (!isInput && e.key === "?") {
+        e.preventDefault();
+        setIsShortcutsOpen((prev) => !prev);
+        return;
+      }
+
+      // Escape: Close all overlays/dialogs
+      if (e.key === "Escape") {
+        setIsDialogOpen(false);
+        setIsDetailOpen(false);
+        setIsShortcutsOpen(false);
+        setEditingLog(null);
+        return;
+      }
+
+      // If user is focused on an input, do not trigger single-key or Alt navigation shortcuts
+      if (isInput) return;
+
+      // /: Focus Search (when not in input)
+      if (e.key === "/") {
+        e.preventDefault();
+        const searchInput = document.getElementById("global-search-input");
+        if (searchInput) {
+          searchInput.focus();
+        }
+        return;
+      }
+
+      // Alt + T or T: Toggle Timer
+      if ((e.altKey && e.key.toLowerCase() === "t") || e.key.toLowerCase() === "t") {
+        e.preventDefault();
+        if (runningTimer) {
+          // Trigger stop dialog
+          setIsDialogOpen(true);
+        } else {
+          handleStartTimer();
+        }
+        return;
+      }
+
+      // Alt + N or N: Create New Log
+      if ((e.altKey && e.key.toLowerCase() === "n") || e.key.toLowerCase() === "n") {
+        e.preventDefault();
+        setEditingLog(null);
+        setIsDialogOpen(true);
+        return;
+      }
+
+      // Alt + C or C: Create New Task (redirect to projects & trigger event)
+      if ((e.altKey && e.key.toLowerCase() === "c") || e.key.toLowerCase() === "c") {
+        e.preventDefault();
+        setActiveTab("projects");
+        setTimeout(() => {
+          window.dispatchEvent(new CustomEvent("aika-new-task"));
+        }, 80);
+        return;
+      }
+
+      // Navigation shortcuts: Alt + [1-5]
+      if (e.altKey) {
+        if (e.key === "1") {
+          e.preventDefault();
+          setActiveTab("dashboard");
+        } else if (e.key === "2") {
+          e.preventDefault();
+          setActiveTab("logs");
+        } else if (e.key === "3") {
+          e.preventDefault();
+          setActiveTab("projects");
+        } else if (e.key === "4") {
+          e.preventDefault();
+          setActiveTab("profile");
+        } else if (e.key === "5") {
+          e.preventDefault();
+          setActiveTab("org");
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [runningTimer, timerProjId, timerDesc, userId]);
+
   const handleSignOut = async () => {
     await signOut({
       fetchOptions: {
@@ -174,6 +294,8 @@ export default function Home() {
       teamId: null,
       taskIds: evidenceData.taskIds,
       evidence: evidenceData.evidence,
+      projectId: evidenceData.projectId,
+      title: evidenceData.title,
       description: evidenceData.description || runningTimer?.description || "Timer-logged hours",
     });
   };
@@ -270,6 +392,7 @@ export default function Home() {
             handleSignOut={handleSignOut}
             isDark={isDark}
             toggleTheme={toggleTheme}
+            onOpenShortcuts={() => setIsShortcutsOpen(true)}
           />
 
           {/* Main Content & Right Sidebar Workspace Container */}
@@ -291,7 +414,32 @@ export default function Home() {
               )}
 
               {activeTab === "projects" ? (
-                <ProjectsTasksTab userId={userId} organizationId={organizationId} />
+                <ProjectsTasksTab
+                  userId={userId}
+                  organizationId={organizationId}
+                  onSelectTask={(task) => {
+                    setDetailTask(task);
+                    setDetailLog(null);
+                    setIsDetailOpen(true);
+                  }}
+                />
+              ) : activeTab === "dashboard" ? (
+                <DashboardView
+                  logs={rawLogs || []}
+                  projects={projects || []}
+                  tasks={tasks || []}
+                  runningTimer={runningTimer}
+                  handleStartTimer={handleStartTimer}
+                  handleStopTimer={handleStopTimerWithEvidence}
+                  setIsDialogOpen={setIsDialogOpen}
+                  timerSeconds={timerSeconds}
+                  formatDuration={formatDuration}
+                  onSelectLog={(log) => {
+                    setDetailLog(log);
+                    setDetailTask(null);
+                    setIsDetailOpen(true);
+                  }}
+                />
               ) : (
                 /* Scrollable Main Area */
                 <section className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 max-w-container-max mx-auto w-full">
@@ -318,6 +466,11 @@ export default function Home() {
                           onManualLog={() => {
                             setEditingLog(null);
                             setIsDialogOpen(true);
+                          }}
+                          onSelect={(log) => {
+                            setDetailLog(log);
+                            setDetailTask(null);
+                            setIsDetailOpen(true);
                           }}
                         />
                       </div>
@@ -450,6 +603,139 @@ export default function Home() {
           project_id: runningTimer.project_id,
         } : null)}
       />
+
+      {/* Dynamic Detail inspector dialog for tasks & logs */}
+      <DetailViewDialog
+        isOpen={isDetailOpen}
+        onClose={() => {
+          setIsDetailOpen(false);
+          setDetailLog(null);
+          setDetailTask(null);
+        }}
+        selectedLog={detailLog}
+        selectedTask={detailTask}
+        projects={projects || []}
+        tasks={tasks || []}
+      />
+
+      {/* Keyboard Shortcuts Helper Modal */}
+      {isShortcutsOpen && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+          role="dialog" 
+          aria-modal="true"
+          onClick={() => setIsShortcutsOpen(false)}
+        >
+          <div 
+            className="bg-surface dark:bg-[#121214] border border-outline-variant rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3">
+              <div className="flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-2xl">keyboard</span>
+                <h3 className="text-headline-sm font-extrabold text-on-surface">Power User Keyboard Shortcuts</h3>
+              </div>
+              <button 
+                onClick={() => setIsShortcutsOpen(false)}
+                className="text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+                aria-label="Close"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <p className="text-outline font-medium">Use these premium hotkeys to navigate Aika instantly like a pro developer.</p>
+              
+              <div className="grid grid-cols-1 gap-3">
+                {/* Actions category */}
+                <div className="space-y-2">
+                  <h4 className="text-[10px] uppercase font-bold text-primary tracking-wider">Quick Actions</h4>
+                  <div className="space-y-1.5">
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface font-semibold">Toggle Active Timer (Clock in/out)</span>
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">Alt</kbd>
+                        <span className="text-outline text-[10px]">+</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">T</kbd>
+                        <span className="text-outline text-[10px]">or</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">T</kbd>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface font-semibold">Focus Search Input</span>
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">⌘</kbd>
+                        <span className="text-outline text-[10px]">+</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">K</kbd>
+                        <span className="text-outline text-[10px]">or</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">/</kbd>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface font-semibold">Log Hours (Manual Creation)</span>
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">Alt</kbd>
+                        <span className="text-outline text-[10px]">+</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">N</kbd>
+                        <span className="text-outline text-[10px]">or</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">N</kbd>
+                      </div>
+                    </div>
+
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface font-semibold">Instantiate New Deliverable Task</span>
+                      <div className="flex items-center gap-1">
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">Alt</kbd>
+                        <span className="text-outline text-[10px]">+</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">C</kbd>
+                        <span className="text-outline text-[10px]">or</span>
+                        <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">C</kbd>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Navigation Category */}
+                <div className="space-y-2 pt-1">
+                  <h4 className="text-[10px] uppercase font-bold text-primary tracking-wider">Navigation Tabs</h4>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface-variant">Dashboard</span>
+                      <span className="flex items-center gap-0.5"><kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">Alt</kbd>+<kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">1</kbd></span>
+                    </div>
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface-variant">Time Logs</span>
+                      <span className="flex items-center gap-0.5"><kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">Alt</kbd>+<kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">2</kbd></span>
+                    </div>
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface-variant">Projects/Tasks</span>
+                      <span className="flex items-center gap-0.5"><kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">Alt</kbd>+<kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">3</kbd></span>
+                    </div>
+                    <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
+                      <span className="text-on-surface-variant">Profile</span>
+                      <span className="flex items-center gap-0.5"><kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">Alt</kbd>+<kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant">4</kbd></span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Help */}
+                <div className="flex justify-between items-center bg-primary/5 p-2 rounded-lg border border-primary/20 mt-1">
+                  <span className="text-primary font-semibold">Toggle Keyboard Shortcuts Guide</span>
+                  <span className="flex items-center gap-0.5"><kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant text-primary">?</kbd> <span className="text-[10px] text-outline">or</span> <kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant text-primary">Alt</kbd>+<kbd className="px-1 bg-surface-container-high text-[9px] font-bold rounded border border-outline-variant text-primary">H</kbd></span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 text-center text-[10px] text-outline border-t border-outline-variant/30 flex justify-between items-center">
+              <span>Press <kbd className="px-1 bg-surface-container-high rounded border border-outline-variant">Esc</kbd> to close any modal</span>
+              <span className="flex items-center gap-1 text-primary"><span className="material-symbols-outlined text-[12px]">flash_on</span> Designed for quick navigation</span>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );
