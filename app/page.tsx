@@ -15,6 +15,8 @@ import { WeeklyChart } from "@/components/weekly-chart";
 import { ProjectsTasksTab } from "@/components/projects-tasks-tab";
 import { DashboardView } from "@/components/dashboard-view";
 import { DetailViewDialog } from "@/components/detail-view-dialog";
+import { DashboardManageControls } from "@/components/admin/dashboard-manage-controls";
+
 import {
   Loader2,
   User,
@@ -537,6 +539,8 @@ export default function Home() {
                           Manage Workspace <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                         </button>
                       </div>
+
+                      <DashboardManageControls userId={userId} />
                     </div>
                   </div>
                 )}

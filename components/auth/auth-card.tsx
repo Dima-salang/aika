@@ -9,9 +9,12 @@ import { Label } from "@/components/ui/label";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { authClient } from "@/lib/auth-client";
 import { AlertCircle, Loader2, Key, Mail, UserCircle } from "lucide-react";
+import { useSearchParams } from "next/navigation";
 
 export function AuthCard() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirect = searchParams.get("redirect") || "/";
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   
   // Form states
@@ -35,13 +38,13 @@ export function AuthCard() {
             email,
             password,
             name,
-            callbackURL: "/",
+            callbackURL: redirect,
           },
           {
             onRequest: () => setLoading(true),
             onSuccess: () => {
               setLoading(false);
-              router.push("/");
+              router.push(redirect);
             },
             onError: (ctx) => {
               setLoading(false);
@@ -54,13 +57,13 @@ export function AuthCard() {
           {
             email,
             password,
-            callbackURL: "/",
+            callbackURL: redirect,
           },
           {
             onRequest: () => setLoading(true),
             onSuccess: () => {
               setLoading(false);
-              router.push("/");
+              router.push(redirect);
             },
             onError: (ctx) => {
               setLoading(false);
@@ -80,12 +83,13 @@ export function AuthCard() {
     try {
       await authClient.signIn.social({
         provider,
-        callbackURL: "/",
+        callbackURL: redirect,
       });
     } catch (err: any) {
       setError(err?.message || `Failed to sign in with ${provider}.`);
     }
   };
+
 
   return (
     <Card className="w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl rounded-2xl transition-all duration-300">
