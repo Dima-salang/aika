@@ -191,4 +191,12 @@ export class TeamService {
       .returning();
     return res || null;
   }
+
+  async getUserMemberships(userId: string, tx: any = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
+    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    return await tx
+      .select()
+      .from(table)
+      .where(eq(table.user_id, userId));
+  }
 }

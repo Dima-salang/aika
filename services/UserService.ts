@@ -99,4 +99,23 @@ export class UserService {
       .returning();
     return res || null;
   }
+
+  async createUser(data: { name: string; email: string; is_admin?: boolean }, tx: any = db): Promise<User | UserSqlite | null> {
+    const table = isSQLite ? userSqlite : user;
+    const newId = crypto.randomUUID();
+    const [res] = await tx
+      .insert(table)
+      .values({
+        id: newId,
+        name: data.name,
+        email: data.email,
+        emailVerified: false,
+        is_admin: data.is_admin || false,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .returning();
+    return res || null;
+  }
 }
+

@@ -127,4 +127,12 @@ export class OrganizationService {
       .returning();
     return res || null;
   }
+
+  async getUserMemberships(userId: string, tx: any = db): Promise<Array<Member | MemberSqlite>> {
+    const table = isSQLite ? memberSqlite : member;
+    return await tx
+      .select()
+      .from(table)
+      .where(eq(table.userId, userId));
+  }
 }

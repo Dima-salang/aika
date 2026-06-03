@@ -295,10 +295,16 @@ export class LogService {
         }
       }
 
-      // Overlap check
-      const overlaps = await this.checkOverlap(userId, startTime, endTime, logId, tx);
-      if (overlaps) {
-        throw new Error("Validation Error: Time log overlaps with an existing active log");
+      // Overlap check - only if start or end times actually changed
+      const timeChanged =
+        (input.startTime && input.startTime.getTime() !== existing.start_time.getTime()) ||
+        (input.endTime && input.endTime.getTime() !== existing.end_time.getTime());
+
+      if (timeChanged) {
+        const overlaps = await this.checkOverlap(userId, startTime, endTime, logId, tx);
+        if (overlaps) {
+          throw new Error("Validation Error: Time log overlaps with an existing active log");
+        }
       }
 
       // Update log properties
@@ -556,7 +562,9 @@ export class LogService {
     }>,
     description?: string,
     ipAddress?: string,
-    userAgent?: string
+    userAgent?: string,
+    projectId?: string | null,
+    title?: string
   ): Promise<any> {
     const active = await this.getRunningTimer(userId);
     if (!active) {
@@ -579,11 +587,11 @@ export class LogService {
           userId,
           organizationId,
           teamId,
-          projectId: active.project_id,
+          projectId: projectId !== undefined ? projectId : active.project_id,
           startTime,
           endTime,
-          title: description || active.description || "Timer-logged hours",
-          description: "Logged via active running timer.",
+          title: title || description || active.description || "Timer-logged hours",
+          description: description || active.description || "Logged via active running timer.",
           taskIds,
           evidence,
         },
@@ -745,4 +753,55 @@ export class LogService {
       return true;
     });
   }
+
+  async adminListLogs(limit = 100, offset = 0, tx: any = db): Promise<any[]> {
+    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    return await tx
+      .select()
+      .from(table)
+      .limit(limit)
+      .offset(offset);
+  }
+
+  async adminCreateLog(data: any, tx: any = db): Promise<any> {
+    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const newId = crypto.randomUUID();
+    const [res] = await tx
+      .insert(table)
+      .values({
+        id: newId,
+        ...data,
+        created_at: new Date(),
+        updated_at: new Date(),
+      })
+      .returning();
+    return res;
+  }
+
+  async adminUpdateLog(id: string, data: any, tx: any = db): Promise<any> {
+    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const [res] = await tx
+      .update(table)
+      .set({
+        ...data,
+        updated_at: new Date(),
+      })
+      .where(eq(table.id, id))
+      .returning();
+    return res;
+  }
+
+  async adminDeleteLog(id: string, tx: any = db): Promise<any> {
+    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const [res] = await tx
+      .update(table)
+      .set({
+        deleted_at: new Date(),
+        updated_at: new Date(),
+      })
+      .where(eq(table.id, id))
+      .returning();
+    return res;
+  }
 }
+
