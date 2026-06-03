@@ -229,16 +229,6 @@ export class LogService {
         tx
       );
 
-      // Create notification
-      await this.notificationService.createNotification(
-        input.userId,
-        "Time Log Created",
-        `Time log has been successfully saved.`,
-        "time_log",
-        logId,
-        tx
-      );
-
       return insertedLog;
     };
 
@@ -426,16 +416,6 @@ export class LogService {
         tx
       );
 
-      // Create notification
-      await this.notificationService.createNotification(
-        userId,
-        "Time Log Updated",
-        `Time log has been successfully updated.`,
-        "time_log",
-        logId,
-        tx
-      );
-
       return updatedLog;
     });
   }
@@ -476,16 +456,6 @@ export class LogService {
         undefined,
         ipAddress,
         userAgent,
-        tx
-      );
-
-      // Create notification
-      await this.notificationService.createNotification(
-        userId,
-        "Time Log Deleted",
-        `Time log has been successfully deleted.`,
-        "time_log",
-        logId,
         tx
       );
 
