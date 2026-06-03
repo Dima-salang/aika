@@ -5,12 +5,13 @@ import { useLayoutStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SidebarProps {
-  activeTab: "logs" | "profile" | "org" | "projects";
-  setActiveTab: (tab: "logs" | "profile" | "org" | "projects") => void;
+  activeTab: "dashboard" | "logs" | "profile" | "org" | "projects";
+  setActiveTab: (tab: "dashboard" | "logs" | "profile" | "org" | "projects") => void;
   session: any;
   handleSignOut: () => void;
   isDark: boolean;
   toggleTheme: () => void;
+  onOpenShortcuts?: () => void;
 }
 
 export function Sidebar({
@@ -20,6 +21,7 @@ export function Sidebar({
   handleSignOut,
   isDark,
   toggleTheme,
+  onOpenShortcuts,
 }: SidebarProps) {
   const [mounted, setMounted] = React.useState(false);
   const { leftSidebarCollapsed, toggleLeftSidebar } = useLayoutStore();
@@ -56,6 +58,7 @@ export function Sidebar({
       {/* Navigation Buttons */}
       <nav className="flex-1 space-y-1" aria-label="Main Navigation Links">
         {[
+          { id: "dashboard", label: "Dashboard", icon: "dashboard" },
           { id: "logs", label: "Tracker", icon: "timer" },
           { id: "projects", label: "Projects & Tasks", icon: "work" },
           { id: "profile", label: "Profile", icon: "person" },
@@ -126,15 +129,25 @@ export function Sidebar({
         {/* Keyboard Shortcut Legend */}
         {!collapsed && (
           <div className="mt-unit-6 px-unit-3 animate-in fade-in duration-300">
-            <p className="font-label-md text-[10px] uppercase tracking-widest text-outline mb-unit-3">Shortcuts</p>
+            <button
+              onClick={onOpenShortcuts}
+              className="w-full flex justify-between items-center text-[10px] uppercase tracking-widest text-primary hover:text-primary/80 font-bold transition-all text-left mb-unit-3 group focus:outline-none"
+            >
+              <span>Shortcuts ( ? )</span>
+              <span className="material-symbols-outlined text-[14px] group-hover:translate-x-0.5 transition-transform">keyboard</span>
+            </button>
             <div className="space-y-2">
               <div className="flex justify-between items-center text-[11px] text-on-surface-variant">
-                <span>Start/Stop</span>
-                <kbd className="px-1.5 py-0.5 bg-surface-container-highest border border-outline-variant rounded font-mono-timer">S</kbd>
+                <span>Toggle Timer</span>
+                <kbd className="px-1.5 py-0.5 bg-surface-container-highest border border-outline-variant rounded font-mono-timer">T</kbd>
               </div>
               <div className="flex justify-between items-center text-[11px] text-on-surface-variant">
-                <span>Focus Task</span>
-                <kbd className="px-1.5 py-0.5 bg-surface-container-highest border border-outline-variant rounded font-mono-timer">T</kbd>
+                <span>New Log</span>
+                <kbd className="px-1.5 py-0.5 bg-surface-container-highest border border-outline-variant rounded font-mono-timer">N</kbd>
+              </div>
+              <div className="flex justify-between items-center text-[11px] text-on-surface-variant text-primary font-bold">
+                <span>Help Guide</span>
+                <kbd className="px-1.5 py-0.5 bg-primary/10 border border-primary/20 rounded font-mono-timer">?</kbd>
               </div>
             </div>
           </div>

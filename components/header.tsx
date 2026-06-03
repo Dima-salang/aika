@@ -33,12 +33,16 @@ export function Header({
             search
           </span>
           <input
+            id="global-search-input"
             className="bg-transparent border-none text-body-sm focus:ring-0 w-full placeholder:text-outline text-on-surface focus:outline-none"
             placeholder="Search logs..."
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
           />
+          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold text-outline bg-surface-container-high border border-outline-variant rounded pointer-events-none select-none">
+            <span className="text-[10px]">⌘</span>K
+          </kbd>
         </div>
         <div className="hidden md:flex gap-unit-4">
           <a

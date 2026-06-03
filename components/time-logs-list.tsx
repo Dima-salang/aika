@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, PlayCircle, Folder, Tag } from "lucide-react";
-import { TimeLogCard } from "./time-log-card";
+import { TimeLogCard, getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
 import { toast } from "sonner";
 import { useConfirmStore } from "@/lib/store";
 
@@ -14,6 +14,7 @@ interface TimeLogsListProps {
   onDelete: (logId: string) => Promise<void>;
   searchQuery: string;
   onManualLog?: () => void;
+  onSelect?: (log: any) => void;
 }
 
 export function TimeLogsList({
@@ -24,6 +25,7 @@ export function TimeLogsList({
   onDelete,
   searchQuery,
   onManualLog,
+  onSelect,
 }: TimeLogsListProps) {
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
   const { showConfirm } = useConfirmStore();
@@ -146,7 +148,8 @@ export function TimeLogsList({
                   return (
                     <div
                       key={log.id}
-                      className="group flex items-center justify-between p-unit-4 bg-surface-container-low hover:bg-surface-container border border-outline-variant rounded-lg transition-all"
+                      onClick={() => onSelect?.(log)}
+                      className="group flex items-center justify-between p-unit-4 bg-surface-container-low hover:bg-surface-container border border-outline-variant rounded-lg transition-all cursor-pointer hover:shadow-md"
                     >
                       <div className="flex items-center gap-unit-6 flex-1 min-w-0">
                         {/* Time & Duration columns */}
@@ -162,11 +165,11 @@ export function TimeLogsList({
                         {/* Title, tags, description */}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-unit-2 mb-1 flex-wrap">
-                            <span className="font-body-md text-on-surface font-semibold truncate max-w-[280px]">
+                            <span className="font-body-md text-on-surface font-bold group-hover:text-primary transition-colors truncate max-w-[280px]">
                               {log.title}
                             </span>
                             {projectObj && (
-                              <span className="px-1.5 py-0.5 bg-secondary-container/30 text-secondary text-[10px] rounded border border-secondary/20 font-bold uppercase tracking-wider">
+                              <span className={`px-1.5 py-0.5 text-[10px] rounded border font-bold uppercase tracking-wider ${getProjectColorBadge(projectObj.name)}`}>
                                 {projectObj.name}
                               </span>
                             )}
@@ -176,12 +179,13 @@ export function TimeLogsList({
                               <div className="flex items-center gap-1.5 flex-wrap">
                                 {log.tasks.map((tId: string) => {
                                   const taskObj = tasks?.find((t: any) => t.id === tId);
+                                  const taskTitle = taskObj?.title || `Task-${tId.slice(0, 4)}`;
                                   return (
                                     <span
                                       key={tId}
-                                      className="px-1.5 py-0.2 bg-surface-container-highest text-outline text-[10.5px] rounded border border-outline-variant font-medium tracking-tight"
+                                      className={`px-1.5 py-0.2 text-[10px] rounded border font-medium tracking-tight ${getTaskColorBadge(taskTitle)}`}
                                     >
-                                      #{taskObj?.title || `Task-${tId.slice(0, 4)}`}
+                                      #{taskTitle}
                                     </span>
                                   );
                                 })}
@@ -216,14 +220,18 @@ export function TimeLogsList({
                       {/* Right hover action buttons */}
                       <div className="flex items-center gap-unit-4 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button
-                          onClick={() => onEdit(log)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit(log);
+                          }}
                           className="material-symbols-outlined text-outline hover:text-primary transition-colors p-1 hover:bg-surface-container-high rounded"
                           title="Edit Log"
                         >
                           edit
                         </button>
                         <button
-                          onClick={() => {
+                          onClick={(e) => {
+                            e.stopPropagation();
                             showConfirm({
                               title: "Delete time log entry?",
                               description: `Are you sure you want to delete the time log "${log.title}"? This action cannot be undone.`,
@@ -259,6 +267,7 @@ export function TimeLogsList({
                           onConfirm: () => handleDelete(id)
                         });
                       }}
+                      onSelect={onSelect}
                     />
                   );
                 })}

@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { useLayoutStore } from "@/lib/store";
+import { useLayoutStore, usePreferenceStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface TimerSidebarProps {
@@ -33,10 +33,17 @@ export function TimerSidebar({
 }: TimerSidebarProps) {
   const [mounted, setMounted] = React.useState(false);
   const { rightSidebarCollapsed, toggleRightSidebar } = useLayoutStore();
+  const { latestProjectId, setLatestProjectId } = usePreferenceStore();
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
+
+  React.useEffect(() => {
+    if (mounted && !runningTimer && latestProjectId && !timerProjId) {
+      setTimerProjId(latestProjectId);
+    }
+  }, [mounted, latestProjectId, timerProjId, runningTimer, setTimerProjId]);
 
   const collapsed = mounted ? rightSidebarCollapsed : false;
 
@@ -118,7 +125,10 @@ export function TimerSidebar({
                   <select
                     value={runningTimer ? (runningTimer.project_id || "") : timerProjId}
                     onChange={(e) => {
-                      if (!runningTimer) setTimerProjId(e.target.value);
+                      if (!runningTimer) {
+                        setTimerProjId(e.target.value);
+                        setLatestProjectId(e.target.value);
+                      }
                     }}
                     aria-label="Select Project"
                     className="bg-transparent border-none text-label-md text-on-surface-variant font-medium focus:ring-0 focus:outline-none cursor-pointer py-0.5 w-full bg-surface-container-high"

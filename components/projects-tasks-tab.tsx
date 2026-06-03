@@ -25,9 +25,10 @@ import { useConfirmStore } from "@/lib/store";
 interface ProjectsTasksTabProps {
   userId: string;
   organizationId: string;
+  onSelectTask?: (task: any) => void;
 }
 
-export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabProps) {
+export function ProjectsTasksTab({ userId, organizationId, onSelectTask }: ProjectsTasksTabProps) {
   const { viewMode, setViewMode } = useLayoutStore();
 
   const { showConfirm } = useConfirmStore();
@@ -140,6 +141,15 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
     setEditingTaskId(null);
     setFormError(null);
   };
+
+  React.useEffect(() => {
+    const handleGlobalNewTask = () => {
+      resetTaskForm();
+      setIsNewTaskOpen(true);
+    };
+    window.addEventListener("aika-new-task", handleGlobalNewTask);
+    return () => window.removeEventListener("aika-new-task", handleGlobalNewTask);
+  }, [projects, userId]);
 
   const handleEditTask = (task: any) => {
     setEditingTaskId(task.id);
@@ -505,7 +515,8 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
                               draggable
                               onDragStart={(e) => handleDragStart(e, task.id)}
                               onDragEnd={handleDragEnd}
-                              className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-grab active:cursor-grabbing group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
+                              onClick={() => onSelectTask?.(task)}
+                              className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
                                 draggingTaskId === task.id 
                                   ? "opacity-30 scale-95 border-primary border-dashed bg-surface-container-high shadow-inner" 
                                   : "bg-surface-container-low border-outline-variant"
@@ -517,18 +528,25 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
                                   {task.title}
                                 </span>
                                 <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-                                  <button onClick={() => handleEditTask(task)} className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleEditTask(task);
+                                    }}
+                                    className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
+                                  >
                                     <Edit3 className="h-3 w-3" />
                                   </button>
                                   <button 
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       requestConfirmation(
                                         "Delete task permanently?",
                                         `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
                                         () => deleteTask.mutateAsync({ id: task.id })
                                       );
                                     }} 
-                                    className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400"
+                                    className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
                                   >
                                     <Trash2 className="h-3 w-3" />
                                   </button>
@@ -595,7 +613,8 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
                           draggable
                           onDragStart={(e) => handleDragStart(e, task.id)}
                           onDragEnd={handleDragEnd}
-                          className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-grab active:cursor-grabbing group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
+                          onClick={() => onSelectTask?.(task)}
+                          className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
                             draggingTaskId === task.id 
                               ? "opacity-30 scale-95 border-primary border-dashed bg-surface-container-high shadow-inner" 
                               : "bg-surface-container-low border-outline-variant"
@@ -607,18 +626,25 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
                               {task.title}
                             </span>
                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-                              <button onClick={() => handleEditTask(task)} className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditTask(task);
+                                }}
+                                className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
+                              >
                                 <Edit3 className="h-3 w-3" />
                               </button>
                               <button 
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   requestConfirmation(
                                     "Delete task permanently?",
                                     `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
                                     () => deleteTask.mutateAsync({ id: task.id })
                                   );
                                 }} 
-                                className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400"
+                                className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
                               >
                                 <Trash2 className="h-3 w-3" />
                               </button>
@@ -661,7 +687,11 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
                       </thead>
                       <tbody className="divide-y divide-outline-variant/20 text-xs">
                         {projectTasks.map((task: any) => (
-                          <tr key={task.id} className="hover:bg-surface-container-lowest/50 transition-colors">
+                          <tr
+                            key={task.id}
+                            onClick={() => onSelectTask?.(task)}
+                            className="hover:bg-surface-container-lowest/50 hover:text-primary transition-colors cursor-pointer"
+                          >
                             <td className="p-unit-3 font-bold text-on-surface">
                               <div className="flex flex-col">
                                 <span className={task.status === 'done' ? 'line-through decoration-outline opacity-80' : ''}>
@@ -702,11 +732,19 @@ export function ProjectsTasksTab({ userId, organizationId }: ProjectsTasksTabPro
                             </td>
                             <td className="p-unit-3 text-right">
                               <div className="flex gap-2 justify-end">
-                                <button onClick={() => handleEditTask(task)} className="p-1 hover:bg-surface-container-high rounded text-outline hover:text-on-surface" aria-label="Edit Task">
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditTask(task);
+                                  }}
+                                  className="p-1 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
+                                  aria-label="Edit Task"
+                                >
                                   <Edit3 className="h-3.5 w-3.5" />
                                 </button>
                                 <button 
-                                  onClick={() => {
+                                  onClick={(e) => {
+                                    e.stopPropagation();
                                     requestConfirmation(
                                       "Delete task permanently?",
                                       `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
