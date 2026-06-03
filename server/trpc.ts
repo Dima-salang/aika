@@ -1,8 +1,16 @@
 import { initTRPC } from "@trpc/server";
+import { headers } from "next/headers";
+import { auth } from "@/lib/auth";
 
 // Define the tRPC request context
 export const createContext = async () => {
-  return {};
+  const reqHeaders = await headers();
+  const session = await auth.api.getSession({
+    headers: reqHeaders,
+  });
+  return {
+    session,
+  };
 };
 
 type Context = Awaited<ReturnType<typeof createContext>>;
@@ -15,3 +23,4 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 export const middleware = t.middleware;
 export const mergeRouters = t.mergeRouters;
+
