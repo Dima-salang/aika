@@ -227,6 +227,7 @@ export const joinTokens = pgTable("join_tokens", {
     expiresAt: timestamp("expires_at").notNull(),
     maxUses: integer("max_uses"),
     usesCount: integer("uses_count").notNull().default(0),
+    autoJoin: boolean("auto_join").notNull().default(false),
 });
 
 // Join Requests (requests submitted via join tokens for admin review)
@@ -466,6 +467,7 @@ export const joinTokensSqlite = sqliteTable("join_tokens", {
     expiresAt: sqliteInteger("expires_at", { mode: "timestamp" }).notNull(),
     maxUses: sqliteInteger("max_uses"),
     usesCount: sqliteInteger("uses_count").notNull().default(0),
+    autoJoin: sqliteInteger("auto_join", { mode: "boolean" }).notNull().default(false),
 });
 
 // Join Requests (requests submitted via join tokens for admin review)
@@ -756,6 +758,7 @@ export const joinTokenZodSchema = z.object({
   expiresAt: z.coerce.date(),
   maxUses: z.number().int().positive().nullable().optional(),
   usesCount: z.number().int().nonnegative().default(0),
+  autoJoin: z.boolean().default(false),
 });
 
 export const joinRequestZodSchema = z.object({

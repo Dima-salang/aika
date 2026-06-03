@@ -111,6 +111,7 @@ export class InvitationService {
     createdBy: string,
     expiresInSeconds = 86400, // Default 24 hours
     maxUses: number | null = null,
+    autoJoin = false,
     tx: any = db
   ): Promise<JoinToken | JoinTokenSqlite | null> {
     const table = isSQLite ? joinTokensSqlite : joinTokens;
@@ -127,6 +128,7 @@ export class InvitationService {
         expiresAt,
         maxUses,
         usesCount: 0,
+        autoJoin,
       })
       .returning();
 
@@ -136,7 +138,7 @@ export class InvitationService {
       "join_tokens",
       token,
       `Generated secure join token for organization ${organizationId}`,
-      { organizationId, teamId, expiresAt, maxUses },
+      { organizationId, teamId, expiresAt, maxUses, autoJoin },
       undefined,
       undefined,
       tx
@@ -185,6 +187,61 @@ export class InvitationService {
       throw new Error("User is already a member of this organization");
     }
 
+    // Increment token usage
+    await tx
+      .update(tokenTable)
+      .set({ usesCount: token.usesCount + 1 })
+      .where(eq(tokenTable.id, tokenString));
+
+    if (token.autoJoin) {
+      // 1. Instantly add user to organization
+      await this.organizationService.addMember(token.organizationId, userId, "member", tx);
+
+      // 2. Instantly add user to team if specified
+      if (token.teamId) {
+        await this.teamService.addTeamMember(token.teamId, userId, "member", tx);
+      }
+
+      // 3. Create approved join request record
+      const requestId = crypto.randomUUID();
+      const [newRequest] = await tx
+        .insert(requestTable)
+        .values({
+          id: requestId,
+          userId,
+          organizationId: token.organizationId,
+          teamId: token.teamId,
+          status: "approved",
+          createdAt: new Date(),
+        })
+        .returning();
+
+      // Notify applicant
+      await this.notificationService.createNotification(
+        userId,
+        "Welcome to Organization",
+        `You have successfully joined the organization via magic link.`,
+        "team_switch",
+        token.organizationId,
+        tx
+      );
+
+      // Audit log auto-approval
+      await this.auditService.createAuditLog(
+        userId,
+        "JOIN_REQUEST_AUTO_APPROVED",
+        "join_requests",
+        requestId,
+        `Instantly joined organization ${token.organizationId} via auto-join magic link`,
+        { token: tokenString, organizationId: token.organizationId, teamId: token.teamId },
+        undefined,
+        undefined,
+        tx
+      );
+
+      return newRequest || null;
+    }
+
     // Check if pending request already exists
     const [existingRequest] = await tx
       .select()
@@ -216,24 +273,7 @@ export class InvitationService {
       })
       .returning();
 
-    // Increment token usage
-    await tx
-      .update(tokenTable)
-      .set({ usesCount: token.usesCount + 1 })
-      .where(eq(tokenTable.id, tokenString));
-
-    // Notify organization admins / owners
-    const admins = await tx
-      .select()
-      .from(membersTable)
-      .where(
-        and(
-          eq(membersTable.organizationId, token.organizationId),
-          and(isNull(membersTable.role), isNull(membersTable.role)) // Fallback if roles aren't specified, or admin/owner
-        )
-      );
-
-    // Let's also query users with owner/admin roles to notify
+    // Let's query users with owner/admin roles to notify
     const orgMembers = await this.organizationService.getMembers(token.organizationId, tx);
     const adminsToNotify = orgMembers.filter((m: any) => m.role === "admin" || m.role === "owner" || m.role === "Admin");
 
