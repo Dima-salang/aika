@@ -48,3 +48,20 @@ export const useConfirmStore = create<ConfirmState>((set) => ({
     set({ open: true, title, description, onConfirm }),
   hideConfirm: () => set({ open: false, onConfirm: null }),
 }));
+
+interface PreferenceState {
+  latestProjectId: string;
+  setLatestProjectId: (projectId: string) => void;
+}
+
+export const usePreferenceStore = create<PreferenceState>()(
+  persist(
+    (set) => ({
+      latestProjectId: "",
+      setLatestProjectId: (projectId) => set({ latestProjectId: projectId }),
+    }),
+    {
+      name: "aika-preference-store",
+    }
+  )
+);
