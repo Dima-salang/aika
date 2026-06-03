@@ -105,10 +105,9 @@ The system supports 50–100 concurrent users and is optimized for fast delivery
 - An Organization contains multiple Teams.
 - Users can create, view, and belong to multiple Teams inside their active Organization.
 
-### FR-6 Invitation Flow (Organization-level)
-- Admins or managers can generate invitation links (email/in-app) powered natively by Better Auth's invitation plugin.
-- Recipient accepts or declines. Upon accepting, they join the Organization.
-- Organization admins can assign members to sub-teams.
+### FR-6 Invitation & Onboarding Flows
+- **Outbound Invitations**: Admins or managers can generate invitation links (email/in-app) powered natively by Better Auth's invitation plugin. Recipient accepts or declines. Upon accepting, they join the Organization.
+- **Inbound Magic Links (Join Requests)**: Admins or Team Leaders can generate cryptographically secure join tokens. Visiting users register or log in, then request to join the organization. Organization admins/owners can approve or reject these pending requests in the admin panel. Approved requests automatically enroll the user into the organization (and specified team).
 
 ### FR-7 Organization and Team Switching
 - Switching active Organizations or active Teams triggers a **full page reload** to refresh the Drizzle and Better Auth environment contexts.

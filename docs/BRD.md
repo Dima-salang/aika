@@ -209,9 +209,9 @@ The platform shall support a multi-tenant hierarchy where Organizations act as t
 - Support team-leader managed membership.
 - Admins can manage team access.
 
-Invitation flow:
-- Admins/Leaders generate an organization invitation (in-app/email) — recipient accepts or declines to join the Organization.
-- Users are assigned to Teams within that Organization.
+Invitation & Onboarding flows:
+- **Outbound Invitations**: Admins/Leaders generate an organization invitation (in-app/email) — recipient accepts or declines to join the Organization. Users are assigned to Teams within that Organization.
+- **Inbound Magic Links (Self-service Join Requests)**: Admins or Team Leaders generate cryptographically secure, time-bound, and optionally limit-bound join tokens. Users visiting the link register or sign in, then apply to join. Organization Admins/Owners review (approve/reject) these requests to add members without manually typing their email addresses.
 
 Constraints:
 - Teams belong to a single Organization and cannot contain subteams.
