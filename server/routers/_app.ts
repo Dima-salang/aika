@@ -173,6 +173,8 @@ export const appRouter = router({
             mimeType: z.string(),
           })
         ),
+        projectId: z.string().nullable().optional(),
+        title: z.string().optional(),
         description: z.string().optional(),
       })
     )
@@ -184,7 +186,11 @@ export const appRouter = router({
         input.teamId || null,
         input.taskIds,
         input.evidence,
-        input.description
+        input.description,
+        undefined,
+        undefined,
+        input.projectId,
+        input.title
       );
     }),
 

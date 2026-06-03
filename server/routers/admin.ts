@@ -1,562 +1,246 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { db, isSQLite } from "@/db";
 import {
-  user,
-  userSqlite,
-  organization,
-  organizationSqlite,
-  teams,
-  teamsSqlite,
-  projects,
-  projectsSqlite,
-  tasks,
-  tasksSqlite,
-  timeLogs,
-  timeLogsSqlite,
-  notifications,
-  notificationsSqlite,
-  auditLogs,
-  auditLogsSqlite,
-  memberSqlite,
-  member,
-  teamMembersSqlite,
-  teamMembers,
+  newUserZodSchema,
+  userZodSchema,
+  newOrganizationZodSchema,
+  organizationZodSchema,
+  newTeamZodSchema,
+  teamZodSchema,
+  newProjectZodSchema,
+  projectZodSchema,
+  newTaskZodSchema,
+  taskZodSchema,
+  newTimeLogZodSchema,
+  timeLogZodSchema,
+  notificationZodSchema,
 } from "@/db/schema";
-import { eq, and, isNull } from "drizzle-orm";
+
+// Service Imports
+import { AuditService } from "@/services/AuditService";
+import { OrganizationService } from "@/services/OrganizationService";
+import { TeamService } from "@/services/TeamService";
+import { NotificationService } from "@/services/NotificationService";
+import { TaskService } from "@/services/TaskService";
+import { UserService } from "@/services/UserService";
+import { ProjectService } from "@/services/ProjectService";
+import { LogService } from "@/services/LogService";
+
+// Instantiate services
+const auditService = new AuditService();
+const organizationService = new OrganizationService();
+const teamService = new TeamService();
+const notificationService = new NotificationService();
+const taskService = new TaskService();
+const projectService = new ProjectService();
+const userService = new UserService(organizationService, teamService);
+const logService = new LogService(auditService, notificationService, taskService, userService);
 
 export const adminRouter = router({
   // USERS CRUD
   getUsers: publicProcedure.query(async () => {
-    const table = isSQLite ? userSqlite : user;
-    return await db.select().from(table);
+    return await userService.listUsers(undefined, undefined, 0, 1000);
   }),
 
   createUser: publicProcedure
-    .input(
-      z.object({
-        name: z.string(),
-        email: z.string().email(),
-        is_admin: z.boolean().default(false),
-      })
-    )
+    .input(newUserZodSchema)
     .mutation(async ({ input }) => {
-      const table = isSQLite ? userSqlite : user;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          name: input.name,
-          email: input.email,
-          emailVerified: false,
-          is_admin: input.is_admin,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .returning();
-      return res;
+      return await userService.createUser(input);
     }),
 
   updateUser: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        email: z.string().email(),
-        is_admin: z.boolean(),
-      })
-    )
+    .input(userZodSchema.partial().required({ id: true }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? userSqlite : user;
-      const [res] = await db
-        .update(table)
-        .set({
-          name: input.name,
-          email: input.email,
-          is_admin: input.is_admin,
-          updatedAt: new Date(),
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await userService.updateUser(input.id, input);
     }),
 
   deleteUser: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? userSqlite : user;
-      const [res] = await db
-        .update(table)
-        .set({ deleted_at: new Date() })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await userService.deleteUser(input.id);
     }),
 
   // ORGANIZATIONS CRUD
   getOrgs: publicProcedure.query(async () => {
-    const table = isSQLite ? organizationSqlite : organization;
-    return await db.select().from(table);
+    return await organizationService.listOrganizations(undefined, 1000);
   }),
 
   createOrg: publicProcedure
-    .input(
-      z.object({
-        name: z.string(),
-        slug: z.string(),
-        metadata: z.string().nullable().optional(),
-      })
-    )
+    .input(newOrganizationZodSchema)
     .mutation(async ({ input }) => {
-      const table = isSQLite ? organizationSqlite : organization;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          name: input.name,
-          slug: input.slug,
-          metadata: input.metadata || null,
-          createdAt: new Date(),
-        })
-        .returning();
-      return res;
+      return await organizationService.createOrganization({
+        ...input,
+        id: input.id || crypto.randomUUID(),
+      });
     }),
 
   updateOrg: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        slug: z.string(),
-        metadata: z.string().nullable().optional(),
-      })
-    )
+    .input(organizationZodSchema.partial().required({ id: true }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? organizationSqlite : organization;
-      const [res] = await db
-        .update(table)
-        .set({
-          name: input.name,
-          slug: input.slug,
-          metadata: input.metadata || null,
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await organizationService.updateOrganization(input.id, input);
     }),
 
   deleteOrg: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? organizationSqlite : organization;
-      const [res] = await db.delete(table).where(eq(table.id, input.id)).returning();
-      return res;
+      return await organizationService.deleteOrganization(input.id);
     }),
 
   // TEAMS CRUD
   getTeams: publicProcedure.query(async () => {
-    const table = isSQLite ? teamsSqlite : teams;
-    return await db.select().from(table);
+    return await teamService.listTeams(undefined, 1000);
   }),
 
   createTeam: publicProcedure
-    .input(
-      z.object({
-        organization_id: z.string(),
-        name: z.string(),
-      })
-    )
+    .input(newTeamZodSchema)
     .mutation(async ({ input }) => {
-      const table = isSQLite ? teamsSqlite : teams;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          organization_id: input.organization_id,
-          name: input.name,
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-        .returning();
-      return res;
+      return await teamService.addTeam({
+        ...input,
+        id: input.id || crypto.randomUUID(),
+      });
     }),
 
   updateTeam: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        name: z.string(),
-        organization_id: z.string(),
-      })
-    )
+    .input(teamZodSchema.partial().required({ id: true }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? teamsSqlite : teams;
-      const [res] = await db
-        .update(table)
-        .set({
-          name: input.name,
-          organization_id: input.organization_id,
-          updated_at: new Date(),
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await teamService.updateTeam(input.id, input);
     }),
 
   deleteTeam: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? teamsSqlite : teams;
-      const [res] = await db
-        .update(table)
-        .set({ deleted_at: new Date() })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await teamService.deleteTeam(input.id);
     }),
 
   // PROJECTS CRUD
   getProjects: publicProcedure.query(async () => {
-    const table = isSQLite ? projectsSqlite : projects;
-    return await db.select().from(table);
+    return await projectService.listProjects(undefined, 1000);
   }),
 
   createProject: publicProcedure
-    .input(
-      z.object({
-        organization_id: z.string(),
-        team_id: z.string().nullable().optional(),
-        name: z.string(),
-        description: z.string().nullable().optional(),
-      })
-    )
+    .input(newProjectZodSchema)
     .mutation(async ({ input }) => {
-      const table = isSQLite ? projectsSqlite : projects;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          organization_id: input.organization_id,
-          team_id: input.team_id || null,
-          name: input.name,
-          description: input.description || null,
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-        .returning();
-      return res;
+      return await projectService.createProject({
+        ...input,
+        id: input.id || crypto.randomUUID(),
+      });
     }),
 
   updateProject: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        organization_id: z.string(),
-        team_id: z.string().nullable().optional(),
-        name: z.string(),
-        description: z.string().nullable().optional(),
-      })
-    )
+    .input(projectZodSchema.partial().required({ id: true }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? projectsSqlite : projects;
-      const [res] = await db
-        .update(table)
-        .set({
-          organization_id: input.organization_id,
-          team_id: input.team_id || null,
-          name: input.name,
-          description: input.description || null,
-          updated_at: new Date(),
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await projectService.updateProject(input.id, input);
     }),
 
   deleteProject: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? projectsSqlite : projects;
-      const [res] = await db
-        .update(table)
-        .set({ deleted_at: new Date() })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await projectService.deleteProject(input.id);
     }),
 
   // TASKS CRUD
   getTasks: publicProcedure.query(async () => {
-    const table = isSQLite ? tasksSqlite : tasks;
-    return await db.select().from(table);
+    return await taskService.listTasks(undefined, 1000);
   }),
 
   createTask: publicProcedure
-    .input(
-      z.object({
-        title: z.string(),
-        description: z.string().nullable().optional(),
-        status: z.enum(["backlog", "todo", "in_progress", "done"]),
-        priority: z.enum(["low", "medium", "high"]).nullable().optional(),
-        user_id: z.string(),
-        organization_id: z.string(),
-        project_id: z.string().nullable().optional(),
-        team_id: z.string().nullable().optional(),
-      })
-    )
+    .input(newTaskZodSchema)
     .mutation(async ({ input }) => {
-      const table = isSQLite ? tasksSqlite : tasks;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          title: input.title,
-          description: input.description || null,
-          status: input.status,
-          priority: input.priority || null,
-          user_id: input.user_id,
-          organization_id: input.organization_id,
-          project_id: input.project_id || null,
-          team_id: input.team_id || null,
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-        .returning();
-      return res;
+      return await taskService.createTask({
+        status: "backlog",
+        ...input,
+        id: input.id || crypto.randomUUID(),
+      });
     }),
 
   updateTask: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        description: z.string().nullable().optional(),
-        status: z.enum(["backlog", "todo", "in_progress", "done"]),
-        priority: z.enum(["low", "medium", "high"]).nullable().optional(),
-        user_id: z.string(),
-        organization_id: z.string(),
-        project_id: z.string().nullable().optional(),
-        team_id: z.string().nullable().optional(),
-      })
-    )
+    .input(taskZodSchema.partial().required({ id: true }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? tasksSqlite : tasks;
-      const [res] = await db
-        .update(table)
-        .set({
-          title: input.title,
-          description: input.description || null,
-          status: input.status,
-          priority: input.priority || null,
-          user_id: input.user_id,
-          organization_id: input.organization_id,
-          project_id: input.project_id || null,
-          team_id: input.team_id || null,
-          updated_at: new Date(),
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await taskService.updateTask(input.id, input);
     }),
 
   deleteTask: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? tasksSqlite : tasks;
-      const [res] = await db
-        .update(table)
-        .set({ deleted_at: new Date() })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await taskService.deleteTask(input.id);
     }),
 
   // TIMELOGS CRUD
   getTimeLogs: publicProcedure.query(async () => {
-    const table = isSQLite ? timeLogsSqlite : timeLogs;
-    return await db.select().from(table);
+    return await logService.adminListLogs(1000);
   }),
 
   createTimeLog: publicProcedure
-    .input(
-      z.object({
-        user_id: z.string(),
-        organization_id: z.string(),
-        project_id: z.string().nullable().optional(),
-        team_id: z.string().nullable().optional(),
-        start_time: z.coerce.date(),
-        end_time: z.coerce.date(),
-        title: z.string(),
-        description: z.string(),
-      })
-    )
+    .input(newTimeLogZodSchema)
     .mutation(async ({ input }) => {
-      const table = isSQLite ? timeLogsSqlite : timeLogs;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          user_id: input.user_id,
-          organization_id: input.organization_id,
-          project_id: input.project_id || null,
-          team_id: input.team_id || null,
-          start_time: input.start_time,
-          end_time: input.end_time,
-          title: input.title,
-          description: input.description,
-          created_at: new Date(),
-          updated_at: new Date(),
-        })
-        .returning();
-      return res;
+      return await logService.adminCreateLog({
+        ...input,
+        id: input.id || crypto.randomUUID(),
+      });
     }),
 
   updateTimeLog: publicProcedure
-    .input(
-      z.object({
-        id: z.string(),
-        user_id: z.string(),
-        organization_id: z.string(),
-        project_id: z.string().nullable().optional(),
-        team_id: z.string().nullable().optional(),
-        start_time: z.coerce.date(),
-        end_time: z.coerce.date(),
-        title: z.string(),
-        description: z.string(),
-      })
-    )
+    .input(timeLogZodSchema.partial().required({ id: true }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? timeLogsSqlite : timeLogs;
-      const [res] = await db
-        .update(table)
-        .set({
-          user_id: input.user_id,
-          organization_id: input.organization_id,
-          project_id: input.project_id || null,
-          team_id: input.team_id || null,
-          start_time: input.start_time,
-          end_time: input.end_time,
-          title: input.title,
-          description: input.description,
-          updated_at: new Date(),
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await logService.adminUpdateLog(input.id, input);
     }),
 
   deleteTimeLog: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? timeLogsSqlite : timeLogs;
-      const [res] = await db
-        .update(table)
-        .set({ deleted_at: new Date() })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await logService.adminDeleteLog(input.id);
     }),
 
   // NOTIFICATIONS CRUD
   getNotifications: publicProcedure.query(async () => {
-    const table = isSQLite ? notificationsSqlite : notifications;
-    return await db.select().from(table);
+    return await notificationService.listNotifications(undefined, 1000);
   }),
 
   createNotification: publicProcedure
     .input(
-      z.object({
-        user_id: z.string(),
-        title: z.string(),
-        message: z.string(),
-        type: z.string(),
-      })
+      notificationZodSchema
+        .pick({ user_id: true, title: true, message: true, related_id: true })
+        .extend({ type: z.string() })
+        .partial({ related_id: true })
     )
     .mutation(async ({ input }) => {
-      const table = isSQLite ? notificationsSqlite : notifications;
-      const newId = crypto.randomUUID();
-      const [res] = await db
-        .insert(table)
-        .values({
-          id: newId,
-          user_id: input.user_id,
-          title: input.title,
-          message: input.message,
-          type: input.type,
-          is_read: false,
-          created_at: new Date(),
-        })
-        .returning();
-      return res;
+      return await notificationService.createNotification(
+        input.user_id,
+        input.title,
+        input.message,
+        input.type,
+        input.related_id || undefined
+      );
     }),
 
   updateNotification: publicProcedure
     .input(
-      z.object({
-        id: z.string(),
-        user_id: z.string(),
-        title: z.string(),
-        message: z.string(),
-        type: z.string(),
-        is_read: z.boolean(),
-      })
+      notificationZodSchema
+        .partial()
+        .required({ id: true })
+        .extend({ type: z.string().optional() })
     )
     .mutation(async ({ input }) => {
-      const table = isSQLite ? notificationsSqlite : notifications;
-      const [res] = await db
-        .update(table)
-        .set({
-          user_id: input.user_id,
-          title: input.title,
-          message: input.message,
-          type: input.type,
-          is_read: input.is_read,
-        })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await notificationService.updateNotification(input.id, input);
     }),
 
   deleteNotification: publicProcedure
     .input(z.object({ id: z.string() }))
     .mutation(async ({ input }) => {
-      const table = isSQLite ? notificationsSqlite : notifications;
-      const [res] = await db
-        .update(table)
-        .set({ deleted_at: new Date() })
-        .where(eq(table.id, input.id))
-        .returning();
-      return res;
+      return await notificationService.deleteNotification(input.id);
     }),
 
   // AUDIT LOGS VIEWER (READ-ONLY)
   getAuditLogs: publicProcedure.query(async () => {
-    const table = isSQLite ? auditLogsSqlite : auditLogs;
-    return await db.select().from(table);
+    return await auditService.listAuditLogs(1000);
   }),
 
   // USER MEMBERSHIPS & ROLES
   getUserMemberships: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input }) => {
-      const orgMemberTable = isSQLite ? memberSqlite : member;
-      const teamMemberTable = isSQLite ? teamMembersSqlite : teamMembers;
-      
-      const orgMemberships = await db
-        .select()
-        .from(orgMemberTable)
-        .where(eq(orgMemberTable.userId, input.userId));
-
-      const teamMemberships = await db
-        .select()
-        .from(teamMemberTable)
-        .where(eq(teamMemberTable.user_id, input.userId));
+      const orgMemberships = await organizationService.getUserMemberships(input.userId);
+      const teamMemberships = await teamService.getUserMemberships(input.userId);
 
       return {
         orgMemberships,
@@ -575,38 +259,22 @@ export const adminRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      const orgMemberTable = isSQLite ? memberSqlite : member;
-      const teamMemberTable = isSQLite ? teamMembersSqlite : teamMembers;
-
       // 1. Handle Organization Membership
-      // Delete old org memberships first
-      await db.delete(orgMemberTable).where(eq(orgMemberTable.userId, input.userId));
-      
+      const currentOrgs = await organizationService.getUserMemberships(input.userId);
+      for (const m of currentOrgs) {
+        await organizationService.removeMember(m.organizationId, input.userId);
+      }
       if (input.organizationId && input.orgRole) {
-        const id = `${input.organizationId}-${input.userId}`;
-        await db.insert(orgMemberTable).values({
-          id,
-          organizationId: input.organizationId,
-          userId: input.userId,
-          role: input.orgRole,
-          createdAt: new Date(),
-        });
+        await organizationService.addMember(input.organizationId, input.userId, input.orgRole);
       }
 
       // 2. Handle Team Membership
-      // Delete old team memberships first
-      await db.delete(teamMemberTable).where(eq(teamMemberTable.user_id, input.userId));
-
+      const currentTeams = await teamService.getUserMemberships(input.userId);
+      for (const m of currentTeams) {
+        await teamService.removeTeamMember(m.team_id, input.userId);
+      }
       if (input.teamId && input.teamRole) {
-        const id = `${input.teamId}-${input.userId}`;
-        await db.insert(teamMemberTable).values({
-          id,
-          team_id: input.teamId,
-          user_id: input.userId,
-          role: input.teamRole,
-          created_at: new Date(),
-          updated_at: new Date(),
-        });
+        await teamService.addTeamMember(input.teamId, input.userId, input.teamRole);
       }
 
       return { success: true };
