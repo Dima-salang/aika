@@ -17,6 +17,8 @@ import {
   documentEvidencesSqlite,
   notificationsSqlite,
   auditLogsSqlite,
+  joinTokensSqlite,
+  joinRequestsSqlite,
 } from "@/db/schema";
 import { sql } from "drizzle-orm";
 
@@ -46,5 +48,7 @@ export async function clearDatabase() {
   await db.delete(verificationSqlite);
   await db.delete(auditLogsSqlite);
   await db.delete(notificationsSqlite);
+  await db.delete(joinRequestsSqlite);
+  await db.delete(joinTokensSqlite);
   await db.delete(userSqlite);
 }
