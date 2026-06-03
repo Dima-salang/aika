@@ -325,8 +325,10 @@ export function ProjectsTasksTab({ userId, organizationId, onSelectTask }: Proje
                   await createProject.mutateAsync({
                     name: newProjectName,
                     description: newProjectDesc,
-                    organization_id: organizationId
+                    organization_id: organizationId,
+                    userId
                   });
+
                 }}
                 disabled={createProject.isPending}
                 className="px-2 py-0.5 text-[10px] font-bold bg-primary text-on-primary rounded hover:brightness-105 flex items-center gap-1"

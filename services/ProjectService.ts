@@ -6,6 +6,10 @@ import {
   ProjectSqlite,
   NewProject,
   NewProjectSqlite,
+  member,
+  memberSqlite,
+  teamMembers,
+  teamMembersSqlite,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
 
@@ -21,8 +25,45 @@ export class ProjectService {
 
   async createProject(
     project: NewProject | NewProjectSqlite,
+    userId?: string,
     tx: any = db
   ): Promise<Project | ProjectSqlite | null> {
+    if (userId) {
+      const orgMemberTable = isSQLite ? memberSqlite : member;
+      const isOrgMember = await tx
+        .select()
+        .from(orgMemberTable)
+        .where(
+          and(
+            eq(orgMemberTable.organizationId, project.organization_id),
+            eq(orgMemberTable.userId, userId)
+          )
+        )
+        .limit(1);
+
+      if (isOrgMember.length === 0) {
+        throw new Error("Validation Error: User does not belong to the specified organization");
+      }
+
+      if (project.team_id) {
+        const teamMemberTable = isSQLite ? teamMembersSqlite : teamMembers;
+        const isTeamMember = await tx
+          .select()
+          .from(teamMemberTable)
+          .where(
+            and(
+              eq(teamMemberTable.team_id, project.team_id),
+              eq(teamMemberTable.user_id, userId)
+            )
+          )
+          .limit(1);
+
+        if (isTeamMember.length === 0) {
+          throw new Error("Validation Error: User does not belong to the specified team");
+        }
+      }
+    }
+
     const table = isSQLite ? projectsSqlite : projects;
     const [res] = await tx
       .insert(table)
@@ -34,6 +75,7 @@ export class ProjectService {
       .returning();
     return res || null;
   }
+
 
   async updateProject(
     id: string,

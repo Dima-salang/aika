@@ -19,13 +19,18 @@ export const projectsRouter = router({
     }),
 
   createProject: publicProcedure
-    .input(newProjectZodSchema)
+    .input(newProjectZodSchema.extend({ userId: z.string().optional() }))
     .mutation(async ({ input }) => {
-      return await projectService.createProject({
-        ...input,
-        id: input.id || crypto.randomUUID(),
-      });
+      const { userId, ...projectData } = input;
+      return await projectService.createProject(
+        {
+          ...projectData,
+          id: projectData.id || crypto.randomUUID(),
+        },
+        userId
+      );
     }),
+
 
   updateProject: publicProcedure
     .input(projectZodSchema.partial().required({ id: true }))

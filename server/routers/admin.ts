@@ -39,7 +39,8 @@ const logService = new LogService(auditService, notificationService, taskService
 export const adminRouter = router({
   // USERS CRUD
   getUsers: publicProcedure.query(async () => {
-    return await userService.listUsers(undefined, undefined, 0, 1000);
+    const list = await userService.listUsers(undefined, undefined, 0, 1000);
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }),
 
   createUser: publicProcedure
@@ -62,7 +63,8 @@ export const adminRouter = router({
 
   // ORGANIZATIONS CRUD
   getOrgs: publicProcedure.query(async () => {
-    return await organizationService.listOrganizations(undefined, 1000);
+    const list = await organizationService.listOrganizations(undefined, 1000);
+    return list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
   }),
 
   createOrg: publicProcedure
@@ -88,7 +90,8 @@ export const adminRouter = router({
 
   // TEAMS CRUD
   getTeams: publicProcedure.query(async () => {
-    return await teamService.listTeams(undefined, 1000);
+    const list = await teamService.listTeams(undefined, 1000);
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }),
 
   createTeam: publicProcedure
@@ -114,16 +117,21 @@ export const adminRouter = router({
 
   // PROJECTS CRUD
   getProjects: publicProcedure.query(async () => {
-    return await projectService.listProjects(undefined, 1000);
+    const list = await projectService.listProjects(undefined, 1000);
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }),
 
   createProject: publicProcedure
-    .input(newProjectZodSchema)
+    .input(newProjectZodSchema.extend({ userId: z.string().optional() }))
     .mutation(async ({ input }) => {
-      return await projectService.createProject({
-        ...input,
-        id: input.id || crypto.randomUUID(),
-      });
+      const { userId, ...projectData } = input;
+      return await projectService.createProject(
+        {
+          ...projectData,
+          id: projectData.id || crypto.randomUUID(),
+        },
+        userId
+      );
     }),
 
   updateProject: publicProcedure
@@ -140,7 +148,8 @@ export const adminRouter = router({
 
   // TASKS CRUD
   getTasks: publicProcedure.query(async () => {
-    return await taskService.listTasks(undefined, 1000);
+    const list = await taskService.listTasks(undefined, 1000);
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }),
 
   createTask: publicProcedure
@@ -167,7 +176,8 @@ export const adminRouter = router({
 
   // TIMELOGS CRUD
   getTimeLogs: publicProcedure.query(async () => {
-    return await logService.adminListLogs(1000);
+    const list = await logService.adminListLogs(1000);
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }),
 
   createTimeLog: publicProcedure
@@ -193,7 +203,8 @@ export const adminRouter = router({
 
   // NOTIFICATIONS CRUD
   getNotifications: publicProcedure.query(async () => {
-    return await notificationService.listNotifications(undefined, 1000);
+    const list = await notificationService.listNotifications(undefined, 1000);
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }),
 
   createNotification: publicProcedure
@@ -232,7 +243,8 @@ export const adminRouter = router({
 
   // AUDIT LOGS VIEWER (READ-ONLY)
   getAuditLogs: publicProcedure.query(async () => {
-    return await auditService.listAuditLogs(1000);
+    const list = await auditService.listAuditLogs(1000);
+    return list.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
   }),
 
   // USER MEMBERSHIPS & ROLES
