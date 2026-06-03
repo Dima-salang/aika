@@ -1,5 +1,6 @@
 import { db, isSQLite } from "@/db";
 import { auditLogs, auditLogsSqlite } from "@/db/schema";
+import { eq } from "drizzle-orm";
 
 export class AuditService {
   async createAuditLog(
@@ -34,4 +35,27 @@ export class AuditService {
       return newLog;
     }
   }
+
+  async getAuditLogById(id: string, tx: any = db): Promise<any> {
+    const table = isSQLite ? auditLogsSqlite : auditLogs;
+    const [res] = await tx
+      .select()
+      .from(table)
+      .where(eq(table.id, id));
+    return res || null;
+  }
+
+  async listAuditLogs(
+    limit = 50,
+    offset = 0,
+    tx: any = db
+  ): Promise<any[]> {
+    const table = isSQLite ? auditLogsSqlite : auditLogs;
+    return await tx
+      .select()
+      .from(table)
+      .limit(limit)
+      .offset(offset);
+  }
 }
+
