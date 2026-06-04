@@ -1,26 +1,18 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  teams,
-  teamsSqlite,
-  teamMembers,
-  teamMembersSqlite,
   Team,
   TeamSqlite,
   NewTeam,
   NewTeamSqlite,
   TeamMember,
   TeamMemberSqlite,
-  NewTeamMember,
-  NewTeamMemberSqlite,
-  user,
-  userSqlite,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
-
+import { tables } from "./tables";
 
 export class TeamService {
   async getTeamMembers(teamId: string, tx: any = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const table = tables.teamMembers;
     return await tx
       .select()
       .from(table)
@@ -33,8 +25,8 @@ export class TeamService {
     role: "leader" | "member",
     tx: any = db
   ): Promise<TeamMember | TeamMemberSqlite | null> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
-    const usersTable = isSQLite ? userSqlite : user;
+    const table = tables.teamMembers;
+    const usersTable = tables.user;
     const id = `${teamId}-${userId}`;
 
     // check if the user is not deleted
@@ -79,7 +71,7 @@ export class TeamService {
     team_member: Partial<TeamMember | TeamMemberSqlite>,
     tx: any = db
   ): Promise<TeamMember | TeamMemberSqlite | null> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const table = tables.teamMembers;
     const [res] = await tx
       .update(table)
       .set({
@@ -92,7 +84,7 @@ export class TeamService {
   }
 
   async removeTeamMember(teamId: string, userId: string, tx: any = db): Promise<TeamMember | TeamMemberSqlite | null> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const table = tables.teamMembers;
     const id = `${teamId}-${userId}`;
 
     // verify if user is a member of the team
@@ -109,7 +101,7 @@ export class TeamService {
 
   // verify if user is a member of a team
   async verifyTeamMember(teamId: string, userId: string, tx: any = db): Promise<boolean> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const table = tables.teamMembers;
     const [res] = await tx
       .select()
       .from(table)
@@ -120,7 +112,7 @@ export class TeamService {
 
   // verify if user is a leader of a team
   async verifyLeader(teamId: string, userId: string, tx: any = db): Promise<boolean> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const table = tables.teamMembers;
     const [res] = await tx
       .select()
       .from(table)
@@ -130,7 +122,7 @@ export class TeamService {
   }
 
   async addTeam(team: NewTeam | NewTeamSqlite, tx: any = db): Promise<Team | TeamSqlite | null> {
-    const table = isSQLite ? teamsSqlite : teams;
+    const table = tables.teams;
     const [res] = await tx
       .insert(table)
       .values({
@@ -143,7 +135,7 @@ export class TeamService {
   }
 
   async getTeam(id: string, tx: any = db): Promise<Team | TeamSqlite | null> {
-    const table = isSQLite ? teamsSqlite : teams;
+    const table = tables.teams;
     const [res] = await tx
       .select()
       .from(table)
@@ -157,7 +149,7 @@ export class TeamService {
     offset = 0,
     tx: any = db
   ): Promise<Array<Team | TeamSqlite>> {
-    const table = isSQLite ? teamsSqlite : teams;
+    const table = tables.teams;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
@@ -192,7 +184,7 @@ export class TeamService {
     team: Partial<NewTeam | NewTeamSqlite>,
     tx: any = db
   ): Promise<Team | TeamSqlite | null> {
-    const table = isSQLite ? teamsSqlite : teams;
+    const table = tables.teams;
     const [res] = await tx
       .update(table)
       .set({
@@ -205,7 +197,7 @@ export class TeamService {
   }
 
   async deleteTeam(teamId: string, tx: any = db): Promise<Team | TeamSqlite | null> {
-    const table = isSQLite ? teamsSqlite : teams;
+    const table = tables.teams;
     const [res] = await tx
       .update(table)
       .set({
@@ -217,7 +209,7 @@ export class TeamService {
   }
 
   async getUserMemberships(userId: string, tx: any = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
-    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const table = tables.teamMembers;
     return await tx
       .select()
       .from(table)
@@ -225,8 +217,8 @@ export class TeamService {
   }
 
   async getTeamMembersWithDetails(teamId: string, tx: any = db): Promise<any[]> {
-    const membersTable = isSQLite ? teamMembersSqlite : teamMembers;
-    const usersTable = isSQLite ? userSqlite : user;
+    const membersTable = tables.teamMembers;
+    const usersTable = tables.user;
 
     return await tx
       .select({
