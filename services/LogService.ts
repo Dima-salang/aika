@@ -1,33 +1,16 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  timeLogs,
-  timeLogsSqlite,
-  timeLogTasks,
-  timeLogTasksSqlite,
-  documentEvidences,
-  documentEvidencesSqlite,
-  timers,
-  timersSqlite,
   NewTimeLog,
   newTimeLogZodSchema,
   CreateLogInput,
   UpdateLogInput,
-  ReadLog,
-  createLogInputZodSchema,
-  updateLogInputZodSchema,
-  readLogZodSchema,
-  user,
-  userSqlite,
-  teamMembers,
-  teamMembersSqlite,
-  TimeLog,
-  TimeLogSqlite,
 } from "@/db/schema";
-import { eq, and, lt, gt, isNull, ne, inArray } from "drizzle-orm";
+import { eq, and, lt, gt, isNull, ne, inArray, lte, gte } from "drizzle-orm";
 import { AuditService } from "./AuditService";
 import { NotificationService } from "./NotificationService";
 import { TaskService } from "./TaskService";
 import { UserService } from "./UserService";
+import { tables } from "./tables";
 
 export class LogService {
   private auditService: AuditService;
@@ -66,37 +49,21 @@ export class LogService {
       throw new Error("Validation Error: End time cannot be in the future.");
     }
 
-    if (isSQLite) {
-      const conditions = [
-        eq(timeLogsSqlite.user_id, userId),
-        isNull(timeLogsSqlite.deleted_at),
-        lt(timeLogsSqlite.start_time, endTime),
-        gt(timeLogsSqlite.end_time, startTime),
-      ];
-      if (excludeLogId) {
-        conditions.push(ne(timeLogsSqlite.id, excludeLogId));
-      }
-      const overlapping = await tx
-        .select()
-        .from(timeLogsSqlite)
-        .where(and(...conditions));
-      return overlapping.length > 0;
-    } else {
-      const conditions = [
-        eq(timeLogs.user_id, userId),
-        isNull(timeLogs.deleted_at),
-        lt(timeLogs.start_time, endTime),
-        gt(timeLogs.end_time, startTime),
-      ];
-      if (excludeLogId) {
-        conditions.push(ne(timeLogs.id, excludeLogId));
-      }
-      const overlapping = await tx
-        .select()
-        .from(timeLogs)
-        .where(and(...conditions));
-      return overlapping.length > 0;
+    const table = tables.timeLogs;
+    const conditions = [
+      eq(table.user_id, userId),
+      isNull(table.deleted_at),
+      lt(table.start_time, endTime),
+      gt(table.end_time, startTime),
+    ];
+    if (excludeLogId) {
+      conditions.push(ne(table.id, excludeLogId));
     }
+    const overlapping = await tx
+      .select()
+      .from(table)
+      .where(and(...conditions));
+    return overlapping.length > 0;
   }
 
   /**
@@ -108,7 +75,6 @@ export class LogService {
     userAgent?: string,
     outerTx?: any
   ): Promise<any> {
-    // If outer transaction exists, run directly. Else trigger a new transaction.
     const execute = async (tx: any) => {
       // 1. Core validations
       const userExists = await this.userService.getUserById(input.userId, tx);
@@ -132,10 +98,13 @@ export class LogService {
 
       // Verify tasks exist
       if (input.taskIds && input.taskIds.length > 0) {
-        for (const taskId of input.taskIds) {
-          const taskExists = await this.taskService.getTaskById(taskId, tx);
-          if (!taskExists) {
-            throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
+        const existingTasks = await this.taskService.getTasksByIds(input.taskIds, tx);
+        if (existingTasks.length !== input.taskIds.length) {
+          const existingIds = new Set(existingTasks.map((t) => t.id));
+          for (const taskId of input.taskIds) {
+            if (!existingIds.has(taskId)) {
+              throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
+            }
           }
         }
       }
@@ -147,7 +116,6 @@ export class LogService {
       }
 
       const logId = crypto.randomUUID();
-
 
       const logData: NewTimeLog = {
         id: logId,
@@ -164,63 +132,32 @@ export class LogService {
         deleted_at: null,
       };
 
-      // verify with zod
       const validatedLog = newTimeLogZodSchema.parse(logData);
-      let insertedLog: any;
 
-      if (isSQLite) {
-        const [res] = await tx.insert(timeLogsSqlite).values(validatedLog).returning();
-        insertedLog = res;
+      const [insertedLog] = await tx.insert(tables.timeLogs).values(validatedLog).returning();
 
-        // Insert tasks join entries
-        if (input.taskIds && input.taskIds.length > 0) {
-          const taskLinks = input.taskIds.map((taskId) => ({
-            time_log_id: logId,
-            task_id: taskId,
-          }));
-          await tx.insert(timeLogTasksSqlite).values(taskLinks);
-        }
-
-        // Insert Document Evidence entries
-        const evidenceEntries = input.evidence.map((file) => ({
-          id: crypto.randomUUID(),
+      // Insert tasks join entries
+      if (input.taskIds && input.taskIds.length > 0) {
+        const taskLinks = input.taskIds.map((taskId) => ({
           time_log_id: logId,
-          file_url: file.fileUrl,
-          file_key: file.fileKey,
-          file_name: file.fileName,
-          file_size: file.fileSize,
-          mime_type: file.mimeType,
-          created_at: new Date(),
-          deleted_at: null,
+          task_id: taskId,
         }));
-        await tx.insert(documentEvidencesSqlite).values(evidenceEntries);
-      } else {
-        const [res] = await tx.insert(timeLogs).values(validatedLog).returning();
-        insertedLog = res;
-
-        // Insert tasks join entries
-        if (input.taskIds && input.taskIds.length > 0) {
-          const taskLinks = input.taskIds.map((taskId) => ({
-            time_log_id: logId,
-            task_id: taskId,
-          }));
-          await tx.insert(timeLogTasks).values(taskLinks);
-        }
-
-        // Insert Document Evidence entries
-        const evidenceEntries = input.evidence.map((file) => ({
-          id: crypto.randomUUID(),
-          time_log_id: logId,
-          file_url: file.fileUrl,
-          file_key: file.fileKey,
-          file_name: file.fileName,
-          file_size: file.fileSize,
-          mime_type: file.mimeType,
-          created_at: new Date(),
-          deleted_at: null,
-        }));
-        await tx.insert(documentEvidences).values(evidenceEntries);
+        await tx.insert(tables.timeLogTasks).values(taskLinks);
       }
+
+      // Insert Document Evidence entries
+      const evidenceEntries = input.evidence.map((file) => ({
+        id: crypto.randomUUID(),
+        time_log_id: logId,
+        file_url: file.fileUrl,
+        file_key: file.fileKey,
+        file_name: file.fileName,
+        file_size: file.fileSize,
+        mime_type: file.mimeType,
+        created_at: new Date(),
+        deleted_at: null,
+      }));
+      await tx.insert(tables.documentEvidences).values(evidenceEntries);
 
       // Record Audit Log
       await this.auditService.createAuditLog(
@@ -283,10 +220,13 @@ export class LogService {
 
       // Verify tasks exist
       if (input.taskIds && input.taskIds.length > 0) {
-        for (const taskId of input.taskIds) {
-          const taskExists = await this.taskService.getTaskById(taskId, tx);
-          if (!taskExists) {
-            throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
+        const existingTasks = await this.taskService.getTasksByIds(input.taskIds, tx);
+        if (existingTasks.length !== input.taskIds.length) {
+          const existingIds = new Set(existingTasks.map((t) => t.id));
+          for (const taskId of input.taskIds) {
+            if (!existingIds.has(taskId)) {
+              throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
+            }
           }
         }
       }
@@ -315,98 +255,46 @@ export class LogService {
         updated_at: new Date(),
       };
 
-      let updatedLog: any;
+      const [updatedLog] = await tx
+        .update(tables.timeLogs)
+        .set(updateData)
+        .where(eq(tables.timeLogs.id, logId))
+        .returning();
 
-      if (isSQLite) {
-        const [res] = await tx
-          .update(timeLogsSqlite)
-          .set(updateData)
-          .where(eq(timeLogsSqlite.id, logId))
-          .returning();
-        updatedLog = res;
-
-        // Synchronize tasks join entries
-        if (input.taskIds !== undefined) {
-          // Remove old links
-          await tx.delete(timeLogTasksSqlite).where(eq(timeLogTasksSqlite.time_log_id, logId));
-          // Add new links
-          if (input.taskIds.length > 0) {
-            const taskLinks = input.taskIds.map((taskId) => ({
-              time_log_id: logId,
-              task_id: taskId,
-            }));
-            await tx.insert(timeLogTasksSqlite).values(taskLinks);
-          }
-        }
-
-        // Synchronize Document Evidence entries
-        if (input.evidence !== undefined) {
-          // Soft delete old ones
-          await tx
-            .update(documentEvidencesSqlite)
-            .set({ deleted_at: new Date() })
-            .where(eq(documentEvidencesSqlite.time_log_id, logId));
-
-          // Insert new ones
-          if (input.evidence.length === 0) {
-            throw new Error("Validation Error: At least one Document Evidence file is required");
-          }
-          const evidenceEntries = input.evidence.map((file) => ({
-            id: crypto.randomUUID(),
+      // Synchronize tasks join entries
+      if (input.taskIds !== undefined) {
+        await tx.delete(tables.timeLogTasks).where(eq(tables.timeLogTasks.time_log_id, logId));
+        if (input.taskIds.length > 0) {
+          const taskLinks = input.taskIds.map((taskId) => ({
             time_log_id: logId,
-            file_url: file.fileUrl,
-            file_key: file.fileKey,
-            file_name: file.fileName,
-            file_size: file.fileSize,
-            mime_type: file.mimeType,
-            created_at: new Date(),
-            deleted_at: null,
+            task_id: taskId,
           }));
-          await tx.insert(documentEvidencesSqlite).values(evidenceEntries);
+          await tx.insert(tables.timeLogTasks).values(taskLinks);
         }
-      } else {
-        const [res] = await tx
-          .update(timeLogs)
-          .set(updateData)
-          .where(eq(timeLogs.id, logId))
-          .returning();
-        updatedLog = res;
+      }
 
-        // Synchronize tasks join entries
-        if (input.taskIds !== undefined) {
-          await tx.delete(timeLogTasks).where(eq(timeLogTasks.time_log_id, logId));
-          if (input.taskIds.length > 0) {
-            const taskLinks = input.taskIds.map((taskId) => ({
-              time_log_id: logId,
-              task_id: taskId,
-            }));
-            await tx.insert(timeLogTasks).values(taskLinks);
-          }
+      // Synchronize Document Evidence entries
+      if (input.evidence !== undefined) {
+        await tx
+          .update(tables.documentEvidences)
+          .set({ deleted_at: new Date() })
+          .where(eq(tables.documentEvidences.time_log_id, logId));
+
+        if (input.evidence.length === 0) {
+          throw new Error("Validation Error: At least one Document Evidence file is required");
         }
-
-        // Synchronize Document Evidence entries
-        if (input.evidence !== undefined) {
-          await tx
-            .update(documentEvidences)
-            .set({ deleted_at: new Date() })
-            .where(eq(documentEvidences.time_log_id, logId));
-
-          if (input.evidence.length === 0) {
-            throw new Error("Validation Error: At least one Document Evidence file is required");
-          }
-          const evidenceEntries = input.evidence.map((file) => ({
-            id: crypto.randomUUID(),
-            time_log_id: logId,
-            file_url: file.fileUrl,
-            file_key: file.fileKey,
-            file_name: file.fileName,
-            file_size: file.fileSize,
-            mime_type: file.mimeType,
-            created_at: new Date(),
-            deleted_at: null,
-          }));
-          await tx.insert(documentEvidences).values(evidenceEntries);
-        }
+        const evidenceEntries = input.evidence.map((file) => ({
+          id: crypto.randomUUID(),
+          time_log_id: logId,
+          file_url: file.fileUrl,
+          file_key: file.fileKey,
+          file_name: file.fileName,
+          file_size: file.fileSize,
+          mime_type: file.mimeType,
+          created_at: new Date(),
+          deleted_at: null,
+        }));
+        await tx.insert(tables.documentEvidences).values(evidenceEntries);
       }
 
       // Record Audit Log
@@ -440,17 +328,10 @@ export class LogService {
         throw new Error("Security Error: Unauthorized to delete this time log");
       }
 
-      if (isSQLite) {
-        await tx
-          .update(timeLogsSqlite)
-          .set({ deleted_at: new Date(), updated_at: new Date() })
-          .where(eq(timeLogsSqlite.id, logId));
-      } else {
-        await tx
-          .update(timeLogs)
-          .set({ deleted_at: new Date(), updated_at: new Date() })
-          .where(eq(timeLogs.id, logId));
-      }
+      await tx
+        .update(tables.timeLogs)
+        .set({ deleted_at: new Date(), updated_at: new Date() })
+        .where(eq(tables.timeLogs.id, logId));
 
       // Record Audit Log
       await this.auditService.createAuditLog(
@@ -498,14 +379,7 @@ export class LogService {
       created_at: new Date(),
     };
 
-    let newTimer: any;
-    if (isSQLite) {
-      const [res] = await db.insert(timersSqlite).values(timerData).returning();
-      newTimer = res;
-    } else {
-      const [res] = await db.insert(timers).values(timerData).returning();
-      newTimer = res;
-    }
+    const [newTimer] = await db.insert(tables.timers).values(timerData).returning();
 
     await this.auditService.createAuditLog(
       userId,
@@ -552,11 +426,7 @@ export class LogService {
 
     return await db.transaction(async (tx: any) => {
       // 1. Delete the timer first
-      if (isSQLite) {
-        await tx.delete(timersSqlite).where(eq(timersSqlite.user_id, userId));
-      } else {
-        await tx.delete(timers).where(eq(timers.user_id, userId));
-      }
+      await tx.delete(tables.timers).where(eq(tables.timers.user_id, userId));
 
       const log = await this.createLog(
         {
@@ -596,13 +466,8 @@ export class LogService {
    * Retrieve active running timer for a user
    */
   async getRunningTimer(userId: string): Promise<any> {
-    if (isSQLite) {
-      const [res] = await db.select().from(timersSqlite).where(eq(timersSqlite.user_id, userId));
-      return res || null;
-    } else {
-      const [res] = await db.select().from(timers).where(eq(timers.user_id, userId));
-      return res || null;
-    }
+    const [res] = await db.select().from(tables.timers).where(eq(tables.timers.user_id, userId));
+    return res || null;
   }
 
   /**
@@ -614,11 +479,7 @@ export class LogService {
       throw new Error("Validation Error: No active running timer found for this user");
     }
 
-    if (isSQLite) {
-      await db.delete(timersSqlite).where(eq(timersSqlite.user_id, userId));
-    } else {
-      await db.delete(timers).where(eq(timers.user_id, userId));
-    }
+    await db.delete(tables.timers).where(eq(tables.timers.user_id, userId));
 
     await this.auditService.createAuditLog(
       userId,
@@ -638,51 +499,27 @@ export class LogService {
    * Fetch single log by ID
    */
   async getLogById(logId: string): Promise<any> {
-    if (isSQLite) {
-      const [log] = await db
-        .select()
-        .from(timeLogsSqlite)
-        .where(and(eq(timeLogsSqlite.id, logId), isNull(timeLogsSqlite.deleted_at)));
-      if (!log) return null;
+    const [log] = await db
+      .select()
+      .from(tables.timeLogs)
+      .where(and(eq(tables.timeLogs.id, logId), isNull(tables.timeLogs.deleted_at)));
+    if (!log) return null;
 
-      const tasksList = await db
-        .select()
-        .from(timeLogTasksSqlite)
-        .where(eq(timeLogTasksSqlite.time_log_id, logId));
+    const tasksList = await db
+      .select()
+      .from(tables.timeLogTasks)
+      .where(eq(tables.timeLogTasks.time_log_id, logId));
 
-      const evidenceList = await db
-        .select()
-        .from(documentEvidencesSqlite)
-        .where(and(eq(documentEvidencesSqlite.time_log_id, logId), isNull(documentEvidencesSqlite.deleted_at)));
+    const evidenceList = await db
+      .select()
+      .from(tables.documentEvidences)
+      .where(and(eq(tables.documentEvidences.time_log_id, logId), isNull(tables.documentEvidences.deleted_at)));
 
-      return {
-        ...log,
-        tasks: tasksList.map((t: any) => t.task_id),
-        evidence: evidenceList,
-      };
-    } else {
-      const [log] = await db
-        .select()
-        .from(timeLogs)
-        .where(and(eq(timeLogs.id, logId), isNull(timeLogs.deleted_at)));
-      if (!log) return null;
-
-      const tasksList = await db
-        .select()
-        .from(timeLogTasks)
-        .where(eq(timeLogTasks.time_log_id, logId));
-
-      const evidenceList = await db
-        .select()
-        .from(documentEvidences)
-        .where(and(eq(documentEvidences.time_log_id, logId), isNull(documentEvidences.deleted_at)));
-
-      return {
-        ...log,
-        tasks: tasksList.map((t: any) => t.task_id),
-        evidence: evidenceList,
-      };
-    }
+    return {
+      ...log,
+      tasks: tasksList.map((t: any) => t.task_id),
+      evidence: evidenceList,
+    };
   }
 
   /**
@@ -700,9 +537,39 @@ export class LogService {
     limit?: number,
     offset?: number
   ): Promise<any[]> {
-    let query = isSQLite
-      ? db.select().from(timeLogsSqlite).where(and(eq(timeLogsSqlite.user_id, userId), isNull(timeLogsSqlite.deleted_at)))
-      : db.select().from(timeLogs).where(and(eq(timeLogs.user_id, userId), isNull(timeLogs.deleted_at)));
+    const table = tables.timeLogs;
+    const conditions = [
+      eq(table.user_id, userId),
+      isNull(table.deleted_at),
+    ];
+
+    if (filters) {
+      if (filters.organizationId) {
+        conditions.push(eq(table.organization_id, filters.organizationId));
+      }
+      if (filters.teamId !== undefined) {
+        if (filters.teamId === null) {
+          conditions.push(isNull(table.team_id));
+        } else {
+          conditions.push(eq(table.team_id, filters.teamId));
+        }
+      }
+      if (filters.projectId !== undefined) {
+        if (filters.projectId === null) {
+          conditions.push(isNull(table.project_id));
+        } else {
+          conditions.push(eq(table.project_id, filters.projectId));
+        }
+      }
+      if (filters.startDate) {
+        conditions.push(gte(table.start_time, filters.startDate));
+      }
+      if (filters.endDate) {
+        conditions.push(lte(table.end_time, filters.endDate));
+      }
+    }
+
+    let query = db.select().from(table).where(and(...conditions));
 
     if (limit) {
       query = query.limit(limit);
@@ -712,16 +579,7 @@ export class LogService {
       query = query.offset(offset);
     }
 
-    const list = await query;
-
-    return list.filter((log: any) => {
-      if (filters?.organizationId && log.organization_id !== filters.organizationId) return false;
-      if (filters?.teamId !== undefined && log.team_id !== filters.teamId) return false;
-      if (filters?.projectId !== undefined && log.project_id !== filters.projectId) return false;
-      if (filters?.startDate && log.start_time < filters.startDate) return false;
-      if (filters?.endDate && log.end_time > filters.endDate) return false;
-      return true;
-    });
+    return await query;
   }
 
   /**
@@ -737,9 +595,29 @@ export class LogService {
     limit?: number,
     offset?: number
   ): Promise<any[]> {
-    let query = isSQLite
-      ? db.select().from(timeLogsSqlite).where(and(eq(timeLogsSqlite.team_id, teamId), isNull(timeLogsSqlite.deleted_at)))
-      : db.select().from(timeLogs).where(and(eq(timeLogs.team_id, teamId), isNull(timeLogs.deleted_at)));
+    const table = tables.timeLogs;
+    const conditions = [
+      eq(table.team_id, teamId),
+      isNull(table.deleted_at),
+    ];
+
+    if (filters) {
+      if (filters.projectId !== undefined) {
+        if (filters.projectId === null) {
+          conditions.push(isNull(table.project_id));
+        } else {
+          conditions.push(eq(table.project_id, filters.projectId));
+        }
+      }
+      if (filters.startDate) {
+        conditions.push(gte(table.start_time, filters.startDate));
+      }
+      if (filters.endDate) {
+        conditions.push(lte(table.end_time, filters.endDate));
+      }
+    }
+
+    let query = db.select().from(table).where(and(...conditions));
 
     if (limit) {
       query = query.limit(limit);
@@ -749,18 +627,11 @@ export class LogService {
       query = query.offset(offset);
     }
 
-    const list = await query;
-
-    return list.filter((log: any) => {
-      if (filters?.projectId !== undefined && log.project_id !== filters.projectId) return false;
-      if (filters?.startDate && log.start_time < filters.startDate) return false;
-      if (filters?.endDate && log.end_time > filters.endDate) return false;
-      return true;
-    });
+    return await query;
   }
 
   async adminListLogs(limit = 100, offset = 0, tx: any = db): Promise<any[]> {
-    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const table = tables.timeLogs;
     return await tx
       .select()
       .from(table)
@@ -769,7 +640,7 @@ export class LogService {
   }
 
   async adminCreateLog(data: any, tx: any = db): Promise<any> {
-    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const table = tables.timeLogs;
     const newId = crypto.randomUUID();
     const [res] = await tx
       .insert(table)
@@ -784,7 +655,7 @@ export class LogService {
   }
 
   async adminUpdateLog(id: string, data: any, tx: any = db): Promise<any> {
-    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const table = tables.timeLogs;
     const [res] = await tx
       .update(table)
       .set({
@@ -797,7 +668,7 @@ export class LogService {
   }
 
   async adminDeleteLog(id: string, tx: any = db): Promise<any> {
-    const table = isSQLite ? timeLogsSqlite : timeLogs;
+    const table = tables.timeLogs;
     const [res] = await tx
       .update(table)
       .set({
@@ -810,19 +681,19 @@ export class LogService {
   }
 
   async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: any = db): Promise<any[]> {
-    const teamMembersTable = isSQLite ? teamMembersSqlite : teamMembers;
     const members = await tx
       .select()
-      .from(teamMembersTable)
-      .where(eq(teamMembersTable.team_id, teamId));
+      .from(tables.teamMembers)
+      .where(eq(tables.teamMembers.team_id, teamId));
     const memberUserIds = members.map((m: any) => m.user_id);
 
     if (memberUserIds.length === 0) {
       return [];
     }
 
-    const timeLogsTable = isSQLite ? timeLogsSqlite : timeLogs;
-    const userTable = isSQLite ? userSqlite : user;
+    const timeLogsTable = tables.timeLogs;
+    const userTable = tables.user;
+    const projectsTable = tables.projects;
     const conditions = [
       inArray(timeLogsTable.user_id, memberUserIds),
       isNull(timeLogsTable.deleted_at),
@@ -834,7 +705,7 @@ export class LogService {
       conditions.push(lt(timeLogsTable.end_time, endDate));
     }
 
-    // 1. Fetch logs joined with user details in a single query
+    // 1. Fetch logs joined with user details & project details in a single query
     const logs = await tx
       .select({
         id: timeLogsTable.id,
@@ -851,9 +722,11 @@ export class LogService {
         userName: userTable.name,
         userEmail: userTable.email,
         userImage: userTable.image,
+        projectName: projectsTable.name,
       })
       .from(timeLogsTable)
       .innerJoin(userTable, eq(timeLogsTable.user_id, userTable.id))
+      .leftJoin(projectsTable, eq(timeLogsTable.project_id, projectsTable.id))
       .where(and(...conditions));
 
     if (logs.length === 0) {
@@ -863,17 +736,23 @@ export class LogService {
     const logIds = logs.map((l: any) => l.id);
 
     // 2. Fetch all evidence in a single query
-    const evidenceTable = isSQLite ? documentEvidencesSqlite : documentEvidences;
+    const evidenceTable = tables.documentEvidences;
     const evidenceList = await tx
       .select()
       .from(evidenceTable)
       .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
 
     // 3. Fetch all task links in a single query
-    const tasksJoinTable = isSQLite ? timeLogTasksSqlite : timeLogTasks;
+    const tasksJoinTable = tables.timeLogTasks;
+    const tasksTable = tables.tasks;
     const tasksList = await tx
-      .select()
+      .select({
+        time_log_id: tasksJoinTable.time_log_id,
+        task_id: tasksJoinTable.task_id,
+        taskTitle: tasksTable.title,
+      })
       .from(tasksJoinTable)
+      .innerJoin(tasksTable, eq(tasksJoinTable.task_id, tasksTable.id))
       .where(inArray(tasksJoinTable.time_log_id, logIds));
 
     // Map evidence and tasks in memory
@@ -885,26 +764,34 @@ export class LogService {
       evidenceMap[ev.time_log_id].push(ev);
     });
 
-    const tasksMap: Record<string, string[]> = {};
+    const tasksMap: Record<string, Array<{ id: string; title: string }>> = {};
     tasksList.forEach((t: any) => {
       if (!tasksMap[t.time_log_id]) {
         tasksMap[t.time_log_id] = [];
       }
-      tasksMap[t.time_log_id].push(t.task_id);
+      tasksMap[t.time_log_id].push({
+        id: t.task_id,
+        title: t.taskTitle,
+      });
+    });
+
+    const memberRoleMap: Record<string, string> = {};
+    members.forEach((m: any) => {
+      memberRoleMap[m.user_id] = m.role;
     });
 
     // Hydrate logs in memory
     const hydrated = logs.map((log: any) => {
       return {
         ...log,
+        userRole: memberRoleMap[log.user_id] || "member",
         tasks: tasksMap[log.id] || [],
         evidence: evidenceMap[log.id] || [],
       };
     });
 
     return hydrated.sort(
-      (a: TimeLog | TimeLogSqlite, b: TimeLog | TimeLogSqlite) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+      (a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
     );
   }
 }
-
