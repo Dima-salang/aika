@@ -808,5 +808,103 @@ export class LogService {
       .returning();
     return res;
   }
+
+  async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: any = db): Promise<any[]> {
+    const teamMembersTable = isSQLite ? teamMembersSqlite : teamMembers;
+    const members = await tx
+      .select()
+      .from(teamMembersTable)
+      .where(eq(teamMembersTable.team_id, teamId));
+    const memberUserIds = members.map((m: any) => m.user_id);
+
+    if (memberUserIds.length === 0) {
+      return [];
+    }
+
+    const timeLogsTable = isSQLite ? timeLogsSqlite : timeLogs;
+    const userTable = isSQLite ? userSqlite : user;
+    const conditions = [
+      inArray(timeLogsTable.user_id, memberUserIds),
+      isNull(timeLogsTable.deleted_at),
+    ];
+    if (startDate) {
+      conditions.push(gt(timeLogsTable.start_time, startDate));
+    }
+    if (endDate) {
+      conditions.push(lt(timeLogsTable.end_time, endDate));
+    }
+
+    // 1. Fetch logs joined with user details in a single query
+    const logs = await tx
+      .select({
+        id: timeLogsTable.id,
+        user_id: timeLogsTable.user_id,
+        organization_id: timeLogsTable.organization_id,
+        team_id: timeLogsTable.team_id,
+        project_id: timeLogsTable.project_id,
+        start_time: timeLogsTable.start_time,
+        end_time: timeLogsTable.end_time,
+        title: timeLogsTable.title,
+        description: timeLogsTable.description,
+        created_at: timeLogsTable.created_at,
+        updated_at: timeLogsTable.updated_at,
+        userName: userTable.name,
+        userEmail: userTable.email,
+        userImage: userTable.image,
+      })
+      .from(timeLogsTable)
+      .innerJoin(userTable, eq(timeLogsTable.user_id, userTable.id))
+      .where(and(...conditions));
+
+    if (logs.length === 0) {
+      return [];
+    }
+
+    const logIds = logs.map((l: any) => l.id);
+
+    // 2. Fetch all evidence in a single query
+    const evidenceTable = isSQLite ? documentEvidencesSqlite : documentEvidences;
+    const evidenceList = await tx
+      .select()
+      .from(evidenceTable)
+      .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
+
+    // 3. Fetch all task links in a single query
+    const tasksJoinTable = isSQLite ? timeLogTasksSqlite : timeLogTasks;
+    const tasksList = await tx
+      .select()
+      .from(tasksJoinTable)
+      .where(inArray(tasksJoinTable.time_log_id, logIds));
+
+    // Map evidence and tasks in memory
+    const evidenceMap: Record<string, any[]> = {};
+    evidenceList.forEach((ev: any) => {
+      if (!evidenceMap[ev.time_log_id]) {
+        evidenceMap[ev.time_log_id] = [];
+      }
+      evidenceMap[ev.time_log_id].push(ev);
+    });
+
+    const tasksMap: Record<string, string[]> = {};
+    tasksList.forEach((t: any) => {
+      if (!tasksMap[t.time_log_id]) {
+        tasksMap[t.time_log_id] = [];
+      }
+      tasksMap[t.time_log_id].push(t.task_id);
+    });
+
+    // Hydrate logs in memory
+    const hydrated = logs.map((log: any) => {
+      return {
+        ...log,
+        tasks: tasksMap[log.id] || [],
+        evidence: evidenceMap[log.id] || [],
+      };
+    });
+
+    return hydrated.sort(
+      (a: TimeLog | TimeLogSqlite, b: TimeLog | TimeLogSqlite) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+    );
+  }
 }
 
