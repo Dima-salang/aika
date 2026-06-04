@@ -48,12 +48,8 @@ export class TeamService {
     }
 
     // check if the team member already exists
-    const existingMember = await tx
-      .select()
-      .from(table)
-      .where(eq(table.id, id))
-      .limit(1)
-    if (existingMember.length > 0) {
+    const existingMember = await this.verifyTeamMember(teamId, userId, tx);
+    if (existingMember) {
         // set deleted_at to null to reactivate the member if they were soft-deleted
         const [reactivated] = await tx
             .update(table)
@@ -63,7 +59,7 @@ export class TeamService {
             .where(eq(table.id, id))
             .returning();
 
-        return reactivated || existingMember[0];
+        return reactivated;
     }
     const [res] = await tx
       .insert(table)
@@ -98,11 +94,39 @@ export class TeamService {
   async removeTeamMember(teamId: string, userId: string, tx: any = db): Promise<TeamMember | TeamMemberSqlite | null> {
     const table = isSQLite ? teamMembersSqlite : teamMembers;
     const id = `${teamId}-${userId}`;
+
+    // verify if user is a member of the team
+    if (!await this.verifyTeamMember(teamId, userId, tx)) {
+      throw new Error("User is not a member of this team");
+    }
+
     const [res] = await tx
       .delete(table)
       .where(eq(table.id, id))
       .returning();
     return res || null;
+  }
+
+  // verify if user is a member of a team
+  async verifyTeamMember(teamId: string, userId: string, tx: any = db): Promise<boolean> {
+    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const [res] = await tx
+      .select()
+      .from(table)
+      .where(and(eq(table.team_id, teamId), eq(table.user_id, userId)))
+      .limit(1);
+    return !!res;
+  }
+
+  // verify if user is a leader of a team
+  async verifyLeader(teamId: string, userId: string, tx: any = db): Promise<boolean> {
+    const table = isSQLite ? teamMembersSqlite : teamMembers;
+    const [res] = await tx
+      .select()
+      .from(table)
+      .where(and(eq(table.team_id, teamId), eq(table.user_id, userId), eq(table.role, "leader")))
+      .limit(1);
+    return !!res;
   }
 
   async addTeam(team: NewTeam | NewTeamSqlite, tx: any = db): Promise<Team | TeamSqlite | null> {
@@ -198,5 +222,23 @@ export class TeamService {
       .select()
       .from(table)
       .where(eq(table.user_id, userId));
+  }
+
+  async getTeamMembersWithDetails(teamId: string, tx: any = db): Promise<any[]> {
+    const membersTable = isSQLite ? teamMembersSqlite : teamMembers;
+    const usersTable = isSQLite ? userSqlite : user;
+
+    return await tx
+      .select({
+        id: membersTable.id,
+        userId: membersTable.user_id,
+        role: membersTable.role,
+        userName: usersTable.name,
+        userEmail: usersTable.email,
+        userImage: usersTable.image,
+      })
+      .from(membersTable)
+      .innerJoin(usersTable, eq(membersTable.user_id, usersTable.id))
+      .where(eq(membersTable.team_id, teamId));
   }
 }

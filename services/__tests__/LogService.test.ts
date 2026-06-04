@@ -385,4 +385,102 @@ describe("LogService", () => {
     expect(logs.length).toBe(1);
     expect(logs[0].project_id).toBe("project-A");
   });
+
+  // --- 5. DISCARD TIMER & TIMELINE TESTS ---
+  test("discardTimer should remove active running timer", async () => {
+    const startTime = new Date();
+    await db.insert(timersSqlite).values({
+      user_id: testUserId,
+      start_time: startTime,
+      description: "Timer to discard",
+      project_id: "project-1",
+      created_at: startTime,
+    });
+
+    const discarded = await logService.discardTimer(testUserId);
+    expect(discarded).toBe(true);
+
+    const active = await logService.getRunningTimer(testUserId);
+    expect(active).toBeNull();
+  });
+
+  test("discardTimer should throw if no timer is running", async () => {
+    expect(
+      logService.discardTimer(testUserId)
+    ).rejects.toThrow("Validation Error: No active running timer found for this user");
+  });
+
+  test("getTeamTimeline should return chronological logs with hydrated details", async () => {
+    const now = new Date();
+    const startTime1 = new Date(now.getTime() - 7200000);
+    const endTime1 = new Date(now.getTime() - 3600000);
+    const startTime2 = new Date(now.getTime() - 14400000);
+    const endTime2 = new Date(now.getTime() - 10800000);
+
+    // Create logs for two members
+    const user2Id = "user-456";
+    await db.insert(userSqlite).values({
+      id: user2Id,
+      name: "Bob",
+      email: "bob@example.com",
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    // Add both to a team
+    const teamId = "team-abc";
+    const schema = require("@/db/schema");
+    const teamsSqliteTable = schema.teamsSqlite;
+    const teamMembersSqliteTable = schema.teamMembersSqlite;
+    
+    // Seed team
+    await db.insert(teamsSqliteTable).values({
+      id: teamId,
+      organization_id: testOrgId,
+      name: "Team ABC",
+      created_at: now,
+      updated_at: now,
+    });
+
+    await db.insert(teamMembersSqliteTable).values([
+      { id: "team-m-1", team_id: teamId, user_id: testUserId, role: "leader", created_at: now, updated_at: now },
+      { id: "team-m-2", team_id: teamId, user_id: user2Id, role: "member", created_at: now, updated_at: now },
+    ]);
+
+    // Create log 1 (Alice)
+    const log1 = await logService.createLog({
+      userId: testUserId,
+      organizationId: testOrgId,
+      teamId,
+      startTime: startTime1,
+      endTime: endTime1,
+      description: "Alice work",
+      evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k1", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
+      taskIds: [testTaskId],
+    });
+
+    // Create log 2 (Bob)
+    const log2 = await logService.createLog({
+      userId: user2Id,
+      organizationId: testOrgId,
+      teamId,
+      startTime: startTime2,
+      endTime: endTime2,
+      description: "Bob work",
+      evidence: [{ fileUrl: "https://x.com/b.png", fileKey: "k2", fileName: "b.png", fileSize: 100, mimeType: "image/png" }],
+    });
+
+    const timeline = await logService.getTeamTimeline(teamId);
+    // Chronological sort: log 1 is newer than log 2, so log 1 should be first
+    expect(timeline.length).toBe(2);
+    expect(timeline[0].id).toBe(log1.id);
+    expect(timeline[0].userName).toBe("Alice");
+    expect(timeline[0].tasks).toContain(testTaskId);
+    expect(timeline[0].evidence[0].file_name).toBe("a.png");
+
+    expect(timeline[1].id).toBe(log2.id);
+    expect(timeline[1].userName).toBe("Bob");
+    expect(timeline[1].evidence[0].file_name).toBe("b.png");
+  });
 });

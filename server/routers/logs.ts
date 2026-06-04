@@ -1,6 +1,9 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { createLogInputZodSchema, updateLogInputZodSchema } from "@/db/schema";
+import { createLogInputZodSchema, updateLogInputZodSchema, teamMembers, teamMembersSqlite, user, userSqlite, timeLogs, timeLogsSqlite } from "@/db/schema";
+import { db, isSQLite } from "@/db";
+import { eq, and, inArray, isNull } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 // Service Imports & Instantiation
 import { AuditService } from "@/services/AuditService";
@@ -133,5 +136,11 @@ export const logsRouter = router({
     .input(z.object({ userId: z.string() }))
     .query(async ({ input }) => {
       return await logService.getRunningTimer(input.userId);
+    }),
+
+  discardTimer: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ input }) => {
+      return await logService.discardTimer(input.userId);
     }),
 });
