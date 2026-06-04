@@ -10,6 +10,8 @@ import { TasksManager } from "./tasks-manager";
 import { TimeLogsManager } from "./timelogs-manager";
 import { NotificationsManager } from "./notifications-manager";
 import { AuditLogsViewer } from "./auditlogs-viewer";
+import { OnboardingLinksManager } from "./onboarding-links-manager";
+import { JoinRequestsManager } from "./join-requests-manager";
 import {
   Shield,
   Users,
@@ -23,9 +25,11 @@ import {
   Sun,
   Moon,
   Layers,
+  Link2,
+  UserPlus,
 } from "lucide-react";
 
-type Section = "users" | "orgs" | "teams" | "projects" | "tasks" | "timelogs" | "notifications" | "auditlogs";
+type Section = "users" | "orgs" | "teams" | "projects" | "tasks" | "timelogs" | "notifications" | "auditlogs" | "tokens" | "requests";
 
 interface AdminShellProps {
   session: any;
@@ -37,6 +41,8 @@ interface AdminShellProps {
   logs: any[];
   notifications: any[];
   auditLogs: any[];
+  initialTokens: any[];
+  initialRequests: any[];
 }
 
 export function AdminShell({
@@ -49,6 +55,8 @@ export function AdminShell({
   logs: initialLogs,
   notifications: initialNotifications,
   auditLogs: initialAuditLogs,
+  initialTokens,
+  initialRequests,
 }: AdminShellProps) {
   const [activeSection, setActiveSection] = useState<Section>("users");
   const [isDark, setIsDark] = useState(false);
@@ -88,6 +96,10 @@ export function AdminShell({
         return <NotificationsManager initialData={initialNotifications} initialUsers={initialUsers} />;
       case "auditlogs":
         return <AuditLogsViewer initialData={initialAuditLogs} initialUsers={initialUsers} />;
+      case "tokens":
+        return <OnboardingLinksManager initialData={initialTokens} initialOrgs={initialOrgs} initialTeams={initialTeams} />;
+      case "requests":
+        return <JoinRequestsManager initialData={initialRequests} initialUsers={initialUsers} initialOrgs={initialOrgs} initialTeams={initialTeams} />;
       default:
         return <UsersManager initialData={initialUsers} />;
     }
@@ -184,6 +196,27 @@ export function AdminShell({
           >
             <Activity className="h-4 w-4" />
             <span className="font-label-md text-label-md">Audit Trail</span>
+          </button>
+          <div className="h-px bg-outline-variant my-2" />
+          <button
+            onClick={() => setActiveSection("tokens")}
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "tokens"
+                ? "bg-secondary-container text-on-secondary-container"
+                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              }`}
+          >
+            <Link2 className="h-4 w-4" />
+            <span className="font-label-md text-label-md">Onboarding Links</span>
+          </button>
+          <button
+            onClick={() => setActiveSection("requests")}
+            className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "requests"
+                ? "bg-secondary-container text-on-secondary-container"
+                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              }`}
+          >
+            <UserPlus className="h-4 w-4" />
+            <span className="font-label-md text-label-md">Join Requests</span>
           </button>
         </nav>
 

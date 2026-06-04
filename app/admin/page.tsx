@@ -20,9 +20,16 @@ import {
   notificationsSqlite,
   auditLogs,
   auditLogsSqlite,
+  member,
+  memberSqlite,
+  joinTokens,
+  joinTokensSqlite,
+  joinRequests,
+  joinRequestsSqlite,
 } from "@/db/schema";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Shield, ArrowLeft } from "lucide-react";
+import { eq, inArray, and, or } from "drizzle-orm";
 
 export const revalidate = 0; // Ensure admin dashboard is always fresh and server-rendered on demand
 
@@ -32,8 +39,58 @@ export default async function AdminPage() {
     headers: reqHeaders,
   });
 
-  // Security authorization gate - server side check for ultra-fast, zero-leak validation
-  if (!session || !session.user || !(session.user as any).is_admin) {
+  if (!session || !session.user) {
+    return (
+      <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-6">
+        <div className="max-w-md w-full text-center space-y-6 bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl">
+          <div className="h-14 w-14 rounded-full bg-red-100 dark:bg-red-950/30 text-red-500 flex items-center justify-center mx-auto">
+            <Shield className="h-7 w-7" />
+          </div>
+          <div className="space-y-2">
+            <h1 className="text-xl font-black text-zinc-900 dark:text-white">Authentication Required</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              Please sign in to access the administrator tools.
+            </p>
+          </div>
+          <Link href="/">
+            <button className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 text-xs font-bold rounded-xl transition-all shadow-md shadow-zinc-900/10 cursor-pointer">
+              <ArrowLeft className="h-4 w-4" /> Back to Workspace
+            </button>
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  const userTableCheck = isSQLite ? userSqlite : user;
+  const [dbUser] = await db
+    .select()
+    .from(userTableCheck)
+    .where(eq(userTableCheck.id, session.user.id))
+    .limit(1);
+
+  const isSysAdmin = dbUser?.is_admin === true;
+
+  // Query organization admin/owner memberships
+  const memberTable = isSQLite ? memberSqlite : member;
+  const userMemberships = await db
+    .select()
+    .from(memberTable)
+    .where(
+      and(
+        eq(memberTable.userId, session.user.id),
+        or(
+          eq(memberTable.role, "admin"),
+          eq(memberTable.role, "owner"),
+          eq(memberTable.role, "system_admin")
+        )
+      )
+    );
+
+  const adminOrgIds = userMemberships.map((m: any) => m.organizationId);
+
+  // Security authorization gate - server side check for system admin or organization admin/owner
+  if (!isSysAdmin && adminOrgIds.length === 0) {
     return (
       <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-zinc-950 p-6">
         <div className="max-w-md w-full text-center space-y-6 bg-white dark:bg-zinc-900 p-8 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl">
@@ -57,14 +114,60 @@ export default async function AdminPage() {
   }
 
   // Pre-fetch all tables directly on the server to achieve instant pre-rendering (SSR)
-  const usersList = await db.select().from(isSQLite ? userSqlite : user);
-  const orgsList = await db.select().from(isSQLite ? organizationSqlite : organization);
-  const teamsList = await db.select().from(isSQLite ? teamsSqlite : teams);
-  const projectsList = await db.select().from(isSQLite ? projectsSqlite : projects);
-  const tasksList = await db.select().from(isSQLite ? tasksSqlite : tasks);
-  const logsList = await db.select().from(isSQLite ? timeLogsSqlite : timeLogs);
-  const notificationsList = await db.select().from(isSQLite ? notificationsSqlite : notifications);
-  const auditLogsList = await db.select().from(isSQLite ? auditLogsSqlite : auditLogs);
+  const orgTable = isSQLite ? organizationSqlite : organization;
+  const teamTable = isSQLite ? teamsSqlite : teams;
+  const projectTable = isSQLite ? projectsSqlite : projects;
+  const taskTable = isSQLite ? tasksSqlite : tasks;
+  const logTable = isSQLite ? timeLogsSqlite : timeLogs;
+  const notifTable = isSQLite ? notificationsSqlite : notifications;
+  const auditTable = isSQLite ? auditLogsSqlite : auditLogs;
+  const userTable = isSQLite ? userSqlite : user;
+  const tokenTable = isSQLite ? joinTokensSqlite : joinTokens;
+  const reqTable = isSQLite ? joinRequestsSqlite : joinRequests;
+
+  let usersList: any[] = [];
+  let orgsList: any[] = [];
+  let teamsList: any[] = [];
+  let projectsList: any[] = [];
+  let tasksList: any[] = [];
+  let logsList: any[] = [];
+  let notificationsList: any[] = [];
+  let auditLogsList: any[] = [];
+  let tokensList: any[] = [];
+  let requestsList: any[] = [];
+
+  if (isSysAdmin) {
+    usersList = await db.select().from(userTable);
+    orgsList = await db.select().from(orgTable);
+    teamsList = await db.select().from(teamTable);
+    projectsList = await db.select().from(projectTable);
+    tasksList = await db.select().from(taskTable);
+    logsList = await db.select().from(logTable);
+    notificationsList = await db.select().from(notifTable);
+    auditLogsList = await db.select().from(auditTable);
+    tokensList = await db.select().from(tokenTable);
+    requestsList = await db.select().from(reqTable);
+  } else {
+    // Scoped queries
+    orgsList = await db.select().from(orgTable).where(inArray(orgTable.id, adminOrgIds));
+    teamsList = await db.select().from(teamTable).where(inArray(teamTable.organization_id, adminOrgIds));
+    projectsList = await db.select().from(projectTable).where(inArray(projectTable.organization_id, adminOrgIds));
+    tasksList = await db.select().from(taskTable).where(inArray(taskTable.organization_id, adminOrgIds));
+    logsList = await db.select().from(logTable).where(inArray(logTable.organization_id, adminOrgIds));
+
+    // Get all user memberships in these orgs
+    const memberships = await db.select().from(memberTable).where(inArray(memberTable.organizationId, adminOrgIds));
+    const allowedUserIds = memberships.map((m: any) => m.userId);
+
+    if (allowedUserIds.length > 0) {
+      usersList = await db.select().from(userTable).where(inArray(userTable.id, allowedUserIds));
+      notificationsList = await db.select().from(notifTable).where(inArray(notifTable.user_id, allowedUserIds));
+      auditLogsList = await db.select().from(auditTable).where(inArray(auditTable.user_id, allowedUserIds));
+    }
+
+    tokensList = await db.select().from(tokenTable).where(inArray(tokenTable.organizationId, adminOrgIds));
+    requestsList = await db.select().from(reqTable).where(inArray(reqTable.organizationId, adminOrgIds));
+  }
 
   // Return the client component shell populated with instant server data!
   return (
@@ -78,6 +181,8 @@ export default async function AdminPage() {
       logs={logsList}
       notifications={notificationsList}
       auditLogs={auditLogsList}
+      initialTokens={tokensList}
+      initialRequests={requestsList}
     />
   );
 }

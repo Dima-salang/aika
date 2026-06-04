@@ -37,6 +37,15 @@ export const auth = betterAuth({
       teams: {
         enabled: true,
       },
+      organizationHooks: {
+        afterAcceptInvitation: async ({ invitation, user }) => {
+          if (invitation.teamId) {
+            const { TeamService } = await import("@/services/TeamService");
+            const teamService = new TeamService();
+            await teamService.addTeamMember(invitation.teamId, user.id, "member");
+          }
+        },
+      },
       schema: {
         team: {
           modelName: "teams",
