@@ -30,9 +30,11 @@ interface TimeLogDialogProps {
   tasks: Array<{ id: string; title: string; updated_at?: any }>;
   projects: Array<{ id: string; name: string }>;
   initialLog?: any;
+  isTimerStop?: boolean;
+  onDiscard?: () => void;
 }
 
-export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects = [], initialLog }: TimeLogDialogProps) {
+export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects = [], initialLog, isTimerStop, onDiscard }: TimeLogDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -436,6 +438,17 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
  
         {/* Footer */}
         <div className="px-unit-6 py-unit-4 border-t border-outline-variant flex items-center justify-end gap-3 bg-surface-container-lowest">
+          {isTimerStop && onDiscard && (
+            <Button
+              variant="outline"
+              type="button"
+              className="rounded-lg text-xs font-semibold h-9 text-error border-outline-variant hover:bg-error/10 hover:text-error mr-auto cursor-pointer"
+              onClick={onDiscard}
+              disabled={loading}
+            >
+              Discard Session
+            </Button>
+          )}
           <Button variant="outline" type="button" className="rounded-lg text-xs font-semibold h-9 cursor-pointer" onClick={onClose} disabled={loading}>
             Cancel
           </Button>
