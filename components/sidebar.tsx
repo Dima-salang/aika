@@ -5,8 +5,8 @@ import { useLayoutStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface SidebarProps {
-  activeTab: "dashboard" | "logs" | "profile" | "org" | "projects";
-  setActiveTab: (tab: "dashboard" | "logs" | "profile" | "org" | "projects") => void;
+  activeTab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team";
+  setActiveTab: (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team") => void;
   session: any;
   handleSignOut: () => void;
   isDark: boolean;
@@ -61,6 +61,7 @@ export function Sidebar({
           { id: "dashboard", label: "Dashboard", icon: "dashboard" },
           { id: "logs", label: "Tracker", icon: "timer" },
           { id: "projects", label: "Projects & Tasks", icon: "work" },
+          { id: "team", label: "Team Space", icon: "groups" },
           { id: "profile", label: "Profile", icon: "person" },
           { id: "org", label: "Organization", icon: "corporate_fare" },
         ].map((item) => {

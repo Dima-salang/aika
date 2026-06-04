@@ -16,6 +16,7 @@ interface TimerSidebarProps {
   timerSeconds: number;
   formatDuration: (seconds: number) => string;
   handleStartTimer: () => void;
+  onDiscardTimer?: () => void;
 }
 
 export function TimerSidebar({
@@ -30,6 +31,7 @@ export function TimerSidebar({
   timerSeconds,
   formatDuration,
   handleStartTimer,
+  onDiscardTimer,
 }: TimerSidebarProps) {
   const [mounted, setMounted] = React.useState(false);
   const { rightSidebarCollapsed, toggleRightSidebar } = useLayoutStore();
@@ -58,7 +60,7 @@ export function TimerSidebar({
       <div className="flex items-center justify-between mb-unit-6 min-h-[32px]">
         {!collapsed && (
           <label className="font-label-md text-[10px] uppercase tracking-widest text-primary font-bold animate-in fade-in duration-200">
-            {runningTimer ? "Currently Tracking" : "Start Tracking"}
+            {runningTimer ? "Clocked In" : "Clock In"}
           </label>
         )}
         <button
@@ -78,7 +80,7 @@ export function TimerSidebar({
               {runningTimer ? "hourglass_top" : "play_circle"}
             </span>
             <div className="absolute right-12 top-1.5 scale-0 group-hover:scale-100 bg-surface-container-high text-on-surface text-xs rounded py-1 px-2 border border-outline-variant shadow-lg whitespace-nowrap transition-all z-40">
-              {runningTimer ? `Running: ${formatDuration(timerSeconds)}` : "Start Timer"}
+              {runningTimer ? `Running: ${formatDuration(timerSeconds)}` : "Clock In"}
             </div>
           </div>
           
@@ -94,12 +96,25 @@ export function TimerSidebar({
             className={`h-10 w-10 rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-95 ${
               runningTimer ? "bg-error text-on-error" : "bg-primary text-on-primary"
             }`}
-            aria-label={runningTimer ? "Stop Timer" : "Start Timer"}
+            aria-label={runningTimer ? "Clock Out" : "Clock In"}
           >
             <span className="material-symbols-outlined text-[20px]">
               {runningTimer ? "stop" : "play_arrow"}
             </span>
           </button>
+
+          {runningTimer && onDiscardTimer && (
+            <button
+              onClick={onDiscardTimer}
+              className="h-10 w-10 rounded-full bg-surface-container-high text-error border border-outline-variant flex items-center justify-center transition-all hover:bg-error/10 active:scale-95"
+              aria-label="Discard Clock In"
+              title="Discard Clock In"
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                delete
+              </span>
+            </button>
+          )}
         </div>
       ) : (
         /* Expanded Full View */
@@ -165,25 +180,40 @@ export function TimerSidebar({
             >
               {runningTimer ? formatDuration(timerSeconds) : "00:00:00"}
             </div>
-            <button
-              onClick={() => {
-                if (runningTimer) {
-                  setEditingLog(null);
-                  setIsDialogOpen(true);
-                } else {
-                  handleStartTimer();
-                }
-              }}
-              className={`w-full py-3 ${
-                runningTimer ? "bg-error text-on-error" : "bg-primary text-on-primary"
-              } rounded-lg font-headline-sm flex items-center justify-center gap-unit-2 hover:brightness-110 active:scale-[0.97] transition-all shadow-[0_0_20px_rgba(192,193,255,0.2)]`}
-              id="main-timer-btn"
-            >
-              <span className="material-symbols-outlined">
-                {runningTimer ? "stop" : "play_arrow"}
-              </span>
-              {runningTimer ? "Stop Timer" : "Start Tracking"}
-            </button>
+            <div className="w-full flex flex-col gap-2">
+              <button
+                onClick={() => {
+                  if (runningTimer) {
+                    setEditingLog(null);
+                    setIsDialogOpen(true);
+                  } else {
+                    handleStartTimer();
+                  }
+                }}
+                className={`w-full py-3 ${
+                  runningTimer ? "bg-error text-on-error" : "bg-primary text-on-primary"
+                } rounded-lg font-headline-sm flex items-center justify-center gap-unit-2 hover:brightness-110 active:scale-[0.97] transition-all shadow-[0_0_20px_rgba(192,193,255,0.2)]`}
+                id="main-timer-btn"
+              >
+                <span className="material-symbols-outlined">
+                  {runningTimer ? "stop" : "play_arrow"}
+                </span>
+                {runningTimer ? "Clock Out" : "Clock In"}
+              </button>
+              
+              {runningTimer && onDiscardTimer && (
+                <button
+                  type="button"
+                  onClick={onDiscardTimer}
+                  className="w-full py-2 bg-surface-container-high border border-outline-variant hover:border-error hover:text-error text-on-surface-variant rounded-lg font-label-md text-xs transition-all active:scale-[0.97] flex items-center justify-center gap-1.5"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    delete
+                  </span>
+                  Discard Clock-in
+                </button>
+              )}
+            </div>
           </div>
         </div>
       )}
