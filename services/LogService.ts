@@ -16,8 +16,14 @@ import {
   createLogInputZodSchema,
   updateLogInputZodSchema,
   readLogZodSchema,
+  user,
+  userSqlite,
+  teamMembers,
+  teamMembersSqlite,
+  TimeLog,
+  TimeLogSqlite,
 } from "@/db/schema";
-import { eq, and, lt, gt, isNull, ne } from "drizzle-orm";
+import { eq, and, lt, gt, isNull, ne, inArray } from "drizzle-orm";
 import { AuditService } from "./AuditService";
 import { NotificationService } from "./NotificationService";
 import { TaskService } from "./TaskService";
@@ -597,6 +603,35 @@ export class LogService {
       const [res] = await db.select().from(timers).where(eq(timers.user_id, userId));
       return res || null;
     }
+  }
+
+  /**
+   * Discard active running timer for a user
+   */
+  async discardTimer(userId: string, ipAddress?: string, userAgent?: string): Promise<boolean> {
+    const active = await this.getRunningTimer(userId);
+    if (!active) {
+      throw new Error("Validation Error: No active running timer found for this user");
+    }
+
+    if (isSQLite) {
+      await db.delete(timersSqlite).where(eq(timersSqlite.user_id, userId));
+    } else {
+      await db.delete(timers).where(eq(timers.user_id, userId));
+    }
+
+    await this.auditService.createAuditLog(
+      userId,
+      "timer_discard",
+      "timers",
+      userId,
+      "Discarded active running timer",
+      undefined,
+      ipAddress,
+      userAgent
+    );
+
+    return true;
   }
 
   /**
