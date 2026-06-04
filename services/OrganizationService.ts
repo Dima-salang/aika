@@ -1,24 +1,18 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  organization,
-  organizationSqlite,
-  member,
-  memberSqlite,
   Organization,
   OrganizationSqlite,
   NewOrganization,
   NewOrganizationSqlite,
   Member,
   MemberSqlite,
-  NewMember,
-  NewMemberSqlite,
-  newOrganizationZodSchema,
 } from "@/db/schema";
 import { eq, and, like } from "drizzle-orm";
+import { tables } from "./tables";
 
 export class OrganizationService {
   async getOrganization(id: string, tx: any = db): Promise<Organization | OrganizationSqlite | null> {
-    const table = isSQLite ? organizationSqlite : organization;
+    const table = tables.organization;
     const [res] = await tx
       .select()
       .from(table)
@@ -30,7 +24,7 @@ export class OrganizationService {
     data: Omit<NewOrganization, "createdAt"> | Omit<NewOrganizationSqlite, "createdAt">,
     tx: any = db
   ): Promise<Organization | OrganizationSqlite | null> {
-    const table = isSQLite ? organizationSqlite : organization;
+    const table = tables.organization;
     const [res] = await tx
       .insert(table)
       .values({
@@ -46,7 +40,7 @@ export class OrganizationService {
     data: Partial<NewOrganization | NewOrganizationSqlite>,
     tx: any = db
   ): Promise<Organization | OrganizationSqlite | null> {
-    const table = isSQLite ? organizationSqlite : organization;
+    const table = tables.organization;
     const [res] = await tx
       .update(table)
       .set(data)
@@ -56,7 +50,7 @@ export class OrganizationService {
   }
 
   async deleteOrganization(id: string, tx: any = db): Promise<Organization | OrganizationSqlite | null> {
-    const table = isSQLite ? organizationSqlite : organization;
+    const table = tables.organization;
     const [res] = await tx
       .delete(table)
       .where(eq(table.id, id))
@@ -70,7 +64,7 @@ export class OrganizationService {
     offset = 0,
     tx: any = db
   ): Promise<Array<Organization | OrganizationSqlite>> {
-    const table = isSQLite ? organizationSqlite : organization;
+    const table = tables.organization;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
@@ -91,7 +85,7 @@ export class OrganizationService {
   }
 
   async getMembers(organizationId: string, tx: any = db): Promise<Array<Member | MemberSqlite>> {
-    const table = isSQLite ? memberSqlite : member;
+    const table = tables.member;
     return await tx
       .select()
       .from(table)
@@ -104,7 +98,7 @@ export class OrganizationService {
     role: string,
     tx: any = db
   ): Promise<Member | MemberSqlite | null> {
-    const table = isSQLite ? memberSqlite : member;
+    const table = tables.member;
     const id = `${organizationId}-${userId}`;
     const [res] = await tx
       .insert(table)
@@ -120,7 +114,7 @@ export class OrganizationService {
   }
 
   async removeMember(organizationId: string, userId: string, tx: any = db): Promise<Member | MemberSqlite | null> {
-    const table = isSQLite ? memberSqlite : member;
+    const table = tables.member;
     const [res] = await tx
       .delete(table)
       .where(and(eq(table.organizationId, organizationId), eq(table.userId, userId)))
@@ -129,7 +123,7 @@ export class OrganizationService {
   }
 
   async getUserMemberships(userId: string, tx: any = db): Promise<Array<Member | MemberSqlite>> {
-    const table = isSQLite ? memberSqlite : member;
+    const table = tables.member;
     return await tx
       .select()
       .from(table)

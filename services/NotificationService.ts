@@ -1,13 +1,13 @@
-import { db, isSQLite } from "@/db";
-import { notifications, notificationsSqlite } from "@/db/schema";
+import { db } from "@/db";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { tables } from "./tables";
 
 export class NotificationService {
   async createNotification(
     userId: string,
     title: string,
     message: string,
-    type: string, // 'team_invitation' | 'task_update' | 'time_log' | 'team_switch'
+    type: string,
     relatedId?: string,
     tx: any = db
   ): Promise<any> {
@@ -22,13 +22,9 @@ export class NotificationService {
       created_at: new Date(),
     };
 
-    if (isSQLite) {
-      const [newNotif] = await tx.insert(notificationsSqlite).values(notificationData).returning();
-      return newNotif;
-    } else {
-      const [newNotif] = await tx.insert(notifications).values(notificationData).returning();
-      return newNotif;
-    }
+    const table = tables.notifications;
+    const [newNotif] = await tx.insert(table).values(notificationData).returning();
+    return newNotif;
   }
 
   async listNotifications(
@@ -37,7 +33,7 @@ export class NotificationService {
     offset = 0,
     tx: any = db
   ): Promise<any[]> {
-    const table = isSQLite ? notificationsSqlite : notifications;
+    const table = tables.notifications;
     let query = tx.select().from(table).$dynamic();
     const conditions: any[] = [];
 
@@ -52,7 +48,7 @@ export class NotificationService {
         conditions.push(eq(table.is_read, filter.isRead));
       }
       if (filter.deleted) {
-        conditions.push(isNotNull(table.deleted_at)); // soft-deleted notification filtering
+        conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));
       }
@@ -67,7 +63,7 @@ export class NotificationService {
   }
 
   async getNotificationById(id: string, tx: any = db): Promise<any> {
-    const table = isSQLite ? notificationsSqlite : notifications;
+    const table = tables.notifications;
     const [res] = await tx
       .select()
       .from(table)
@@ -80,7 +76,7 @@ export class NotificationService {
     data: any,
     tx: any = db
   ): Promise<any> {
-    const table = isSQLite ? notificationsSqlite : notifications;
+    const table = tables.notifications;
     const [res] = await tx
       .update(table)
       .set({
@@ -92,7 +88,7 @@ export class NotificationService {
   }
 
   async deleteNotification(id: string, tx: any = db): Promise<any> {
-    const table = isSQLite ? notificationsSqlite : notifications;
+    const table = tables.notifications;
     const [res] = await tx
       .update(table)
       .set({ deleted_at: new Date() })
@@ -101,4 +97,3 @@ export class NotificationService {
     return res || null;
   }
 }
-

@@ -1,21 +1,16 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  projects,
-  projectsSqlite,
   Project,
   ProjectSqlite,
   NewProject,
   NewProjectSqlite,
-  member,
-  memberSqlite,
-  teamMembers,
-  teamMembersSqlite,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { tables } from "./tables";
 
 export class ProjectService {
   async getProject(id: string, tx: any = db): Promise<Project | ProjectSqlite | null> {
-    const table = isSQLite ? projectsSqlite : projects;
+    const table = tables.projects;
     const [res] = await tx
       .select()
       .from(table)
@@ -29,7 +24,7 @@ export class ProjectService {
     tx: any = db
   ): Promise<Project | ProjectSqlite | null> {
     if (userId) {
-      const orgMemberTable = isSQLite ? memberSqlite : member;
+      const orgMemberTable = tables.member;
       const isOrgMember = await tx
         .select()
         .from(orgMemberTable)
@@ -46,7 +41,7 @@ export class ProjectService {
       }
 
       if (project.team_id) {
-        const teamMemberTable = isSQLite ? teamMembersSqlite : teamMembers;
+        const teamMemberTable = tables.teamMembers;
         const isTeamMember = await tx
           .select()
           .from(teamMemberTable)
@@ -64,7 +59,7 @@ export class ProjectService {
       }
     }
 
-    const table = isSQLite ? projectsSqlite : projects;
+    const table = tables.projects;
     const [res] = await tx
       .insert(table)
       .values({
@@ -82,7 +77,7 @@ export class ProjectService {
     data: Partial<NewProject | NewProjectSqlite>,
     tx: any = db
   ): Promise<Project | ProjectSqlite | null> {
-    const table = isSQLite ? projectsSqlite : projects;
+    const table = tables.projects;
     const [res] = await tx
       .update(table)
       .set({
@@ -95,7 +90,7 @@ export class ProjectService {
   }
 
   async deleteProject(id: string, tx: any = db): Promise<Project | ProjectSqlite | null> {
-    const table = isSQLite ? projectsSqlite : projects;
+    const table = tables.projects;
     const [res] = await tx
       .update(table)
       .set({
@@ -112,7 +107,7 @@ export class ProjectService {
     offset = 0,
     tx: any = db
   ): Promise<Array<Project | ProjectSqlite>> {
-    const table = isSQLite ? projectsSqlite : projects;
+    const table = tables.projects;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
