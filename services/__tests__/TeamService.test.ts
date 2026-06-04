@@ -47,6 +47,33 @@ describe("TeamService", () => {
     expect(userIds).toContain("user-2");
   });
 
+  test("getTeamMembersWithDetails should return team members joined with user details", async () => {
+    await db.insert(userSqlite).values({
+      id: "user-1",
+      name: "Alice",
+      email: "alice@example.com",
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    await db.insert(teamMembersSqlite).values({
+      id: "team-1-user-1",
+      team_id: "team-1",
+      user_id: "user-1",
+      role: "leader",
+      created_at: new Date(),
+      updated_at: new Date(),
+    });
+
+    const members = await teamService.getTeamMembersWithDetails("team-1");
+    expect(members.length).toBe(1);
+    expect(members[0].userId).toBe("user-1");
+    expect(members[0].userName).toBe("Alice");
+    expect(members[0].userEmail).toBe("alice@example.com");
+    expect(members[0].role).toBe("leader");
+  });
+
   test("addTeamMember should throw error if user does not exist or is inactive", async () => {
     // Attempt with non-existent user
     expect(
