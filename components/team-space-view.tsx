@@ -216,6 +216,7 @@ export function TeamSpaceView({ userId, organizationId }: TeamSpaceViewProps) {
           <TeamTimelineFeed
             timeline={teamTimeline || []}
             timelineLoading={timelineLoading}
+            members={members || []}
           />
         ) : (
           <div className="space-y-6 animate-in fade-in duration-200">
