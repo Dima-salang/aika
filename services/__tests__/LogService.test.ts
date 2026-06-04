@@ -476,7 +476,7 @@ describe("LogService", () => {
     expect(timeline.length).toBe(2);
     expect(timeline[0].id).toBe(log1.id);
     expect(timeline[0].userName).toBe("Alice");
-    expect(timeline[0].tasks).toContain(testTaskId);
+    expect(timeline[0].tasks.map((t: any) => t.id)).toContain(testTaskId);
     expect(timeline[0].evidence[0].file_name).toBe("a.png");
 
     expect(timeline[1].id).toBe(log2.id);
