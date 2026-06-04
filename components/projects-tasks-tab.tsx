@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { useLayoutStore } from "@/lib/store";
 import { toast } from "sonner";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { 
   FolderDot, 
   Plus, 
@@ -41,6 +42,14 @@ export function ProjectsTasksTab({ userId, organizationId, onSelectTask }: Proje
   const { data: tasks, refetch: refetchTasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
     { userId }
   );
+
+  const [localTasks, setLocalTasks] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (tasks) {
+      setLocalTasks(tasks);
+    }
+  }, [tasks]);
 
   const { data: users } = trpc.admin.getUsers.useQuery();
   const { data: rawLogs } = trpc.getUserLogs.useQuery({ userId, organizationId });
@@ -197,39 +206,44 @@ export function ProjectsTasksTab({ userId, organizationId, onSelectTask }: Proje
     }
   };
 
-  const handleDragStart = (e: React.DragEvent, taskId: string) => {
-    e.dataTransfer.setData("text/plain", taskId);
-    setTimeout(() => setDraggingTaskId(taskId), 0);
-  };
+  const onDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
 
-  const handleDragEnd = () => {
-    setDraggingTaskId(null);
-    setActiveDropCol(null);
-  };
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
 
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-  };
+    const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
+    const task = localTasks?.find((t: any) => t.id === draggableId);
 
-  const handleDrop = async (e: React.DragEvent, status: "backlog" | "todo" | "in_progress" | "done") => {
-    e.preventDefault();
-    const taskId = e.dataTransfer.getData("text/plain");
-    const task = tasks?.find((t: any) => t.id === taskId);
-    setDraggingTaskId(null);
-    setActiveDropCol(null);
-    if (task && task.status !== status) {
-      await updateTask.mutateAsync({
-        id: task.id,
-        title: task.title,
-        description: task.description,
-        status,
-        priority: (task.priority || "medium") as any,
-        user_id: task.user_id,
-        organization_id: task.organization_id,
-        project_id: task.project_id,
-        team_id: task.team_id,
-      });
-      toast.info(`Task status updated to ${status}!`);
+    if (task && task.status !== newStatus) {
+      // Optimistic update
+      setLocalTasks((prev) =>
+        prev.map((t) => (t.id === draggableId ? { ...t, status: newStatus } : t))
+      );
+
+      try {
+        await updateTask.mutateAsync({
+          id: task.id,
+          title: task.title,
+          description: task.description,
+          status: newStatus,
+          priority: (task.priority || "medium") as any,
+          user_id: task.user_id,
+          organization_id: task.organization_id,
+          project_id: task.project_id,
+          team_id: task.team_id,
+        });
+        toast.info(`Task status updated to ${newStatus}!`);
+      } catch (err: any) {
+        // Rollback
+        setLocalTasks(tasks || []);
+        toast.error(err.message || "Failed to update task status.");
+      }
     }
   };
 
@@ -239,7 +253,7 @@ export function ProjectsTasksTab({ userId, organizationId, onSelectTask }: Proje
   const currentProject = projects?.find((p: any) => p.id === currentProjectId);
 
   // Filter tasks for active project
-  const projectTasks = tasks?.filter((t: any) => {
+  const projectTasks = localTasks?.filter((t: any) => {
     if (t.project_id !== currentProjectId) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
     return true;
@@ -480,198 +494,207 @@ export function ProjectsTasksTab({ userId, organizationId, onSelectTask }: Proje
                 /* KANBAN BOARD VIEW */
                 <div className="flex-1 flex flex-col overflow-hidden p-unit-4 gap-unit-4 animate-in fade-in duration-300">
                   {/* Kanban Columns */}
-                  <div className="flex-1 flex gap-unit-4 overflow-x-auto pb-unit-2 custom-scrollbar min-h-0">
-                    {[
-                      { id: "todo", title: "To Do", tasks: todoTasks },
-                      { id: "in_progress", title: "In Progress", tasks: inProgressTasks },
-                      { id: "done", title: "Completed", tasks: doneTasks }
-                    ].map((col) => (
-                      <div 
-                        key={col.id}
-                        className={`flex-shrink-0 w-80 flex flex-col h-full transition-all duration-300 ${
-                          activeDropCol === col.id ? "scale-[1.01]" : ""
-                        }`}
-                        onDragOver={handleDragOver}
-                        onDragEnter={() => setActiveDropCol(col.id)}
-                        onDragLeave={(e) => {
-                          if (activeDropCol === col.id) setActiveDropCol(null);
-                        }}
-                        onDrop={(e) => handleDrop(e, col.id as any)}
-                      >
-                        <div className="flex items-center justify-between mb-unit-3 px-unit-1">
-                          <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{col.title}</h3>
-                          <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
-                            {col.tasks.length}
-                          </span>
-                        </div>
-
-                        {/* Column Container Zone with absolute pointer isolation during drag state mapping */}
-                        <div className={`flex-1 space-y-unit-2 overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] min-h-[150px] ${
-                          activeDropCol === col.id 
-                            ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)] scale-[1.002]" 
-                            : "bg-surface-container-lowest/30 border-outline-variant/30"
-                        } ${draggingTaskId ? "[&>*]:pointer-events-none" : ""}`}>
-                          {col.tasks.map((task: any) => (
-                            <div 
-                              key={task.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, task.id)}
-                              onDragEnd={handleDragEnd}
-                              onClick={() => onSelectTask?.(task)}
-                              className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
-                                draggingTaskId === task.id 
-                                  ? "opacity-30 scale-95 border-primary border-dashed bg-surface-container-high shadow-inner" 
-                                  : "bg-surface-container-low border-outline-variant"
-                              }`}
-                              tabIndex={0}
-                            >
-                              <div className="flex justify-between items-start mb-unit-1">
-                                <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''}`}>
-                                  {task.title}
-                                </span>
-                                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleEditTask(task);
-                                    }}
-                                    className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
-                                  >
-                                    <Edit3 className="h-3 w-3" />
-                                  </button>
-                                  <button 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      requestConfirmation(
-                                        "Delete task permanently?",
-                                        `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
-                                        () => deleteTask.mutateAsync({ id: task.id })
-                                      );
-                                    }} 
-                                    className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
-                                  >
-                                    <Trash2 className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              </div>
-                              {task.description && (
-                                <p className="text-[11px] text-on-surface-variant mb-unit-2 line-clamp-2">
-                                  {task.description}
-                                </p>
-                              )}
-                              <div className="flex items-center justify-between pt-1.5 border-t border-outline-variant/10">
-                                <div className="flex items-center gap-1.5">
-                                  <div className="w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center text-[8px] font-bold text-on-secondary-container border border-outline-variant">
-                                    {users?.find((u: any) => u.id === task.user_id)?.name?.slice(0, 2).toUpperCase() || "ME"}
-                                  </div>
-                                  <span className={`inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                    task.priority === "high" ? "bg-error-container/20 text-error" : "bg-surface-container-high text-on-surface-variant"
-                                  }`}>
-                                    {task.priority || "MEDIUM"}
-                                  </span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          {col.tasks.length === 0 && (
-                            <div className="h-full flex items-center justify-center text-outline text-[10px] text-center p-6">
-                              Drag tasks here
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  {/* Independent Scrollable Backlog Panel */}
-                  <div 
-                    className={`border-t pt-unit-3 flex flex-col shrink-0 h-44 rounded-xl p-3 border transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
-                      activeDropCol === "backlog" 
-                        ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)] scale-[1.002]" 
-                        : "bg-surface-container-lowest/20 border-outline-variant/30"
-                    }`}
-                    onDragOver={handleDragOver}
-                    onDragEnter={() => setActiveDropCol("backlog")}
-                    onDragLeave={() => {
-                      if (activeDropCol === "backlog") setActiveDropCol(null);
-                    }}
-                    onDrop={(e) => handleDrop(e, "backlog")}
-                  >
-                    <div className="flex items-center justify-between mb-unit-2 px-unit-1">
-                      <div className="flex items-center gap-1.5">
-                        <h3 className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant">Project Backlog</h3>
-                        <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
-                          {backlogTasks.length}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-outline font-semibold">Drag tasks back and forth here</span>
-                    </div>
-
-                    {/* Isolated layout space matching the columns configuration */}
-                    <div className={`flex-1 overflow-x-auto flex gap-unit-3 pb-unit-1 custom-scrollbar items-center ${draggingTaskId ? "[&>*]:pointer-events-none" : ""}`}>
-                      {backlogTasks.map((task: any) => (
-                        <div 
-                          key={task.id}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, task.id)}
-                          onDragEnd={handleDragEnd}
-                          onClick={() => onSelectTask?.(task)}
-                          className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md hover:-translate-y-[2px] transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
-                            draggingTaskId === task.id 
-                              ? "opacity-30 scale-95 border-primary border-dashed bg-surface-container-high shadow-inner" 
-                              : "bg-surface-container-low border-outline-variant"
-                          }`}
-                          tabIndex={0}
-                        >
-                          <div className="flex justify-between items-start mb-0.5">
-                            <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px]">
-                              {task.title}
+                  <DragDropContext onDragEnd={onDragEnd}>
+                    <div className="flex-1 flex gap-unit-4 overflow-x-auto pb-unit-2 custom-scrollbar min-h-0">
+                      {[
+                        { id: "todo", title: "To Do", tasks: todoTasks },
+                        { id: "in_progress", title: "In Progress", tasks: inProgressTasks },
+                        { id: "done", title: "Completed", tasks: doneTasks }
+                      ].map((col) => (
+                        <div key={col.id} className="flex-shrink-0 w-80 flex flex-col h-full">
+                          <div className="flex items-center justify-between mb-unit-3 px-unit-1">
+                            <h3 className="text-xs font-bold uppercase tracking-wider text-on-surface-variant">{col.title}</h3>
+                            <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
+                              {col.tasks.length}
                             </span>
-                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditTask(task);
-                                }}
-                                className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
-                              >
-                                <Edit3 className="h-3 w-3" />
-                              </button>
-                              <button 
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  requestConfirmation(
-                                    "Delete task permanently?",
-                                    `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
-                                    () => deleteTask.mutateAsync({ id: task.id })
-                                  );
-                                }} 
-                                className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
-                              >
-                                <Trash2 className="h-3 w-3" />
-                              </button>
-                            </div>
                           </div>
-                          {task.description && (
-                            <p className="text-[10px] text-on-surface-variant line-clamp-1 mb-1">
-                              {task.description}
-                            </p>
-                          )}
-                          <div className="flex justify-between items-center text-[9px] text-outline">
-                            <span>Priority: <span className="font-bold uppercase text-on-surface-variant">{task.priority || "MEDIUM"}</span></span>
-                            <div className="w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center text-[7px] font-bold text-on-secondary-container border border-outline-variant">
-                              {users?.find((u: any) => u.id === task.user_id)?.name?.slice(0, 2).toUpperCase() || "ME"}
-                            </div>
-                          </div>
+
+                          <Droppable droppableId={col.id} ignoreContainerClipping={true}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className={`flex-1 space-y-unit-2 overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-[background-color,border-color,box-shadow] duration-200 min-h-[150px] ${
+                                  snapshot.isDraggingOver
+                                    ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)]"
+                                    : "bg-surface-container-lowest/30 border-outline-variant/30"
+                                }`}
+                              >
+                                {col.tasks.map((task: any, index: number) => (
+                                  <Draggable key={task.id} draggableId={task.id} index={index}>
+                                    {(providedDraggable, snapshotDraggable) => (
+                                      <div
+                                        ref={providedDraggable.innerRef}
+                                        {...providedDraggable.draggableProps}
+                                        {...providedDraggable.dragHandleProps}
+                                        onClick={() => onSelectTask?.(task)}
+                                        className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
+                                          snapshotDraggable.isDragging
+                                            ? "border-primary bg-surface-container-high shadow-lg"
+                                            : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                        }`}
+                                        style={{
+                                          ...providedDraggable.draggableProps.style,
+                                        }}
+                                        tabIndex={0}
+                                      >
+                                        <div className="flex justify-between items-start mb-unit-1">
+                                          <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''}`}>
+                                            {task.title}
+                                          </span>
+                                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+                                            <button
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleEditTask(task);
+                                              }}
+                                              className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
+                                            >
+                                              <Edit3 className="h-3 w-3" />
+                                            </button>
+                                            <button 
+                                              onClick={(e) => {
+                                                e.stopPropagation();
+                                                requestConfirmation(
+                                                  "Delete task permanently?",
+                                                  `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
+                                                  () => deleteTask.mutateAsync({ id: task.id })
+                                                );
+                                              }} 
+                                              className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
+                                            >
+                                              <Trash2 className="h-3 w-3" />
+                                            </button>
+                                          </div>
+                                        </div>
+                                        {task.description && (
+                                          <p className="text-[11px] text-on-surface-variant mb-unit-2 line-clamp-2">
+                                            {task.description}
+                                          </p>
+                                        )}
+                                        <div className="flex items-center justify-between pt-1.5 border-t border-outline-variant/10">
+                                          <div className="flex items-center gap-1.5">
+                                            <div className="w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center text-[8px] font-bold text-on-secondary-container border border-outline-variant">
+                                              {users?.find((u: any) => u.id === task.user_id)?.name?.slice(0, 2).toUpperCase() || "ME"}
+                                            </div>
+                                            <span className={`inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold uppercase ${
+                                              task.priority === "high" ? "bg-error-container/20 text-error" : "bg-surface-container-high text-on-surface-variant"
+                                            }`}>
+                                              {task.priority || "MEDIUM"}
+                                            </span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </Draggable>
+                                ))}
+                                {provided.placeholder}
+                                {col.tasks.length === 0 && (
+                                  <div className="h-full flex items-center justify-center text-outline text-[10px] text-center p-6 select-none">
+                                    Drop tasks here
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </Droppable>
                         </div>
                       ))}
-                      {backlogTasks.length === 0 && (
-                        <div className="w-full h-full flex items-center justify-center text-outline text-[11px] border border-dashed border-outline-variant/30 rounded-lg p-4">
-                          Backlog list is empty. Drag tasks here to unprioritize them.
-                        </div>
-                      )}
                     </div>
-                  </div>
+
+                    {/* Independent Scrollable Backlog Panel */}
+                    <div className="border-t pt-unit-3 flex flex-col shrink-0 h-44 rounded-xl p-3 border border-outline-variant/30 bg-surface-container-lowest/20">
+                      <div className="flex items-center justify-between mb-unit-2 px-unit-1">
+                        <div className="flex items-center gap-1.5">
+                          <h3 className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant">Project Backlog</h3>
+                          <span className="px-2 py-0.5 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold">
+                            {backlogTasks.length}
+                          </span>
+                        </div>
+                        <span className="text-[10px] text-outline font-semibold select-none">Drag tasks back and forth here</span>
+                      </div>
+
+                      <Droppable droppableId="backlog" direction="horizontal" ignoreContainerClipping={true}>
+                        {(provided, snapshot) => (
+                          <div
+                            ref={provided.innerRef}
+                            {...provided.droppableProps}
+                            className={`flex-1 overflow-x-auto flex gap-unit-3 pb-unit-1 custom-scrollbar items-center p-1 rounded-xl transition-[background-color,border-color] duration-200 ${
+                              snapshot.isDraggingOver ? "bg-primary/5 border border-primary/20" : ""
+                            }`}
+                          >
+                            {backlogTasks.map((task: any, index: number) => (
+                              <Draggable key={task.id} draggableId={task.id} index={index}>
+                                {(providedDraggable, snapshotDraggable) => (
+                                  <div
+                                    ref={providedDraggable.innerRef}
+                                    {...providedDraggable.draggableProps}
+                                    {...providedDraggable.dragHandleProps}
+                                    onClick={() => onSelectTask?.(task)}
+                                    className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
+                                      snapshotDraggable.isDragging
+                                        ? "border-primary bg-surface-container-high shadow-lg"
+                                        : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                    }`}
+                                    style={{
+                                      ...providedDraggable.draggableProps.style,
+                                    }}
+                                    tabIndex={0}
+                                  >
+                                    <div className="flex justify-between items-start mb-0.5">
+                                      <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px]">
+                                        {task.title}
+                                      </span>
+                                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            handleEditTask(task);
+                                          }}
+                                          className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
+                                        >
+                                          <Edit3 className="h-3 w-3" />
+                                        </button>
+                                        <button 
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            requestConfirmation(
+                                              "Delete task permanently?",
+                                              `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
+                                              () => deleteTask.mutateAsync({ id: task.id })
+                                            );
+                                          }} 
+                                          className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      </div>
+                                    </div>
+                                    {task.description && (
+                                      <p className="text-[10px] text-on-surface-variant line-clamp-1 mb-1">
+                                        {task.description}
+                                      </p>
+                                    )}
+                                    <div className="flex justify-between items-center text-[9px] text-outline">
+                                      <span>Priority: <span className="font-bold uppercase text-on-surface-variant">{task.priority || "MEDIUM"}</span></span>
+                                      <div className="w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center text-[7px] font-bold text-on-secondary-container border border-outline-variant">
+                                        {users?.find((u: any) => u.id === task.user_id)?.name?.slice(0, 2).toUpperCase() || "ME"}
+                                      </div>
+                                    </div>
+                                  </div>
+                                )}
+                              </Draggable>
+                            ))}
+                            {provided.placeholder}
+                            {backlogTasks.length === 0 && (
+                              <div className="w-full h-full flex items-center justify-center text-outline text-[11px] border border-dashed border-outline-variant/30 rounded-lg p-4 select-none">
+                                Backlog list is empty. Drag tasks here to unprioritize them.
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </Droppable>
+                    </div>
+                  </DragDropContext>
                 </div>
               ) : (
                 /* TABULAR LIST VIEW */
