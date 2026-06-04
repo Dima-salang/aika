@@ -16,6 +16,7 @@ import { ProjectsTasksTab } from "@/components/projects-tasks-tab";
 import { DashboardView } from "@/components/dashboard-view";
 import { DetailViewDialog } from "@/components/detail-view-dialog";
 import { DashboardManageControls } from "@/components/admin/dashboard-manage-controls";
+import { TeamSpaceView } from "@/components/team-space-view";
 
 import {
   Loader2,
@@ -39,7 +40,7 @@ export default function Home() {
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects" | "team">("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Detailed view / dynamically inspect task or log
@@ -109,6 +110,12 @@ export default function Home() {
   const deleteLogMutation = trpc.deleteLog.useMutation({
     onSuccess: () => {
       refetchLogs();
+    },
+  });
+
+  const discardTimerMutation = trpc.discardTimer.useMutation({
+    onSuccess: () => {
+      refetchTimer();
     },
   });
 
@@ -288,6 +295,14 @@ export default function Home() {
     });
   };
 
+  const handleDiscardTimer = async () => {
+    if (!userId) return;
+    if (confirm("Are you sure you want to discard this clock-in session? All untracked time will be lost.")) {
+      await discardTimerMutation.mutateAsync({ userId });
+      setIsDialogOpen(false);
+    }
+  };
+
   const handleStopTimerWithEvidence = async (evidenceData: any) => {
     if (!userId) return;
     await stopTimerMutation.mutateAsync({
@@ -401,7 +416,7 @@ export default function Home() {
           <div className="flex-1 flex overflow-hidden h-screen w-full">
             {/* Main Content Canvas */}
             <main className="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden h-screen">
-              {activeTab !== "projects" && (
+              {activeTab !== "projects" && activeTab !== "team" && (
                 <Header
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
@@ -424,6 +439,11 @@ export default function Home() {
                     setDetailLog(null);
                     setIsDetailOpen(true);
                   }}
+                />
+              ) : activeTab === "team" ? (
+                <TeamSpaceView
+                  userId={userId}
+                  organizationId={organizationId}
                 />
               ) : activeTab === "dashboard" ? (
                 <DashboardView
@@ -539,8 +559,6 @@ export default function Home() {
                           Manage Workspace <span className="material-symbols-outlined text-[14px]">open_in_new</span>
                         </button>
                       </div>
-
-                      <DashboardManageControls userId={userId} />
                     </div>
                   </div>
                 )}
@@ -560,6 +578,7 @@ export default function Home() {
               timerSeconds={timerSeconds}
               formatDuration={formatDuration}
               handleStartTimer={handleStartTimer}
+              onDiscardTimer={handleDiscardTimer}
             />
           </div>
         </>
@@ -606,6 +625,8 @@ export default function Home() {
           end_time: new Date(),
           project_id: runningTimer.project_id,
         } : null)}
+        isTimerStop={!!runningTimer && !editingLog}
+        onDiscard={handleDiscardTimer}
       />
 
       {/* Dynamic Detail inspector dialog for tasks & logs */}
