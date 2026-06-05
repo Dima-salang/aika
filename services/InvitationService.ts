@@ -191,6 +191,11 @@ export class InvitationService {
       // 2. Instantly add user to team if specified
       if (token.teamId) {
         await this.teamService.addTeamMember(token.teamId, userId, "member", tx);
+        const userTable = tables.user;
+        await tx
+          .update(userTable)
+          .set({ last_active_team_id: token.teamId, updatedAt: new Date() })
+          .where(eq(userTable.id, userId));
       }
 
       // 3. Create approved join request record
@@ -330,6 +335,11 @@ export class InvitationService {
       // 2. Add user to team if specified
       if (req.teamId) {
         await this.teamService.addTeamMember(req.teamId, req.userId, "member", tx);
+        const userTable = tables.user;
+        await tx
+          .update(userTable)
+          .set({ last_active_team_id: req.teamId, updatedAt: new Date() })
+          .where(eq(userTable.id, req.userId));
       }
 
       await this.notificationService.createNotification(
