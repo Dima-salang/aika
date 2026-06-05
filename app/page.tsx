@@ -3,7 +3,7 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useSession, signOut, authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { TimeLogDialog } from "@/components/time-log-dialog";
 import { TimeLogsList } from "@/components/time-logs-list";
@@ -59,10 +59,12 @@ export default function Home() {
 
   // tRPC Queries & Mutations
   const userId = session?.user?.id || "";
-  const organizationId = "org-default"; // Fallback organization ID
+  const { data: activeOrg } = authClient.useActiveOrganization();
+  const activeOrgId = activeOrg?.id || "org-default";
+  const activeTeamId = (session?.session as any)?.activeTeamId || (session?.user as any)?.last_active_team_id || null;
 
   const { data: rawLogs, refetch: refetchLogs } = trpc.getUserLogs.useQuery(
-    { userId, organizationId },
+    { userId, organizationId: activeOrgId },
     { enabled: !!userId }
   );
   
@@ -72,7 +74,7 @@ export default function Home() {
   );
   
   const { data: projects } = trpc.getProjects.useQuery(
-    { organizationId },
+    { organizationId: activeOrgId },
     { enabled: !!userId }
   );
 
@@ -307,8 +309,8 @@ export default function Home() {
     if (!userId) return;
     await stopTimerMutation.mutateAsync({
       userId,
-      organizationId,
-      teamId: null,
+      organizationId: activeOrgId,
+      teamId: activeTeamId,
       taskIds: evidenceData.taskIds,
       evidence: evidenceData.evidence,
       projectId: evidenceData.projectId,
@@ -323,7 +325,8 @@ export default function Home() {
         logId: editingLog.id,
         userId,
         input: {
-          organizationId,
+          organizationId: activeOrgId,
+          teamId: activeTeamId,
           projectId: data.projectId,
           startTime: data.startTime,
           endTime: data.endTime,
@@ -336,7 +339,8 @@ export default function Home() {
     } else {
       await createLogMutation.mutateAsync({
         userId,
-        organizationId,
+        organizationId: activeOrgId,
+        teamId: activeTeamId,
         projectId: data.projectId,
         startTime: data.startTime,
         endTime: data.endTime,
@@ -433,7 +437,7 @@ export default function Home() {
               {activeTab === "projects" ? (
                 <ProjectsTasksTab
                   userId={userId}
-                  organizationId={organizationId}
+                  organizationId={activeOrgId}
                   onSelectTask={(task) => {
                     setDetailTask(task);
                     setDetailLog(null);
@@ -443,7 +447,8 @@ export default function Home() {
               ) : activeTab === "team" ? (
                 <TeamSpaceView
                   userId={userId}
-                  organizationId={organizationId}
+                  organizationId={activeOrgId}
+                  activeTeamId={activeTeamId}
                 />
               ) : activeTab === "dashboard" ? (
                 <DashboardView
