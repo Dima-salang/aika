@@ -51,16 +51,15 @@ export function TimerSidebar({
 
   return (
     <aside
-      className={`h-screen bg-surface-container-low dark:bg-surface-dim border-l border-outline-variant flex flex-col p-unit-6 shrink-0 overflow-y-auto transition-all duration-300 z-30 ${
-        collapsed ? "w-16 p-unit-3" : "w-80"
-      }`}
+      className={`h-screen bg-surface-container-low dark:bg-surface-dim border-l border-outline-variant flex flex-col p-unit-6 shrink-0 overflow-y-auto transition-all duration-300 z-30 ${collapsed ? "w-16 p-unit-3" : "w-80"
+        }`}
       aria-label="Timer Control Panel"
     >
       {/* Header and Toggle Button */}
-      <div className="flex items-center justify-between mb-unit-6 min-h-[32px]">
+      <div className="flex items-center justify-between mb-unit-6 min-h-[32px] shrink-0">
         {!collapsed && (
           <label className="font-label-md text-[10px] uppercase tracking-widest text-primary font-bold animate-in fade-in duration-200">
-            {runningTimer ? "Clocked In" : "Clock In"}
+            {runningTimer ? "Clocked In" : "Time Tracker"}
           </label>
         )}
         <button
@@ -83,7 +82,7 @@ export function TimerSidebar({
               {runningTimer ? `Running: ${formatDuration(timerSeconds)}` : "Clock In"}
             </div>
           </div>
-          
+
           <button
             onClick={() => {
               if (runningTimer) {
@@ -93,9 +92,8 @@ export function TimerSidebar({
                 handleStartTimer();
               }
             }}
-            className={`h-10 w-10 rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-95 ${
-              runningTimer ? "bg-error text-on-error" : "bg-primary text-on-primary"
-            }`}
+            className={`h-10 w-10 rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-95 ${runningTimer ? "bg-error text-on-error animate-pulse" : "bg-primary text-on-primary"
+              }`}
             aria-label={runningTimer ? "Clock Out" : "Clock In"}
           >
             <span className="material-symbols-outlined text-[20px]">
@@ -115,106 +113,169 @@ export function TimerSidebar({
               </span>
             </button>
           )}
+
+          {!runningTimer && (
+            <button
+              onClick={() => {
+                setEditingLog(null);
+                setIsDialogOpen(true);
+              }}
+              className="h-10 w-10 rounded-full bg-surface-container-high text-on-surface border border-outline-variant flex items-center justify-center transition-all hover:bg-primary/10 hover:text-primary active:scale-95"
+              aria-label="Log Time Manually"
+              title="Log Time Manually"
+            >
+              <span className="material-symbols-outlined text-[20px]">
+                history
+              </span>
+            </button>
+          )}
         </div>
       ) : (
         /* Expanded Full View */
-        <div className="space-y-unit-6 animate-in fade-in duration-200">
-          <div className="space-y-unit-4">
-            <input
-              className="w-full bg-transparent border-none text-headline-sm font-headline-sm p-0 focus:ring-0 placeholder:text-surface-container-highest text-on-surface focus:outline-none"
-              id="task-input"
-              aria-label="What are you working on?"
-              placeholder="Refactoring authentication middleware..."
-              type="text"
-              value={runningTimer ? (runningTimer.description || "") : timerDesc}
-              onChange={(e) => {
-                if (!runningTimer) setTimerDesc(e.target.value);
-              }}
-            />
-            <div className="flex flex-col gap-unit-2 pt-unit-2">
-              {projects && projects.length > 0 && (
-                <div className="flex items-center gap-1.5 px-2 py-1 bg-surface-container-high rounded border border-outline-variant">
-                  <span className="material-symbols-outlined text-[14px] text-outline" data-icon="folder">
-                    folder
+        <div className="space-y-6 flex-1 flex flex-col justify-between animate-in fade-in duration-200">
+
+          <div className="space-y-6">
+            {/* 1. Timer Display Console (Highly Prominent) */}
+            <div className={`relative bg-surface-container-high dark:bg-[#111112] border rounded-2xl p-6 text-center transition-all duration-300 shadow-md ${runningTimer
+                ? "border-primary/50 shadow-[0_0_20px_rgba(192,193,255,0.06)]"
+                : "border-outline-variant/60"
+              }`}>
+              <span className="text-[10px] font-extrabold text-outline uppercase tracking-wider block mb-1">
+                {runningTimer ? "ELAPSED SESSION" : "ELAPSED"}
+              </span>
+
+              <div
+                className={`font-mono-timer text-4xl sm:text-5xl font-black tracking-tight tabular-nums text-on-surface mb-4 selection:bg-transparent ${runningTimer ? "text-primary dark:text-indigo-400 animate-pulse" : ""
+                  }`}
+                id="timer-display"
+                aria-live="polite"
+              >
+                {runningTimer ? formatDuration(timerSeconds) : "00:00:00"}
+              </div>
+
+              {/* Action Controls */}
+              <div className="w-full flex flex-col gap-2">
+                <button
+                  onClick={() => {
+                    if (runningTimer) {
+                      setEditingLog(null);
+                      setIsDialogOpen(true);
+                    } else {
+                      handleStartTimer();
+                    }
+                  }}
+                  className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer ${runningTimer
+                      ? "bg-error text-on-error hover:opacity-90 active:scale-[0.98]"
+                      : "bg-primary text-on-primary hover:opacity-95 active:scale-[0.98]"
+                    }`}
+                  id="main-timer-btn"
+                >
+                  <span className="material-symbols-outlined text-[16px]">
+                    {runningTimer ? "stop" : "play_arrow"}
                   </span>
-                  <select
-                    value={runningTimer ? (runningTimer.project_id || "") : timerProjId}
-                    onChange={(e) => {
-                      if (!runningTimer) {
-                        setTimerProjId(e.target.value);
-                        setLatestProjectId(e.target.value);
-                      }
-                    }}
-                    aria-label="Select Project"
-                    className="bg-transparent border-none text-label-md text-on-surface-variant font-medium focus:ring-0 focus:outline-none cursor-pointer py-0.5 w-full bg-surface-container-high"
+                  {runningTimer ? "Clock Out & Log" : "Clock In Now"}
+                </button>
+
+                {runningTimer && onDiscardTimer && (
+                  <button
+                    type="button"
+                    onClick={onDiscardTimer}
+                    className="w-full py-1.5 hover:bg-error/10 hover:text-error text-on-surface-variant rounded-lg font-semibold text-[10.5px] transition-all active:scale-[0.98] flex items-center justify-center gap-1"
                   >
-                    <option value="" className="bg-surface">No Project</option>
-                    {projects.map((p: any) => (
-                      <option key={p.id} value={p.id} className="bg-surface">
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+                    <span className="material-symbols-outlined text-[14px]">
+                      delete
+                    </span>
+                    Discard Session
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* 2. Context Section */}
+            <div className="bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-4 space-y-4">
+              <span className="text-[10px] font-bold text-outline uppercase tracking-wider block border-b border-outline-variant/30 pb-1.5">
+                Session Metadata
+              </span>
+
+              {/* Task Description */}
+              <div className="space-y-1.5">
+                <label htmlFor="task-input" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
+                  What are you working on?
+                </label>
+                {runningTimer ? (
+                  <div className="text-xs text-on-surface font-semibold p-2 bg-surface-container rounded border border-outline-variant/40 bg-zinc-100/50 dark:bg-zinc-900/30">
+                    {runningTimer.description || "Work session"}
+                  </div>
+                ) : (
+                  <input
+                    className="w-full bg-surface-container-low border border-outline-variant/80 rounded-lg text-xs p-2.5 focus:ring-1 focus:ring-primary focus:border-primary placeholder:text-outline text-on-surface focus:outline-none font-medium"
+                    id="task-input"
+                    aria-label="What are you working on?"
+                    placeholder="e.g. Refactoring middleware..."
+                    type="text"
+                    value={timerDesc}
+                    onChange={(e) => setTimerDesc(e.target.value)}
+                  />
+                )}
+              </div>
+
+              {/* Project Selection */}
+              <div className="space-y-1.5">
+                <label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
+                  Project Scope
+                </label>
+                {runningTimer ? (
+                  <div className="text-xs text-on-surface font-semibold p-2 bg-surface-container rounded border border-outline-variant/40 bg-zinc-100/50 dark:bg-zinc-900/30 flex items-center gap-1.5">
+                    <span className="material-symbols-outlined text-[14px] text-primary">folder</span>
+                    {projects.find((p: any) => p.id === runningTimer.project_id)?.name || "No Project"}
+                  </div>
+                ) : (
+                  projects && projects.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-container-low border border-outline-variant/80 rounded-lg focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-all">
+                      <span className="material-symbols-outlined text-[14px] text-outline">
+                        folder
+                      </span>
+                      <select
+                        value={timerProjId}
+                        onChange={(e) => {
+                          setTimerProjId(e.target.value);
+                          setLatestProjectId(e.target.value);
+                        }}
+                        aria-label="Select Project"
+                        className="bg-transparent border-none text-xs text-on-surface font-semibold focus:ring-0 focus:outline-none cursor-pointer py-0.5 w-full"
+                      >
+                        <option value="" className="bg-surface">No Project</option>
+                        {projects.map((p: any) => (
+                          <option key={p.id} value={p.id} className="bg-surface">
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* 3. Manual Logging Option */}
+          {!runningTimer && (
+            <div className="border-t border-outline-variant/40 pt-4 mt-auto">
               <button
                 onClick={() => {
                   setEditingLog(null);
                   setIsDialogOpen(true);
                 }}
-                className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-surface-container-high rounded border border-outline-variant hover:border-primary transition-colors group w-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
+                className="flex items-center justify-center gap-1.5 px-3 py-2 bg-surface-container-high hover:bg-primary/5 hover:text-primary hover:border-primary transition-all rounded-xl border border-outline-variant group w-full text-xs font-bold focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary cursor-pointer active:scale-95"
               >
-                <span className="material-symbols-outlined text-[14px] text-outline group-hover:text-primary" data-icon="sell">
-                  sell
+                <span className="material-symbols-outlined text-[15px]" data-icon="history">
+                  history
                 </span>
-                <span className="font-label-md text-label-md text-on-surface-variant">Link Tasks</span>
+                <span>Log Time Manually</span>
               </button>
             </div>
-          </div>
+          )}
 
-          <div className="flex flex-col items-center gap-unit-4 border-t border-outline-variant pt-unit-6">
-            <div 
-              className="font-mono-timer text-headline-lg font-extrabold tracking-tighter tabular-nums text-on-surface" 
-              id="timer-display"
-              aria-live="polite"
-            >
-              {runningTimer ? formatDuration(timerSeconds) : "00:00:00"}
-            </div>
-            <div className="w-full flex flex-col gap-2">
-              <button
-                onClick={() => {
-                  if (runningTimer) {
-                    setEditingLog(null);
-                    setIsDialogOpen(true);
-                  } else {
-                    handleStartTimer();
-                  }
-                }}
-                className={`w-full py-3 ${
-                  runningTimer ? "bg-error text-on-error" : "bg-primary text-on-primary"
-                } rounded-lg font-headline-sm flex items-center justify-center gap-unit-2 hover:brightness-110 active:scale-[0.97] transition-all shadow-[0_0_20px_rgba(192,193,255,0.2)]`}
-                id="main-timer-btn"
-              >
-                <span className="material-symbols-outlined">
-                  {runningTimer ? "stop" : "play_arrow"}
-                </span>
-                {runningTimer ? "Clock Out" : "Clock In"}
-              </button>
-              
-              {runningTimer && onDiscardTimer && (
-                <button
-                  type="button"
-                  onClick={onDiscardTimer}
-                  className="w-full py-2 bg-surface-container-high border border-outline-variant hover:border-error hover:text-error text-on-surface-variant rounded-lg font-label-md text-xs transition-all active:scale-[0.97] flex items-center justify-center gap-1.5"
-                >
-                  <span className="material-symbols-outlined text-[16px]">
-                    delete
-                  </span>
-                  Discard Clock-in
-                </button>
-              )}
-            </div>
-          </div>
         </div>
       )}
     </aside>
