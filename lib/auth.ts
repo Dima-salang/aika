@@ -10,12 +10,24 @@ export const auth = betterAuth({
     provider: isSQLite ? "sqlite" : "pg",
     schema: schema,
   }),
+  session: {
+    additionalFields: {
+      activeTeamId: {
+        type: "string",
+        required: false,
+      },
+    },
+  },
   user: {
     additionalFields: {
       is_admin: {
         type: "boolean",
         required: false,
         defaultValue: false,
+      },
+      last_active_team_id: {
+        type: "string",
+        required: false,
       },
     },
   },

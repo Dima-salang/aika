@@ -233,4 +233,28 @@ export class TeamService {
       .innerJoin(usersTable, eq(membersTable.user_id, usersTable.id))
       .where(eq(membersTable.team_id, teamId));
   }
+
+  async getUserTeamsInOrg(userId: string, organizationId: string, tx: any = db): Promise<any[]> {
+    const teamsTable = tables.teams;
+    const membersTable = tables.teamMembers;
+
+    return await tx
+      .select({
+        id: teamsTable.id,
+        name: teamsTable.name,
+        organization_id: teamsTable.organization_id,
+        created_at: teamsTable.created_at,
+        updated_at: teamsTable.updated_at,
+      })
+      .from(teamsTable)
+      .innerJoin(membersTable, eq(teamsTable.id, membersTable.team_id))
+      .where(
+        and(
+          eq(membersTable.user_id, userId),
+          eq(teamsTable.organization_id, organizationId),
+          isNull(teamsTable.deleted_at),
+          isNull(membersTable.deleted_at)
+        )
+      );
+  }
 }

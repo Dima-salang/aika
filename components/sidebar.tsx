@@ -3,6 +3,8 @@
 import React from "react";
 import { useLayoutStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+import { trpc } from "@/utils/trpc";
 
 interface SidebarProps {
   activeTab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team";
@@ -24,13 +26,59 @@ export function Sidebar({
   onOpenShortcuts,
 }: SidebarProps) {
   const [mounted, setMounted] = React.useState(false);
+  const [dropdownOpen, setDropdownOpen] = React.useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
   const { leftSidebarCollapsed, toggleLeftSidebar } = useLayoutStore();
 
   React.useEffect(() => {
     setMounted(true);
   }, []);
 
+  // Close dropdown on click outside
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   const collapsed = mounted ? leftSidebarCollapsed : false;
+
+  // Better Auth Hooks
+  const { data: activeOrg } = authClient.useActiveOrganization();
+  const { data: orgList } = authClient.useListOrganizations();
+
+  // Active Team state (fallback to user setting)
+  const activeTeamId = session?.session?.activeTeamId || session?.user?.last_active_team_id || null;
+
+  // tRPC User Teams
+  const { data: userTeams } = trpc.getUserTeams.useQuery(
+    { userId: session?.user?.id || "", organizationId: activeOrg?.id || "" },
+    { enabled: !!session?.user?.id && !!activeOrg?.id }
+  );
+
+  const activeTeam = userTeams?.find((t) => t.id === activeTeamId);
+
+  const setActiveTeamMutation = trpc.setActiveTeam.useMutation({
+    onSuccess: () => {
+      window.location.reload();
+    }
+  });
+
+  const handleSelectOrg = async (orgId: string) => {
+    setDropdownOpen(false);
+    await authClient.organization.setActive({ organizationId: orgId });
+    // Reset team to null initially when organization is changed
+    await setActiveTeamMutation.mutateAsync({ userId: session.user.id, teamId: null });
+  };
+
+  const handleSelectTeam = async (teamId: string | null) => {
+    setDropdownOpen(false);
+    await setActiveTeamMutation.mutateAsync({ userId: session.user.id, teamId });
+  };
 
   return (
     <aside
@@ -39,16 +87,140 @@ export function Sidebar({
       }`}
       aria-label="Primary Navigation"
     >
-      {/* Header / Logo */}
-      <div className="flex items-center justify-between mb-unit-6 min-h-[32px]">
-        {!collapsed && (
-          <span className="text-headline-sm font-headline-sm font-bold text-on-surface animate-in fade-in duration-200">
-            Aika
-          </span>
+      {/* Header / Logo / Workspace Selector */}
+      <div className="flex items-center justify-between mb-unit-4 min-h-[40px] relative" ref={dropdownRef}>
+        {collapsed ? (
+          <button
+            onClick={() => setDropdownOpen(!dropdownOpen)}
+            className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-black uppercase text-sm hover:bg-primary/15 transition-all shadow-sm"
+            title={activeOrg?.name || "Aika Workspace"}
+          >
+            {activeOrg?.name?.charAt(0) || "A"}
+          </button>
+        ) : (
+          <div className="flex-1 flex flex-col mr-2">
+            <button
+              onClick={() => setDropdownOpen(!dropdownOpen)}
+              className="flex items-center justify-between gap-2 px-unit-3 py-1.5 rounded-lg border border-outline-variant bg-surface hover:bg-surface-container transition-all text-left shadow-sm active:scale-[0.99]"
+            >
+              <div className="flex flex-col min-w-0">
+                <span className="text-body-sm font-extrabold text-on-surface truncate">
+                  {activeOrg?.name || "Aika Workspace"}
+                </span>
+                <span className="text-[10px] text-outline font-medium truncate flex items-center gap-0.5">
+                  <span className="material-symbols-outlined text-[12px] leading-none">
+                    {activeTeam ? "groups" : "person"}
+                  </span>
+                  {activeTeam?.name || "Personal View"}
+                </span>
+              </div>
+              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
+                unfold_more
+              </span>
+            </button>
+          </div>
         )}
+
+        {/* Dropdown Menu */}
+        {dropdownOpen && (
+          <div className="absolute top-12 left-0 w-64 bg-surface dark:bg-surface-dim border border-outline-variant rounded-xl shadow-xl p-2 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
+            {/* Organizations Section */}
+            <div className="px-3 py-1.5 text-[10px] font-bold text-outline uppercase tracking-wider">
+              Organizations
+            </div>
+            <div className="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+              {orgList && orgList.length > 0 ? (
+                orgList.map((org) => {
+                  const isSelected = activeOrg?.id === org.id;
+                  return (
+                    <button
+                      key={org.id}
+                      onClick={() => handleSelectOrg(org.id)}
+                      className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+                        isSelected
+                          ? "bg-secondary-container text-on-secondary-container"
+                          : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                      }`}
+                    >
+                      <span className="truncate flex items-center gap-2">
+                        <span className="material-symbols-outlined text-[16px]">corporate_fare</span>
+                        {org.name}
+                      </span>
+                      {isSelected && (
+                        <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                      )}
+                    </button>
+                  );
+                })
+              ) : (
+                <div className="px-3 py-2 text-xs text-outline italic">No organizations joined</div>
+              )}
+            </div>
+
+            {/* Teams Section */}
+            {activeOrg && (
+              <>
+                <div className="border-t border-outline-variant/50 my-1.5" />
+                <div className="px-3 py-1.5 text-[10px] font-bold text-outline uppercase tracking-wider flex justify-between items-center">
+                  <span>Teams</span>
+                  {activeTeam && (
+                    <span className="text-[9px] lowercase bg-primary/10 text-primary px-1.5 py-0.5 rounded font-mono">
+                      in org
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-0.5 max-h-40 overflow-y-auto custom-scrollbar">
+                  {/* Personal view Option */}
+                  <button
+                    onClick={() => handleSelectTeam(null)}
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+                      !activeTeam
+                        ? "bg-secondary-container text-on-secondary-container"
+                        : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                    }`}
+                  >
+                    <span className="truncate flex items-center gap-2">
+                      <span className="material-symbols-outlined text-[16px]">person</span>
+                      Personal View
+                    </span>
+                    {!activeTeam && (
+                      <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                    )}
+                  </button>
+
+                  {userTeams && userTeams.length > 0 && (
+                    userTeams.map((team) => {
+                      const isSelected = activeTeamId === team.id;
+                      return (
+                        <button
+                          key={team.id}
+                          onClick={() => handleSelectTeam(team.id)}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-xs font-semibold text-left transition-all ${
+                            isSelected
+                              ? "bg-secondary-container text-on-secondary-container"
+                              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+                          }`}
+                        >
+                          <span className="truncate flex items-center gap-2">
+                            <span className="material-symbols-outlined text-[16px]">groups</span>
+                            {team.name}
+                          </span>
+                          {isSelected && (
+                            <span className="material-symbols-outlined text-primary text-[16px]">check</span>
+                          )}
+                        </button>
+                      );
+                    })
+                  )}
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         <button
           onClick={toggleLeftSidebar}
-          className="p-1.5 hover:bg-surface-container-high rounded-full text-on-surface-variant hover:text-on-surface transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary active:scale-95 ml-auto"
+          className="p-1.5 hover:bg-surface-container-high rounded-full text-on-surface-variant hover:text-on-surface transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary active:scale-95"
           aria-label={collapsed ? "Expand Sidebar" : "Collapse Sidebar"}
         >
           {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}

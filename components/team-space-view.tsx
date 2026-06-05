@@ -17,9 +17,10 @@ import { TeamTimelineFeed } from "./team/team-timeline-feed";
 interface TeamSpaceViewProps {
   userId: string;
   organizationId: string;
+  activeTeamId: string | null;
 }
 
-export function TeamSpaceView({ userId, organizationId }: TeamSpaceViewProps) {
+export function TeamSpaceView({ userId, organizationId, activeTeamId: propActiveTeamId }: TeamSpaceViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<"feed" | "manage">("feed");
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -32,7 +33,7 @@ export function TeamSpaceView({ userId, organizationId }: TeamSpaceViewProps) {
   );
 
   const managedTeams = profile?.managedTeams || [];
-  const activeTeamId = selectedTeamId || managedTeams[0]?.id || "";
+  const activeTeamId = selectedTeamId || propActiveTeamId || managedTeams[0]?.id || "";
   const activeTeam = managedTeams.find((t) => t.id === activeTeamId);
 
   // Queries
@@ -136,6 +137,19 @@ export function TeamSpaceView({ userId, organizationId }: TeamSpaceViewProps) {
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
           <p className="text-outline text-xs font-semibold">Syncing team parameters...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (propActiveTeamId === null) {
+    return (
+      <div className="flex-1 flex flex-col justify-center items-center text-center p-8 space-y-4 bg-surface-container-lowest h-[calc(100vh-3rem)]">
+        <Users className="h-16 w-16 text-outline/50 animate-pulse" />
+        <h3 className="text-headline-md font-bold text-on-surface">Personal View Active</h3>
+        <p className="text-outline text-body-sm max-w-md mx-auto leading-relaxed">
+          You are currently using Aika in Personal View. 
+          To access team directories and activity feeds, please select a team from the workspace switcher at the top of the sidebar.
+        </p>
       </div>
     );
   }

@@ -72,4 +72,28 @@ export const teamsRouter = router({
       await teamService.removeTeamMember(input.teamId, input.memberIdToRemove);
       return { success: true };
     }),
+
+  getUserTeams: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        organizationId: z.string(),
+      })
+    )
+    .query(async ({ input }) => {
+      return await teamService.getUserTeamsInOrg(input.userId, input.organizationId);
+    }),
+
+  setActiveTeam: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        teamId: z.string().nullable(),
+      })
+    )
+    .mutation(async ({ input, ctx }) => {
+      const sessionId = ctx.session?.session?.id;
+      return await userService.setActiveTeam(input.userId, sessionId, input.teamId);
+    }),
 });
+
