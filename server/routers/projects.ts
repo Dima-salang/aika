@@ -14,8 +14,12 @@ export const projectsRouter = router({
 
   getProjects: publicProcedure
     .input(z.object({ organizationId: z.string() }))
-    .query(async ({ input }) => {
-      return await projectService.listProjects({ organizationId: input.organizationId }, 1000);
+    .query(async ({ input, ctx }) => {
+      const userId = ctx.session?.user?.id;
+      return await projectService.listProjects({
+        organizationId: input.organizationId,
+        userId,
+      }, 1000);
     }),
 
   createProject: publicProcedure
