@@ -243,12 +243,16 @@ export function AdminShell({
         {/* Top Header */}
         <header className="h-16 sticky top-0 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-unit-6 z-10 shrink-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-body-md font-extrabold uppercase tracking-widest text-outline">Aika Administrative Platform Panel</h1>
+            <h1 className="text-body-md font-extrabold uppercase tracking-widest text-outline">
+              Aika Administrative Platform Panel {!session?.user?.is_admin && initialOrgs && initialOrgs.length > 0 && `- ${initialOrgs.map((o: any) => o.name).join(", ")}`}
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex flex-col text-right">
               <span className="text-xs font-extrabold text-on-surface">{session?.user?.name}</span>
-              <span className="text-[9px] font-bold text-primary font-mono-timer uppercase">Admin Console</span>
+              <span className="text-[9px] font-bold text-primary font-mono-timer uppercase">
+                {session?.user?.is_admin ? "Global Admin Console" : `Org Admin Console: ${initialOrgs?.map((o: any) => o.name).join(", ")}`}
+              </span>
             </div>
             {session?.user?.image ? (
               <img src={session.user.image} alt={session.user.name} className="h-8 w-8 rounded-full border border-outline-variant" />

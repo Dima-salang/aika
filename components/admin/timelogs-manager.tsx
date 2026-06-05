@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Edit2, Trash2, X, Calendar } from "lucide-react";
+import { toast } from "sonner";
 
 interface TimeLogsManagerProps {
   initialData?: any[];
@@ -29,9 +30,18 @@ export function TimeLogsManager({ initialData, initialUsers, initialOrgs, initia
     initialData: initialTeams,
   });
 
-  const createLog = trpc.admin.createTimeLog.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const updateLog = trpc.admin.updateTimeLog.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const deleteLog = trpc.admin.deleteTimeLog.useMutation({ onSuccess: () => { refetch(); } });
+  const createLog = trpc.admin.createTimeLog.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Time log created successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to create time log"); }
+  });
+  const updateLog = trpc.admin.updateTimeLog.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Time log updated successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to update time log"); }
+  });
+  const deleteLog = trpc.admin.deleteTimeLog.useMutation({
+    onSuccess: () => { refetch(); toast.success("Time log deleted successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to delete time log"); }
+  });
 
   // UI States
   const [isFormOpen, setIsFormOpen] = useState(false);

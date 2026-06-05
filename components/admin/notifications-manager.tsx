@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Edit2, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface NotificationsManagerProps {
   initialData?: any[];
@@ -17,9 +18,18 @@ export function NotificationsManager({ initialData, initialUsers }: Notification
     initialData: initialUsers,
   });
 
-  const createNotification = trpc.admin.createNotification.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const updateNotification = trpc.admin.updateNotification.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const deleteNotification = trpc.admin.deleteNotification.useMutation({ onSuccess: () => { refetch(); } });
+  const createNotification = trpc.admin.createNotification.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Notification sent successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to send notification"); }
+  });
+  const updateNotification = trpc.admin.updateNotification.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Notification updated successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to update notification"); }
+  });
+  const deleteNotification = trpc.admin.deleteNotification.useMutation({
+    onSuccess: () => { refetch(); toast.success("Notification deleted successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to delete notification"); }
+  });
 
   // UI States
   const [isFormOpen, setIsFormOpen] = useState(false);

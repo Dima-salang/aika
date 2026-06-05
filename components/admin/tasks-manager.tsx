@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Edit2, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface TasksManagerProps {
   initialData?: any[];
@@ -29,9 +30,18 @@ export function TasksManager({ initialData, initialUsers, initialOrgs, initialPr
     initialData: initialTeams,
   });
 
-  const createTask = trpc.admin.createTask.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const updateTask = trpc.admin.updateTask.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const deleteTask = trpc.admin.deleteTask.useMutation({ onSuccess: () => { refetch(); } });
+  const createTask = trpc.admin.createTask.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Task created successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to create task"); }
+  });
+  const updateTask = trpc.admin.updateTask.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Task updated successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to update task"); }
+  });
+  const deleteTask = trpc.admin.deleteTask.useMutation({
+    onSuccess: () => { refetch(); toast.success("Task deleted successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to delete task"); }
+  });
 
   // UI States
   const [isFormOpen, setIsFormOpen] = useState(false);

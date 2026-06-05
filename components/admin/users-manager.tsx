@@ -246,7 +246,6 @@ export function UsersManager({ initialData }: UsersManagerProps) {
                   <option value="member">Organization Member</option>
                   <option value="owner">Organization Owner</option>
                   <option value="admin">Organization Administrator</option>
-                  <option value="system_admin">Organization System Administrator</option>
                 </select>
               </div>
             </div>
@@ -376,8 +375,8 @@ function UserRow({ user, orgs, teams, handleEdit, handleDelete }: { user: any; o
   const activeOrg = memberships?.orgMemberships?.[0];
   const activeTeam = memberships?.teamMemberships?.[0];
 
-  const orgName = orgs?.find((o: any) => o.id === activeOrg?.organizationId)?.name || activeOrg?.organizationId || "None (Guest)";
-  const teamName = teams?.find((t: any) => t.id === activeTeam?.team_id)?.name || activeTeam?.team_id || "None";
+  const orgName = orgs?.find((o: any) => o.id === activeOrg?.organizationId)?.name || (activeOrg as any)?.organizationName || activeOrg?.organizationId || "None (Guest)";
+  const teamName = teams?.find((t: any) => t.id === activeTeam?.team_id)?.name || (activeTeam as any)?.teamName || activeTeam?.team_id || "None";
 
   return (
     <tr className="hover:bg-surface-container-highest/20 transition-colors">

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Edit2, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface OrganizationsManagerProps {
   initialData?: any[];
@@ -12,9 +13,18 @@ export function OrganizationsManager({ initialData }: OrganizationsManagerProps)
   const { data: orgs, isLoading, refetch } = trpc.admin.getOrgs.useQuery(undefined, {
     initialData,
   });
-  const createOrg = trpc.admin.createOrg.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const updateOrg = trpc.admin.updateOrg.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const deleteOrg = trpc.admin.deleteOrg.useMutation({ onSuccess: () => { refetch(); } });
+  const createOrg = trpc.admin.createOrg.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Organization created successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to create organization"); }
+  });
+  const updateOrg = trpc.admin.updateOrg.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Organization updated successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to update organization"); }
+  });
+  const deleteOrg = trpc.admin.deleteOrg.useMutation({
+    onSuccess: () => { refetch(); toast.success("Organization deleted successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to delete organization"); }
+  });
 
   // UI States
   const [isFormOpen, setIsFormOpen] = useState(false);

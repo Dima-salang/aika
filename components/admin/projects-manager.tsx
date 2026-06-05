@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Edit2, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface ProjectsManagerProps {
   initialData?: any[];
@@ -21,9 +22,18 @@ export function ProjectsManager({ initialData, initialOrgs, initialTeams }: Proj
     initialData: initialTeams,
   });
 
-  const createProject = trpc.admin.createProject.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const updateProject = trpc.admin.updateProject.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const deleteProject = trpc.admin.deleteProject.useMutation({ onSuccess: () => { refetch(); } });
+  const createProject = trpc.admin.createProject.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Project created successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to create project"); }
+  });
+  const updateProject = trpc.admin.updateProject.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Project updated successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to update project"); }
+  });
+  const deleteProject = trpc.admin.deleteProject.useMutation({
+    onSuccess: () => { refetch(); toast.success("Project archived successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to archive project"); }
+  });
 
   // UI States
   const [isFormOpen, setIsFormOpen] = useState(false);
