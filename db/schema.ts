@@ -126,6 +126,7 @@ export const projects = pgTable("projects", {
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
+    user_id: text("user_id").references(() => user.id),
 });
 
 // Tasks
@@ -366,6 +367,7 @@ export const projectsSqlite = sqliteTable("projects", {
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
+    user_id: sqliteText("user_id").references(() => userSqlite.id),
 });
 
 // Tasks
@@ -653,6 +655,7 @@ export const projectZodSchema = z.object({
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
   deleted_at: z.coerce.date().nullable().optional(),
+  user_id: z.string().nullable().optional(),
 });
 export const newProjectZodSchema = projectZodSchema.omit({ created_at: true, updated_at: true }).partial({
   id: true,

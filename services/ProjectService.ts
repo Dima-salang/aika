@@ -5,7 +5,7 @@ import {
   NewProject,
   NewProjectSqlite,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, or, isNull, isNotNull } from "drizzle-orm";
 import { tables } from "./tables";
 
 export class ProjectService {
@@ -64,6 +64,7 @@ export class ProjectService {
       .insert(table)
       .values({
         ...project,
+        user_id: userId || null,
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -102,7 +103,7 @@ export class ProjectService {
   }
 
   async listProjects(
-    filter?: { id?: string; teamId?: string | null; organizationId?: string; deleted?: boolean },
+    filter?: { id?: string; teamId?: string | null; organizationId?: string; deleted?: boolean; userId?: string },
     limit = 10,
     offset = 0,
     tx: any = db
@@ -123,7 +124,18 @@ export class ProjectService {
         }
       }
       if (filter.organizationId) {
-        conditions.push(eq(table.organization_id, filter.organizationId));
+        if (filter.organizationId === "org-default" && filter.userId) {
+          // In the default workspace, only show team projects OR personal projects created by this user
+          conditions.push(eq(table.organization_id, filter.organizationId));
+          conditions.push(
+            or(
+              isNotNull(table.team_id),
+              eq(table.user_id, filter.userId)
+            )
+          );
+        } else {
+          conditions.push(eq(table.organization_id, filter.organizationId));
+        }
       }
       if (filter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
