@@ -1,6 +1,6 @@
-import { db, isSQLite } from "@/db";
-import { auditLogs, auditLogsSqlite } from "@/db/schema";
+import { db } from "@/db";
 import { eq } from "drizzle-orm";
+import { tables } from "./tables";
 
 export class AuditService {
   async createAuditLog(
@@ -27,17 +27,13 @@ export class AuditService {
       created_at: new Date(),
     };
 
-    if (isSQLite) {
-      const [newLog] = await tx.insert(auditLogsSqlite).values(logData).returning();
-      return newLog;
-    } else {
-      const [newLog] = await tx.insert(auditLogs).values(logData).returning();
-      return newLog;
-    }
+    const table = tables.auditLogs;
+    const [newLog] = await tx.insert(table).values(logData).returning();
+    return newLog;
   }
 
   async getAuditLogById(id: string, tx: any = db): Promise<any> {
-    const table = isSQLite ? auditLogsSqlite : auditLogs;
+    const table = tables.auditLogs;
     const [res] = await tx
       .select()
       .from(table)
@@ -50,7 +46,7 @@ export class AuditService {
     offset = 0,
     tx: any = db
   ): Promise<any[]> {
-    const table = isSQLite ? auditLogsSqlite : auditLogs;
+    const table = tables.auditLogs;
     return await tx
       .select()
       .from(table)
@@ -58,4 +54,3 @@ export class AuditService {
       .offset(offset);
   }
 }
-

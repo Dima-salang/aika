@@ -1,15 +1,5 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  invitation,
-  invitationSqlite,
-  joinTokens,
-  joinTokensSqlite,
-  joinRequests,
-  joinRequestsSqlite,
-  user,
-  userSqlite,
-  member,
-  memberSqlite,
   Invitation,
   InvitationSqlite,
   JoinToken,
@@ -17,12 +7,13 @@ import {
   JoinRequest,
   JoinRequestSqlite,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 import crypto from "crypto";
 import { AuditService } from "./AuditService";
 import { NotificationService } from "./NotificationService";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
+import { tables } from "./tables";
 
 export class InvitationService {
   private auditService: AuditService;
@@ -51,8 +42,8 @@ export class InvitationService {
     inviterId: string,
     tx: any = db
   ): Promise<Invitation | InvitationSqlite | null> {
-    const table = isSQLite ? invitationSqlite : invitation;
-    const userTable = isSQLite ? userSqlite : user;
+    const table = tables.invitation;
+    const userTable = tables.user;
     const id = crypto.randomUUID();
     const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000); // 48 Hours expiration
 
@@ -92,7 +83,7 @@ export class InvitationService {
     await this.auditService.createAuditLog(
       inviterId,
       "MEMBER_INVITED",
-      isSQLite ? "invitation" : "invitation",
+      "invitation",
       id,
       `Invited ${email} to organization ${organizationId} with role ${role}`,
       { email, role, teamId, organizationId },
@@ -114,7 +105,7 @@ export class InvitationService {
     autoJoin = false,
     tx: any = db
   ): Promise<JoinToken | JoinTokenSqlite | null> {
-    const table = isSQLite ? joinTokensSqlite : joinTokens;
+    const table = tables.joinTokens;
     const token = crypto.randomBytes(32).toString("hex");
     const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
 
@@ -153,9 +144,9 @@ export class InvitationService {
     userId: string,
     tx: any = db
   ): Promise<JoinRequest | JoinRequestSqlite | null> {
-    const tokenTable = isSQLite ? joinTokensSqlite : joinTokens;
-    const requestTable = isSQLite ? joinRequestsSqlite : joinRequests;
-    const membersTable = isSQLite ? memberSqlite : member;
+    const tokenTable = tables.joinTokens;
+    const requestTable = tables.joinRequests;
+    const membersTable = tables.member;
 
     // Lookup token
     const [token] = await tx
@@ -310,7 +301,7 @@ export class InvitationService {
     adminId: string,
     tx: any = db
   ): Promise<JoinRequest | JoinRequestSqlite | null> {
-    const requestTable = isSQLite ? joinRequestsSqlite : joinRequests;
+    const requestTable = tables.joinRequests;
 
     const [req] = await tx
       .select()

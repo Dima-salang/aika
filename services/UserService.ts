@@ -1,13 +1,12 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  user,
-  userSqlite,
   User,
   UserSqlite,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
+import { tables } from "./tables";
 
 export class UserService {
   private organizationService: OrganizationService;
@@ -19,7 +18,7 @@ export class UserService {
   }
 
   async getUserById(id: string, tx: any = db): Promise<User | UserSqlite | null> {
-    const table = isSQLite ? userSqlite : user;
+    const table = tables.user;
     const [res] = await tx
       .select()
       .from(table)
@@ -33,7 +32,7 @@ export class UserService {
     offset = 0,
     limit = 10
   ): Promise<Array<User | UserSqlite>> {
-    const table = isSQLite ? userSqlite : user;
+    const table = tables.user;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
@@ -76,7 +75,7 @@ export class UserService {
   }
 
   async updateUser(id: string, data: Partial<User> | Partial<UserSqlite>, tx: any = db): Promise<User | UserSqlite | null> {
-    const table = isSQLite ? userSqlite : user;
+    const table = tables.user;
     const [res] = await tx
       .update(table)
       .set({
@@ -89,7 +88,7 @@ export class UserService {
   }
 
   async deleteUser(id: string, tx: any = db): Promise<User | UserSqlite | null> {
-    const table = isSQLite ? userSqlite : user;
+    const table = tables.user;
     const [res] = await tx
       .update(table)
       .set({
@@ -101,7 +100,7 @@ export class UserService {
   }
 
   async createUser(data: { name: string; email: string; is_admin?: boolean }, tx: any = db): Promise<User | UserSqlite | null> {
-    const table = isSQLite ? userSqlite : user;
+    const table = tables.user;
     const newId = crypto.randomUUID();
     const [res] = await tx
       .insert(table)
@@ -118,4 +117,3 @@ export class UserService {
     return res || null;
   }
 }
-

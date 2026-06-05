@@ -1,17 +1,16 @@
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import {
-  tasks,
-  tasksSqlite,
   Task,
   TaskSqlite,
   NewTask,
   NewTaskSqlite,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
+import { tables } from "./tables";
 
 export class TaskService {
   async getTaskById(id: string, tx: any = db): Promise<Task | TaskSqlite | null> {
-    const table = isSQLite ? tasksSqlite : tasks;
+    const table = tables.tasks;
     const [res] = await tx
       .select()
       .from(table)
@@ -19,11 +18,20 @@ export class TaskService {
     return res || null;
   }
 
+  async getTasksByIds(ids: string[], tx: any = db): Promise<Array<Task | TaskSqlite>> {
+    if (ids.length === 0) return [];
+    const table = tables.tasks;
+    return await tx
+      .select()
+      .from(table)
+      .where(and(inArray(table.id, ids), isNull(table.deleted_at)));
+  }
+
   async createTask(
     task: NewTask | NewTaskSqlite,
     tx: any = db
   ): Promise<Task | TaskSqlite | null> {
-    const table = isSQLite ? tasksSqlite : tasks;
+    const table = tables.tasks;
     const [res] = await tx
       .insert(table)
       .values({
@@ -40,7 +48,7 @@ export class TaskService {
     data: Partial<NewTask | NewTaskSqlite>,
     tx: any = db
   ): Promise<Task | TaskSqlite | null> {
-    const table = isSQLite ? tasksSqlite : tasks;
+    const table = tables.tasks;
     const [res] = await tx
       .update(table)
       .set({
@@ -53,7 +61,7 @@ export class TaskService {
   }
 
   async deleteTask(id: string, tx: any = db): Promise<Task | TaskSqlite | null> {
-    const table = isSQLite ? tasksSqlite : tasks;
+    const table = tables.tasks;
     const [res] = await tx
       .update(table)
       .set({
@@ -79,7 +87,7 @@ export class TaskService {
     offset = 0,
     tx: any = db
   ): Promise<Array<Task | TaskSqlite>> {
-    const table = isSQLite ? tasksSqlite : tasks;
+    const table = tables.tasks;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
