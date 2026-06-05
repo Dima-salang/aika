@@ -116,4 +116,28 @@ export class UserService {
       .returning();
     return res || null;
   }
+
+  async setActiveTeam(userId: string, sessionId: string | undefined, teamId: string | null, tx: any = db): Promise<boolean> {
+    const userTable = tables.user;
+    await tx
+      .update(userTable)
+      .set({
+        last_active_team_id: teamId,
+        updatedAt: new Date(),
+      })
+      .where(eq(userTable.id, userId));
+
+    if (sessionId) {
+      const sessionTable = tables.session;
+      await tx
+        .update(sessionTable)
+        .set({
+          activeTeamId: teamId,
+          updatedAt: new Date(),
+        })
+        .where(eq(sessionTable.id, sessionId));
+    }
+    return true;
+  }
 }
+
