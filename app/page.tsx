@@ -17,6 +17,7 @@ import { DashboardView } from "@/components/dashboard-view";
 import { DetailViewDialog } from "@/components/detail-view-dialog";
 import { DashboardManageControls } from "@/components/admin/dashboard-manage-controls";
 import { TeamSpaceView } from "@/components/team-space-view";
+import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
 
 import {
@@ -41,7 +42,7 @@ export default function Home() {
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects" | "team">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports">("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
 
   // Detailed view / dynamically inspect task or log
@@ -93,13 +94,13 @@ export default function Home() {
   // Load tab from localStorage on mount
   useEffect(() => {
     const savedTab = localStorage.getItem("aika-active-tab");
-    if (savedTab && ["dashboard", "logs", "profile", "org", "projects", "team"].includes(savedTab)) {
+    if (savedTab && ["dashboard", "logs", "profile", "org", "projects", "team", "reports"].includes(savedTab)) {
       setActiveTab(savedTab as any);
     }
   }, []);
 
   // Update localStorage helper
-  const handleSetActiveTab = (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team") => {
+  const handleSetActiveTab = (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports") => {
     localStorage.setItem("aika-active-tab", tab);
     setActiveTab(tab);
   };
@@ -509,7 +510,7 @@ export default function Home() {
           <div className="flex-1 flex overflow-hidden h-screen w-full">
             {/* Main Content Canvas */}
             <main className="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden h-screen">
-              {activeTab !== "projects" && activeTab !== "team" && (
+              {activeTab !== "projects" && activeTab !== "team" && activeTab !== "reports" && (
                 <Header
                   searchQuery={searchQuery}
                   setSearchQuery={setSearchQuery}
@@ -539,6 +540,11 @@ export default function Home() {
                   userId={userId}
                   organizationId={activeOrgId}
                   activeTeamId={activeTeamId}
+                />
+              ) : activeTab === "reports" ? (
+                <ReportsView
+                  activeOrg={activeOrg}
+                  session={session}
                 />
               ) : activeTab === "dashboard" ? (
                 <DashboardView
