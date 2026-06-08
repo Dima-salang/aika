@@ -19,6 +19,7 @@ import { DashboardManageControls } from "@/components/admin/dashboard-manage-con
 import { TeamSpaceView } from "@/components/team/team-space-view";
 import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
+import { LandingPage } from "@/components/landing-page";
 
 import {
   Loader2,
@@ -684,24 +685,7 @@ export default function Home() {
           </div>
         </>
       ) : (
-        // Welcome Page
-        <main className="z-10 flex-1 w-full max-w-5xl mx-auto px-6 py-16 flex flex-col justify-center items-center">
-          <div className="max-w-2xl text-center space-y-8 py-16 animate-in fade-in zoom-in duration-300">
-            <h1 className="text-5xl font-black tracking-tight leading-none text-on-surface sm:text-6xl bg-gradient-to-r from-on-surface via-outline to-on-surface bg-clip-text text-transparent">
-              Aika Time & Tasks
-            </h1>
-            <p className="text-lg text-outline max-w-lg mx-auto font-medium leading-relaxed">
-              A beautifully type-safe, elegant time logging and team management platform built on Next.js 16 and fully secured with Better Auth.
-            </p>
-            <div className="flex justify-center gap-4">
-              <Link href="/auth">
-                <button className="rounded-full shadow-lg font-bold bg-primary text-on-primary hover:opacity-90 px-unit-6 py-3 text-body-lg transition-all active:scale-[0.98]">
-                  Get Started
-                </button>
-              </Link>
-            </div>
-          </div>
-        </main>
+        <LandingPage />
       )}
 
       {/* Manual Creation / Update dialog */}
