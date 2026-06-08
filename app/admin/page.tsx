@@ -2,34 +2,11 @@ import React from "react";
 import Link from "next/link";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-import { db, isSQLite } from "@/db";
-import {
-  user,
-  userSqlite,
-  organization,
-  organizationSqlite,
-  teams,
-  teamsSqlite,
-  projects,
-  projectsSqlite,
-  tasks,
-  tasksSqlite,
-  timeLogs,
-  timeLogsSqlite,
-  notifications,
-  notificationsSqlite,
-  auditLogs,
-  auditLogsSqlite,
-  member,
-  memberSqlite,
-  joinTokens,
-  joinTokensSqlite,
-  joinRequests,
-  joinRequestsSqlite,
-} from "@/db/schema";
+import { db } from "@/db";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Shield, ArrowLeft } from "lucide-react";
 import { eq, inArray, and, or } from "drizzle-orm";
+import { tables } from "@/services/tables";
 
 export const revalidate = 0; // Ensure admin dashboard is always fresh and server-rendered on demand
 
@@ -62,7 +39,7 @@ export default async function AdminPage() {
     );
   }
 
-  const userTableCheck = isSQLite ? userSqlite : user;
+  const userTableCheck = tables.user;
   const [dbUser] = await db
     .select()
     .from(userTableCheck)
@@ -72,7 +49,7 @@ export default async function AdminPage() {
   const isSysAdmin = dbUser?.is_admin === true;
 
   // Query organization admin/owner memberships
-  const memberTable = isSQLite ? memberSqlite : member;
+  const memberTable = tables.member;
   const userMemberships = await db
     .select()
     .from(memberTable)
@@ -87,7 +64,7 @@ export default async function AdminPage() {
       )
     );
 
-  const adminOrgIds = userMemberships.map((m: any) => m.organizationId);
+  const adminOrgIds = userMemberships.map((m) => m.organizationId);
 
   // Security authorization gate - server side check for system admin or organization admin/owner
   if (!isSysAdmin && adminOrgIds.length === 0) {
@@ -114,16 +91,16 @@ export default async function AdminPage() {
   }
 
   // Pre-fetch all tables directly on the server to achieve instant pre-rendering (SSR)
-  const orgTable = isSQLite ? organizationSqlite : organization;
-  const teamTable = isSQLite ? teamsSqlite : teams;
-  const projectTable = isSQLite ? projectsSqlite : projects;
-  const taskTable = isSQLite ? tasksSqlite : tasks;
-  const logTable = isSQLite ? timeLogsSqlite : timeLogs;
-  const notifTable = isSQLite ? notificationsSqlite : notifications;
-  const auditTable = isSQLite ? auditLogsSqlite : auditLogs;
-  const userTable = isSQLite ? userSqlite : user;
-  const tokenTable = isSQLite ? joinTokensSqlite : joinTokens;
-  const reqTable = isSQLite ? joinRequestsSqlite : joinRequests;
+  const orgTable = tables.organization;
+  const teamTable = tables.teams;
+  const projectTable = tables.projects;
+  const taskTable = tables.tasks;
+  const logTable = tables.timeLogs;
+  const notifTable = tables.notifications;
+  const auditTable = tables.auditLogs;
+  const userTable = tables.user;
+  const tokenTable = tables.joinTokens;
+  const reqTable = tables.joinRequests;
 
   let usersList: any[] = [];
   let orgsList: any[] = [];
@@ -157,7 +134,7 @@ export default async function AdminPage() {
 
     // Get all user memberships in these orgs
     const memberships = await db.select().from(memberTable).where(inArray(memberTable.organizationId, adminOrgIds));
-    const allowedUserIds = memberships.map((m: any) => m.userId);
+    const allowedUserIds = memberships.map((m) => m.userId);
 
     if (allowedUserIds.length > 0) {
       usersList = await db.select().from(userTable).where(inArray(userTable.id, allowedUserIds));
