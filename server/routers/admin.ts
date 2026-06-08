@@ -603,13 +603,13 @@ export const adminRouter = router({
             throw new TRPCError({ code: "FORBIDDEN", message: "User is not in your organization" });
           }
         }
-        return await notificationService.createNotification(
-          input.user_id,
-          input.title,
-          input.message,
-          input.type,
-          input.related_id || undefined
-        );
+        return await notificationService.createNotification({
+          userId: input.user_id,
+          title: input.title,
+          message: input.message,
+          type: input.type,
+          relatedId: input.related_id || undefined
+        });
       } catch (error) {
         handleDbError(error);
       }
