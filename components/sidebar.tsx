@@ -7,8 +7,8 @@ import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 
 interface SidebarProps {
-  activeTab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team";
-  setActiveTab: (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team") => void;
+  activeTab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports";
+  setActiveTab: (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports") => void;
   session: any;
   handleSignOut: () => void;
   isDark: boolean;
@@ -251,6 +251,7 @@ export function Sidebar({
           { id: "logs", label: "Tracker", icon: "timer" },
           { id: "projects", label: "Projects & Tasks", icon: "work" },
           { id: "team", label: "Team Space", icon: "groups" },
+          { id: "reports", label: "Reports", icon: "bar_chart" },
           { id: "profile", label: "Profile", icon: "person" },
           { id: "org", label: "Organization", icon: "corporate_fare" },
         ].map((item) => {
