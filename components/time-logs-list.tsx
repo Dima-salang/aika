@@ -44,8 +44,11 @@ export function TimeLogsList({
       const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
       return acc + (diff > 0 ? diff : 0);
     }, 0);
-    const totalHrs = (totalMs / 3600000).toFixed(1);
-    return `${totalHrs}h`;
+    const minutes = Math.floor(totalMs / 60000);
+    const hrs = Math.floor(minutes / 60);
+    const mins = minutes % 60;
+    if (hrs > 0) return `${hrs}h ${mins}m`;
+    return `${mins}m`;
   };
 
   const handleDelete = async (logId: string) => {
