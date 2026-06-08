@@ -72,33 +72,35 @@ export function LandingPage() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
   return (
-    <div className="relative min-h-screen w-full bg-[#0a0a0c] text-on-surface flex flex-col items-center overflow-x-hidden font-sans">
+    <div className="relative min-h-screen w-full bg-background text-foreground dark:bg-[#0a0a0c] dark:text-on-surface flex flex-col items-center overflow-x-hidden font-sans">
       {/* Decorative Grid Mesh Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,#1f1f23_1px,transparent_1px),linear-gradient(to_bottom,#1f1f23_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-25 pointer-events-none" />
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-outline-variant)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-outline-variant)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1f1f23_1px,transparent_1px),linear-gradient(to_bottom,#1f1f23_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-[0.15] dark:opacity-25 pointer-events-none" />
       {/* Decorative Neon Blurs */}
-      <div className="absolute top-[-10%] left-[20%] w-[400px] h-[400px] bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute top-[20%] right-[10%] w-[350px] h-[350px] bg-tertiary/10 rounded-full blur-[100px] pointer-events-none" />
+      <div className="absolute top-[-10%] left-[20%] w-[400px] h-[400px] bg-primary/5 dark:bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
+      <div className="absolute top-[20%] right-[10%] w-[350px] h-[350px] bg-tertiary/5 dark:bg-tertiary/10 rounded-full blur-[100px] pointer-events-none" />
       {/* Header */}
-      <header className="w-full max-w-6xl h-16 px-6 flex items-center justify-between z-10 border-b border-outline-variant/10 backdrop-blur-md bg-[#0a0a0c]/80 sticky top-0">
-        <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center font-bold text-on-primary">
-            A
+      <header className="w-full sticky top-0 z-50 border-b border-outline-variant/10 backdrop-blur-md bg-background/70 dark:bg-[#0a0a0c]/70 transition-colors duration-300">
+        <div className="w-full max-w-6xl mx-auto h-16 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center font-bold text-on-primary">
+              A
+            </div>
+            <span className="font-heading font-extrabold tracking-tight text-lg text-on-surface">
+              Aika
+            </span>
           </div>
-          <span className="font-heading font-extrabold tracking-tight text-lg text-on-surface">
-            Aika
-          </span>
-        </div>
-        <div className="flex items-center gap-4">
-          <Link href="/auth">
-            <button className="text-body-sm font-semibold text-outline hover:text-on-surface transition-colors">
-              Sign In
-            </button>
-          </Link>
-          <Link href="/auth">
-            <button className="rounded-lg bg-primary hover:bg-primary/95 text-on-primary text-body-sm px-4 py-2 font-bold transition-all hover:shadow-[0_0_15px_rgba(192,193,255,0.4)] active:scale-[0.98]">
-              Launch App
-            </button>
-          </Link>
+          <div className="flex items-center gap-4">
+            <Link href="/auth">
+              <button className="text-body-sm font-semibold text-outline hover:text-on-surface transition-colors">
+                Sign In
+              </button>
+            </Link>
+            <Link href="/auth">
+              <button className="rounded-lg bg-primary hover:bg-primary/95 text-on-primary text-body-sm px-4 py-2 font-bold transition-all hover:shadow-[0_0_15px_rgba(192,193,255,0.4)] active:scale-[0.98]">
+                Launch App
+              </button>
+            </Link>
+          </div>
         </div>
       </header>
       {/* Main Hero & Content container */}
@@ -132,7 +134,7 @@ export function LandingPage() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             
             {/* Step 1 */}
-            <div className="bg-[#131315]/40 border border-outline-variant/40 rounded-xl p-6 space-y-4 hover:border-outline-variant/80 transition-colors">
+            <div className="bg-surface-container-low/40 border border-outline-variant/30 rounded-xl p-6 space-y-4 hover:border-outline-variant/80 transition-colors dark:bg-[#131315]/40 dark:border-outline-variant/40">
               <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                 <Play className="h-5 w-5 fill-current" />
               </div>
@@ -142,7 +144,7 @@ export function LandingPage() {
               </p>
             </div>
             {/* Step 2 */}
-            <div className="bg-[#131315]/40 border border-outline-variant/40 rounded-xl p-6 space-y-4 hover:border-outline-variant/80 transition-colors">
+            <div className="bg-surface-container-low/40 border border-outline-variant/30 rounded-xl p-6 space-y-4 hover:border-outline-variant/80 transition-colors dark:bg-[#131315]/40 dark:border-outline-variant/40">
               <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                 <BarChart3 className="h-5 w-5" />
               </div>
@@ -152,7 +154,7 @@ export function LandingPage() {
               </p>
             </div>
             {/* Step 3 */}
-            <div className="bg-[#131315]/40 border border-outline-variant/40 rounded-xl p-6 space-y-4 hover:border-outline-variant/80 transition-colors">
+            <div className="bg-surface-container-low/40 border border-outline-variant/30 rounded-xl p-6 space-y-4 hover:border-outline-variant/80 transition-colors dark:bg-[#131315]/40 dark:border-outline-variant/40">
               <div className="h-10 w-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
                 <Users className="h-5 w-5" />
               </div>
@@ -178,7 +180,7 @@ export function LandingPage() {
             <div className={`border rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all ${
               activeKeys["t"] 
                 ? "bg-primary/25 border-primary shadow-lg scale-95" 
-                : "bg-[#131315]/60 border-outline-variant hover:border-primary/50"
+                : "bg-surface-container-low/60 border-outline-variant/40 dark:bg-[#131315]/60 dark:border-outline-variant hover:border-primary/50"
             }`}>
               <kbd className="h-10 w-10 bg-surface-container rounded-lg border border-outline-variant flex items-center justify-center font-mono-timer text-lg font-bold text-on-surface">
                 T
@@ -189,7 +191,7 @@ export function LandingPage() {
             <div className={`border rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all ${
               activeKeys["n"] 
                 ? "bg-primary/25 border-primary shadow-lg scale-95" 
-                : "bg-[#131315]/60 border-outline-variant hover:border-primary/50"
+                : "bg-surface-container-low/60 border-outline-variant/40 dark:bg-[#131315]/60 dark:border-outline-variant hover:border-primary/50"
             }`}>
               <kbd className="h-10 w-10 bg-surface-container rounded-lg border border-outline-variant flex items-center justify-center font-mono-timer text-lg font-bold text-on-surface">
                 N
@@ -200,7 +202,7 @@ export function LandingPage() {
             <div className={`border rounded-xl p-4 flex flex-col items-center justify-center gap-2 transition-all ${
               activeKeys["/"] 
                 ? "bg-primary/25 border-primary shadow-lg scale-95" 
-                : "bg-[#131315]/60 border-outline-variant hover:border-primary/50"
+                : "bg-surface-container-low/60 border-outline-variant/40 dark:bg-[#131315]/60 dark:border-outline-variant hover:border-primary/50"
             }`}>
               <kbd className="h-10 w-10 bg-surface-container rounded-lg border border-outline-variant flex items-center justify-center font-mono-timer text-lg font-bold text-on-surface">
                 /
