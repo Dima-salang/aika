@@ -39,7 +39,7 @@ export function NotificationsManager({ initialData, initialUsers }: Notification
   const [userId, setUserId] = useState("");
   const [title, setTitle] = useState("");
   const [message, setMessage] = useState("");
-  const [type, setType] = useState("task_update");
+  const [type, setType] = useState<"team_invitation" | "task_update" | "time_log" | "team_switch">("task_update");
   const [isRead, setIsRead] = useState(false);
 
   const resetForm = () => {
@@ -56,7 +56,7 @@ export function NotificationsManager({ initialData, initialUsers }: Notification
     setUserId(n.user_id);
     setTitle(n.title);
     setMessage(n.message);
-    setType(n.type);
+    setType(n.type as "team_invitation" | "task_update" | "time_log" | "team_switch");
     setIsRead(n.is_read || false);
     setIsFormOpen(true);
   };
@@ -127,7 +127,7 @@ export function NotificationsManager({ initialData, initialUsers }: Notification
               <label className="text-[10px] font-bold text-outline uppercase block">Alert Type</label>
               <select
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                onChange={(e) => setType(e.target.value as "team_invitation" | "task_update" | "time_log" | "team_switch")}
                 className="w-full bg-surface-container-lowest border border-outline-variant rounded-lg p-2 text-xs text-on-surface focus:outline-none focus:border-primary"
               >
                 <option value="task_update">Task Progress Notice</option>
