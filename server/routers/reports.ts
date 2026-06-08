@@ -1,5 +1,6 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
+import { getPersonalReportInputZodSchema, getTeamReportInputZodSchema } from "@/db/schema";
 import { handleDbError } from "@/utils/db-errors";
 import { ReportService } from "@/services/ReportService";
 
@@ -7,15 +8,7 @@ const reportService = new ReportService();
 
 export const reportsRouter = router({
   getPersonalReport: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        organizationId: z.string(),
-        teamIdFilter: z.string().nullable().optional(),
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-      })
-    )
+    .input(getPersonalReportInputZodSchema)
     .query(async ({ input }) => {
       try {
         const teamFilter = input.teamIdFilter === "all" ? "all" : input.teamIdFilter;
@@ -32,15 +25,7 @@ export const reportsRouter = router({
     }),
 
   getTeamReport: publicProcedure
-    .input(
-      z.object({
-        requestingUserId: z.string(),
-        organizationId: z.string(),
-        teamId: z.string(),
-        startDate: z.string().optional(),
-        endDate: z.string().optional(),
-      })
-    )
+    .input(getTeamReportInputZodSchema)
     .query(async ({ input }) => {
       try {
         return await reportService.getTeamReport(

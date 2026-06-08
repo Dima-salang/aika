@@ -15,6 +15,13 @@ import {
   newTimeLogZodSchema,
   timeLogZodSchema,
   notificationZodSchema,
+  paginationInputZodSchema,
+  idInputZodSchema,
+  userIdInputZodSchema,
+  orgIdAndTeamIdInputZodSchema,
+  createJoinTokenInputZodSchema,
+  reviewJoinRequestInputZodSchema,
+  updateUserMembershipsInputZodSchema,
 } from "@/db/schema";
 import { db } from "@/db";
 import { tables } from "@/services/tables";
@@ -219,7 +226,7 @@ export const adminRouter = router({
     }),
 
   deleteUser: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -283,7 +290,7 @@ export const adminRouter = router({
     }),
 
   deleteOrg: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin } = await checkAdminAccess(ctx as AdminCtx);
@@ -343,7 +350,7 @@ export const adminRouter = router({
     }),
 
   deleteTeam: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -363,7 +370,7 @@ export const adminRouter = router({
   getProjects: publicProcedure.query(async ({ ctx }) => {
     try {
       const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
-      const list = await projectService.listProjects(undefined, 1000);
+      const list = await projectService.listProjects({ limit: 1000 }, undefined);
       const filtered = isSysAdmin ? list : list.filter((p) => adminOrgIds.includes(p.organization_id));
       return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } catch (error) {
@@ -410,7 +417,7 @@ export const adminRouter = router({
     }),
 
   deleteProject: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -430,7 +437,7 @@ export const adminRouter = router({
   getTasks: publicProcedure.query(async ({ ctx }) => {
     try {
       const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
-      const list = await taskService.listTasks(undefined, 1000);
+      const list = await taskService.listTasks(undefined, { limit: 1000 });
       const filtered = isSysAdmin ? list : list.filter((t) => adminOrgIds.includes(t.organization_id));
       return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
     } catch (error) {
@@ -474,7 +481,7 @@ export const adminRouter = router({
     }),
 
   deleteTask: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -538,7 +545,7 @@ export const adminRouter = router({
     }),
 
   deleteTimeLog: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -640,7 +647,7 @@ export const adminRouter = router({
     }),
 
   deleteNotification: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -688,7 +695,7 @@ export const adminRouter = router({
 
   // USER MEMBERSHIPS & ROLES
   getUserMemberships: publicProcedure
-    .input(z.object({ userId: z.string() }))
+    .input(userIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -710,15 +717,7 @@ export const adminRouter = router({
     }),
 
   updateUserMemberships: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        organizationId: z.string().nullable(),
-        orgRole: z.string().nullable(),
-        teamId: z.string().nullable(),
-        teamRole: z.enum(["leader", "member"]).nullable(),
-      })
-    )
+    .input(updateUserMembershipsInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
@@ -758,7 +757,7 @@ export const adminRouter = router({
 
   // JOIN REQUESTS & SECURE JOIN TOKENS
   getJoinTokens: publicProcedure
-    .input(z.object({ organizationId: z.string().optional(), teamId: z.string().optional() }))
+    .input(orgIdAndTeamIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
         if (input.organizationId || input.teamId) {
@@ -793,7 +792,7 @@ export const adminRouter = router({
     }),
 
   getJoinRequests: publicProcedure
-    .input(z.object({ organizationId: z.string().optional(), teamId: z.string().optional() }))
+    .input(orgIdAndTeamIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
         if (input.organizationId || input.teamId) {
@@ -827,16 +826,7 @@ export const adminRouter = router({
     }),
 
   createJoinToken: publicProcedure
-    .input(
-      z.object({
-        organizationId: z.string(),
-        teamId: z.string().nullable(),
-        createdBy: z.string(),
-        expiresInSeconds: z.number().int().positive().default(86400),
-        maxUses: z.number().int().positive().nullable().optional(),
-        autoJoin: z.boolean().default(false),
-      })
-    )
+    .input(createJoinTokenInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         await checkManageAccess(ctx as AdminCtx, input.organizationId, input.teamId);
@@ -854,13 +844,7 @@ export const adminRouter = router({
     }),
 
   reviewJoinRequest: publicProcedure
-    .input(
-      z.object({
-        requestId: z.string(),
-        status: z.enum(["approved", "rejected"]),
-        adminId: z.string(),
-      })
-    )
+    .input(reviewJoinRequestInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
         const table = tables.joinRequests;

@@ -1,6 +1,7 @@
 import { router, publicProcedure, mergeRouters } from "../trpc";
 import { ensureSeed } from "@/db/seed";
 import { z } from "zod";
+import { tokenInputZodSchema, tokenAndUserIdInputZodSchema, userIdInputZodSchema } from "@/db/schema";
 import { TRPCError } from "@trpc/server";
 import { db } from "@/db";
 import { eq, and, or } from "drizzle-orm";
@@ -43,7 +44,7 @@ const baseRouter = router({
   }),
 
   validateJoinToken: publicProcedure
-    .input(z.object({ token: z.string() }))
+    .input(tokenInputZodSchema)
     .query(async ({ input }) => {
       const tokenTable = tables.joinTokens;
       const [tokenRecord] = await db
@@ -78,7 +79,7 @@ const baseRouter = router({
     }),
 
   applyJoinToken: publicProcedure
-    .input(z.object({ token: z.string(), userId: z.string() }))
+    .input(tokenAndUserIdInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         const result = await invitationService.applyWithToken(input.token, input.userId);
@@ -95,7 +96,7 @@ const baseRouter = router({
     }),
 
   getMyManageProfile: publicProcedure
-    .input(z.object({ userId: z.string() }))
+    .input(userIdInputZodSchema)
     .query(async ({ input }) => {
       const memberTable = tables.member;
       const teamMembersTable = tables.teamMembers;

@@ -1,6 +1,16 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { createLogInputZodSchema, updateLogInputZodSchema } from "@/db/schema";
+import {
+  createLogInputZodSchema,
+  updateLogInputZodSchema,
+  getLogInputZodSchema,
+  getUserLogsInputZodSchema,
+  updateLogParentInputZodSchema,
+  logIdAndUserIdInputZodSchema,
+  startTimerInputZodSchema,
+  stopTimerInputZodSchema,
+  userIdInputZodSchema,
+} from "@/db/schema";
 import { handleDbError } from "@/utils/db-errors";
 
 // Service Imports & Instantiation
@@ -22,7 +32,7 @@ const logService = new LogService(auditService, notificationService, taskService
 
 export const logsRouter = router({
   getLog: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(getLogInputZodSchema)
     .query(async ({ input }) => {
       try {
         return await logService.getLogById(input.id);
@@ -32,14 +42,7 @@ export const logsRouter = router({
     }),
 
   getUserLogs: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        organizationId: z.string().optional(),
-        startDate: z.coerce.date().optional(),
-        endDate: z.coerce.date().optional(),
-      })
-    )
+    .input(getUserLogsInputZodSchema)
     .query(async ({ input }) => {
       try {
         const logs = await logService.getUserLogs(input.userId, {
@@ -75,13 +78,7 @@ export const logsRouter = router({
     }),
 
   updateLog: publicProcedure
-    .input(
-      z.object({
-        logId: z.string(),
-        userId: z.string(),
-        input: updateLogInputZodSchema,
-      })
-    )
+    .input(updateLogParentInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await logService.updateLog(input.logId, input.userId, input.input);
@@ -91,7 +88,7 @@ export const logsRouter = router({
     }),
 
   deleteLog: publicProcedure
-    .input(z.object({ logId: z.string(), userId: z.string() }))
+    .input(logIdAndUserIdInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await logService.deleteLog(input.logId, input.userId);
@@ -102,13 +99,7 @@ export const logsRouter = router({
 
   // Timer procedures
   startTimer: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        projectId: z.string().nullable().optional(),
-        description: z.string().nullable().optional(),
-      })
-    )
+    .input(startTimerInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await logService.startTimer(input.userId, input.projectId, input.description);
@@ -118,26 +109,7 @@ export const logsRouter = router({
     }),
 
   stopTimer: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        organizationId: z.string(),
-        teamId: z.string().nullable().optional(),
-        taskIds: z.array(z.string()),
-        evidence: z.array(
-          z.object({
-            fileUrl: z.string(),
-            fileKey: z.string(),
-            fileName: z.string(),
-            fileSize: z.number(),
-            mimeType: z.string(),
-          })
-        ),
-        projectId: z.string().nullable().optional(),
-        title: z.string().optional(),
-        description: z.string().optional(),
-      })
-    )
+    .input(stopTimerInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await logService.stopTimer(
@@ -158,7 +130,7 @@ export const logsRouter = router({
     }),
 
   getRunningTimer: publicProcedure
-    .input(z.object({ userId: z.string() }))
+    .input(userIdInputZodSchema)
     .query(async ({ input }) => {
       try {
         return await logService.getRunningTimer(input.userId);
@@ -168,7 +140,7 @@ export const logsRouter = router({
     }),
 
   discardTimer: publicProcedure
-    .input(z.object({ userId: z.string() }))
+    .input(userIdInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await logService.discardTimer(input.userId);

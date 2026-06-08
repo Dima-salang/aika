@@ -1,6 +1,13 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
+import {
+  getTeamTimelineInputZodSchema,
+  getTeamMembersInputZodSchema,
+  removeTeamMemberInputZodSchema,
+  getUserTeamsInputZodSchema,
+  setActiveTeamInputZodSchema,
+} from "@/db/schema";
 import { LogService } from "@/services/LogService";
 import { TeamService } from "@/services/TeamService";
 import { AuditService } from "@/services/AuditService";
@@ -20,14 +27,7 @@ const logService = new LogService(auditService, notificationService, taskService
 
 export const teamsRouter = router({
   getTeamTimeline: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        teamId: z.string(),
-        startDate: z.coerce.date().optional(),
-        endDate: z.coerce.date().optional(),
-      })
-    )
+    .input(getTeamTimelineInputZodSchema)
     .query(async ({ input }) => {
       try {
         if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
@@ -43,12 +43,7 @@ export const teamsRouter = router({
     }),
 
   getTeamMembers: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        teamId: z.string(),
-      })
-    )
+    .input(getTeamMembersInputZodSchema)
     .query(async ({ input }) => {
       try {
         if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
@@ -64,13 +59,7 @@ export const teamsRouter = router({
     }),
 
   removeTeamMember: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        teamId: z.string(),
-        memberIdToRemove: z.string(),
-      })
-    )
+    .input(removeTeamMemberInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         if (!(await teamService.verifyLeader(input.teamId, input.userId))) {
@@ -87,12 +76,7 @@ export const teamsRouter = router({
     }),
 
   getUserTeams: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        organizationId: z.string(),
-      })
-    )
+    .input(getUserTeamsInputZodSchema)
     .query(async ({ input }) => {
       try {
         return await teamService.getUserTeamsInOrg(input.userId, input.organizationId);
@@ -102,12 +86,7 @@ export const teamsRouter = router({
     }),
 
   setActiveTeam: publicProcedure
-    .input(
-      z.object({
-        userId: z.string(),
-        teamId: z.string().nullable(),
-      })
-    )
+    .input(setActiveTeamInputZodSchema)
     .mutation(async ({ input, ctx }) => {
       try {
         const sessionId = ctx.session?.session?.id;
