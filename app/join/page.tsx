@@ -8,6 +8,7 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter }
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
 import { Loader2, ShieldAlert, CheckCircle2, UserPlus, LogIn, Sparkles, Sun, Moon } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 function JoinContent() {
   const router = useRouter();
@@ -96,9 +97,30 @@ function JoinContent() {
 
   if (sessionLoading || tokenLoading) {
     return (
-      <Card className="w-full max-w-md border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl rounded-2xl p-8 flex flex-col items-center justify-center space-y-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Verifying secure invitation credentials...</p>
+      <Card className="w-full max-w-md border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl rounded-2xl overflow-hidden">
+        <div className="space-y-5 p-8 animate-pulse">
+          {/* Header Skeleton */}
+          <div className="flex flex-col items-center space-y-3 pb-6 border-b border-zinc-150 dark:border-zinc-800">
+            <Skeleton className="h-12 w-12 rounded-xl" />
+            <Skeleton className="h-6 w-40" />
+            <Skeleton className="h-4 w-60" />
+          </div>
+          {/* Content Block Skeleton */}
+          <div className="space-y-4 py-2 flex flex-col items-center">
+            <Skeleton className="h-4 w-5/6" />
+            <Skeleton className="h-4 w-4/6" />
+            <div className="w-full rounded-xl bg-zinc-50 dark:bg-zinc-950 p-4 border border-zinc-100 dark:border-zinc-850 space-y-2.5">
+              <Skeleton className="h-3.5 w-32" />
+              <Skeleton className="h-3.5 w-full" />
+              <Skeleton className="h-3.5 w-2/3" />
+            </div>
+          </div>
+          {/* Footer Buttons Skeleton */}
+          <div className="space-y-3 pt-5 border-t border-zinc-150 dark:border-zinc-800">
+            <Skeleton className="h-10.5 w-full rounded-xl" />
+            <Skeleton className="h-4 w-32 mx-auto" />
+          </div>
+        </div>
       </Card>
     );
   }
@@ -198,11 +220,17 @@ function JoinContent() {
         )}
 
         {successMsg && (
-          <Alert className="rounded-xl border border-green-200 bg-green-50 dark:bg-green-950/20 text-green-650 dark:text-green-400">
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-            <AlertTitle className="font-bold text-xs">Success</AlertTitle>
-            <AlertDescription className="text-[11px] font-medium">{successMsg}</AlertDescription>
-          </Alert>
+          <div className="space-y-4">
+            <Alert className="rounded-xl border border-green-200 bg-green-50 dark:bg-green-950/20 text-green-650 dark:text-green-400">
+              <CheckCircle2 className="h-4 w-4 shrink-0" />
+              <AlertTitle className="font-bold text-xs">Success</AlertTitle>
+              <AlertDescription className="text-[11px] font-medium">{successMsg}</AlertDescription>
+            </Alert>
+            <div className="flex flex-col items-center justify-center p-6 space-y-3 bg-zinc-50 dark:bg-zinc-950/40 rounded-xl border border-zinc-200/50 dark:border-zinc-800/50">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <span className="text-xs text-zinc-550 dark:text-zinc-400 font-medium">Redirecting to Aika workspace...</span>
+            </div>
+          </div>
         )}
 
         {!successMsg && (

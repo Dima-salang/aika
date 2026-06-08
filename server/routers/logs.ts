@@ -1,9 +1,7 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { createLogInputZodSchema, updateLogInputZodSchema, teamMembers, teamMembersSqlite, user, userSqlite, timeLogs, timeLogsSqlite } from "@/db/schema";
-import { db, isSQLite } from "@/db";
-import { eq, and, inArray, isNull } from "drizzle-orm";
-import { TRPCError } from "@trpc/server";
+import { createLogInputZodSchema, updateLogInputZodSchema } from "@/db/schema";
+import { handleDbError } from "@/utils/db-errors";
 
 // Service Imports & Instantiation
 import { AuditService } from "@/services/AuditService";
@@ -26,11 +24,14 @@ export const logsRouter = router({
   getLog: publicProcedure
     .input(z.object({ id: z.string() }))
     .query(async ({ input }) => {
-      return await logService.getLogById(input.id);
+      try {
+        return await logService.getLogById(input.id);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   getUserLogs: publicProcedure
-
     .input(
       z.object({
         userId: z.string(),
@@ -40,29 +41,37 @@ export const logsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      const logs = await logService.getUserLogs(input.userId, {
-        organizationId: input.organizationId,
-        startDate: input.startDate,
-        endDate: input.endDate,
-      });
+      try {
+        const logs = await logService.getUserLogs(input.userId, {
+          organizationId: input.organizationId,
+          startDate: input.startDate,
+          endDate: input.endDate,
+        });
 
-      // Hydrate with tasks and evidence for frontend ease-of-use
-      const hydrated = await Promise.all(
-        logs.map(async (log) => {
-          return await logService.getLogById(log.id);
-        })
-      );
-      
-      // Sort logs by start_time descending
-      return hydrated.filter(Boolean).sort(
-        (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-      );
+        // Hydrate with tasks and evidence for frontend ease-of-use
+        const hydrated = await Promise.all(
+          logs.map(async (log) => {
+            return await logService.getLogById(log.id);
+          })
+        );
+        
+        // Sort logs by start_time descending
+        return hydrated.filter(Boolean).sort(
+          (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+        );
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   createLog: publicProcedure
     .input(createLogInputZodSchema)
     .mutation(async ({ input }) => {
-      return await logService.createLog(input);
+      try {
+        return await logService.createLog(input);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   updateLog: publicProcedure
@@ -74,13 +83,21 @@ export const logsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      return await logService.updateLog(input.logId, input.userId, input.input);
+      try {
+        return await logService.updateLog(input.logId, input.userId, input.input);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   deleteLog: publicProcedure
     .input(z.object({ logId: z.string(), userId: z.string() }))
     .mutation(async ({ input }) => {
-      return await logService.deleteLog(input.logId, input.userId);
+      try {
+        return await logService.deleteLog(input.logId, input.userId);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   // Timer procedures
@@ -93,7 +110,11 @@ export const logsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      return await logService.startTimer(input.userId, input.projectId, input.description);
+      try {
+        return await logService.startTimer(input.userId, input.projectId, input.description);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   stopTimer: publicProcedure
@@ -118,29 +139,41 @@ export const logsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      return await logService.stopTimer(
-        input.userId,
-        input.organizationId,
-        input.teamId || null,
-        input.taskIds,
-        input.evidence,
-        input.description,
-        undefined,
-        undefined,
-        input.projectId,
-        input.title
-      );
+      try {
+        return await logService.stopTimer(
+          input.userId,
+          input.organizationId,
+          input.teamId || null,
+          input.taskIds,
+          input.evidence,
+          input.description,
+          undefined,
+          undefined,
+          input.projectId,
+          input.title
+        );
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   getRunningTimer: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input }) => {
-      return await logService.getRunningTimer(input.userId);
+      try {
+        return await logService.getRunningTimer(input.userId);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   discardTimer: publicProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input }) => {
-      return await logService.discardTimer(input.userId);
+      try {
+        return await logService.discardTimer(input.userId);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 });

@@ -1,17 +1,28 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import {
   Organization,
   OrganizationSqlite,
-  NewOrganization,
-  NewOrganizationSqlite,
   Member,
   MemberSqlite,
+  organizationFilterZodSchema,
+  createOrganizationInputZodSchema,
+  updateOrganizationInputZodSchema,
 } from "@/db/schema";
 import { eq, and, like } from "drizzle-orm";
 import { tables } from "./tables";
+import { z } from "zod";
+
+const addMemberSchema = z.object({
+  organizationId: z.string(),
+  userId: z.string(),
+  role: z.string(),
+});
+
+const listOrganizationsFilterSchema = organizationFilterZodSchema.optional();
 
 export class OrganizationService {
-  async getOrganization(id: string, tx: any = db): Promise<Organization | OrganizationSqlite | null> {
+  async getOrganization(id: string, tx: DBInstance = db): Promise<Organization | OrganizationSqlite | null> {
+    z.string().parse(id);
     const table = tables.organization;
     const [res] = await tx
       .select()
@@ -21,14 +32,15 @@ export class OrganizationService {
   }
 
   async createOrganization(
-    data: Omit<NewOrganization, "createdAt"> | Omit<NewOrganizationSqlite, "createdAt">,
-    tx: any = db
+    data: z.infer<typeof createOrganizationInputZodSchema>,
+    tx: DBInstance = db
   ): Promise<Organization | OrganizationSqlite | null> {
+    const parsed = createOrganizationInputZodSchema.parse(data);
     const table = tables.organization;
     const [res] = await tx
       .insert(table)
       .values({
-        ...data,
+        ...parsed,
         createdAt: new Date(),
       })
       .returning();
@@ -37,19 +49,22 @@ export class OrganizationService {
 
   async updateOrganization(
     id: string,
-    data: Partial<NewOrganization | NewOrganizationSqlite>,
-    tx: any = db
+    data: z.infer<typeof updateOrganizationInputZodSchema>,
+    tx: DBInstance = db
   ): Promise<Organization | OrganizationSqlite | null> {
+    z.string().parse(id);
+    const parsed = updateOrganizationInputZodSchema.parse(data);
     const table = tables.organization;
     const [res] = await tx
       .update(table)
-      .set(data)
+      .set(parsed)
       .where(eq(table.id, id))
       .returning();
     return res || null;
   }
 
-  async deleteOrganization(id: string, tx: any = db): Promise<Organization | OrganizationSqlite | null> {
+  async deleteOrganization(id: string, tx: DBInstance = db): Promise<Organization | OrganizationSqlite | null> {
+    z.string().parse(id);
     const table = tables.organization;
     const [res] = await tx
       .delete(table)
@@ -59,21 +74,25 @@ export class OrganizationService {
   }
 
   async listOrganizations(
-    filter?: { slug?: string; metadataSearch?: string },
+    filter?: z.infer<typeof organizationFilterZodSchema>,
     limit = 10,
     offset = 0,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Array<Organization | OrganizationSqlite>> {
+    const parsedFilter = listOrganizationsFilterSchema.parse(filter);
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
+
     const table = tables.organization;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
-    if (filter) {
-      if (filter.slug) {
-        conditions.push(eq(table.slug, filter.slug));
+    if (parsedFilter) {
+      if (parsedFilter.slug) {
+        conditions.push(eq(table.slug, parsedFilter.slug));
       }
-      if (filter.metadataSearch) {
-        conditions.push(like(table.metadata, `%${filter.metadataSearch}%`));
+      if (parsedFilter.metadataSearch) {
+        conditions.push(like(table.metadata, `%${parsedFilter.metadataSearch}%`));
       }
     }
 
@@ -84,7 +103,8 @@ export class OrganizationService {
     return await query.limit(limit).offset(offset);
   }
 
-  async getMembers(organizationId: string, tx: any = db): Promise<Array<Member | MemberSqlite>> {
+  async getMembers(organizationId: string, tx: DBInstance = db): Promise<Array<Member | MemberSqlite>> {
+    z.string().parse(organizationId);
     const table = tables.member;
     return await tx
       .select()
@@ -96,24 +116,27 @@ export class OrganizationService {
     organizationId: string,
     userId: string,
     role: string,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Member | MemberSqlite | null> {
+    const parsed = addMemberSchema.parse({ organizationId, userId, role });
     const table = tables.member;
-    const id = `${organizationId}-${userId}`;
+    const id = `${parsed.organizationId}-${parsed.userId}`;
     const [res] = await tx
       .insert(table)
       .values({
         id,
-        organizationId,
-        userId,
-        role,
+        organizationId: parsed.organizationId,
+        userId: parsed.userId,
+        role: parsed.role,
         createdAt: new Date(),
       })
       .returning();
     return res || null;
   }
 
-  async removeMember(organizationId: string, userId: string, tx: any = db): Promise<Member | MemberSqlite | null> {
+  async removeMember(organizationId: string, userId: string, tx: DBInstance = db): Promise<Member | MemberSqlite | null> {
+    z.string().parse(organizationId);
+    z.string().parse(userId);
     const table = tables.member;
     const [res] = await tx
       .delete(table)
@@ -122,11 +145,21 @@ export class OrganizationService {
     return res || null;
   }
 
-  async getUserMemberships(userId: string, tx: any = db): Promise<Array<Member | MemberSqlite>> {
-    const table = tables.member;
+  async getUserMemberships(userId: string, tx: DBInstance = db): Promise<any[]> {
+    z.string().parse(userId);
+    const memberTable = tables.member;
+    const orgTable = tables.organization;
     return await tx
-      .select()
-      .from(table)
-      .where(eq(table.userId, userId));
+      .select({
+        id: memberTable.id,
+        organizationId: memberTable.organizationId,
+        userId: memberTable.userId,
+        role: memberTable.role,
+        createdAt: memberTable.createdAt,
+        organizationName: orgTable.name,
+      })
+      .from(memberTable)
+      .innerJoin(orgTable, eq(memberTable.organizationId, orgTable.id))
+      .where(eq(memberTable.userId, userId));
   }
 }

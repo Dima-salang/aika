@@ -1,4 +1,4 @@
-import { db, isSQLite } from "@/db";
+import { db as realDb, isSQLite } from "@/db";
 import {
   userSqlite,
   sessionSqlite,
@@ -21,8 +21,13 @@ import {
   joinRequestsSqlite,
 } from "@/db/schema";
 import { sql } from "drizzle-orm";
+import { LibSQLDatabase } from "drizzle-orm/libsql";
+import * as schema from "@/db/schema";
+
+export const db = realDb as unknown as LibSQLDatabase<typeof schema>;
 
 export async function clearDatabase() {
+
   if (isSQLite) {
     try {
       await db.run(sql`PRAGMA foreign_keys = OFF`);
@@ -51,4 +56,12 @@ export async function clearDatabase() {
   await db.delete(joinRequestsSqlite);
   await db.delete(joinTokensSqlite);
   await db.delete(userSqlite);
+
+  if (isSQLite) {
+    try {
+      await db.run(sql`PRAGMA foreign_keys = OFF`);
+    } catch (e) {
+      // Ignore
+    }
+  }
 }

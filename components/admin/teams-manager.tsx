@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Edit2, Trash2, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface TeamsManagerProps {
   initialData?: any[];
@@ -17,9 +18,18 @@ export function TeamsManager({ initialData, initialOrgs }: TeamsManagerProps) {
     initialData: initialOrgs,
   });
 
-  const createTeam = trpc.admin.createTeam.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const updateTeam = trpc.admin.updateTeam.useMutation({ onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); } });
-  const deleteTeam = trpc.admin.deleteTeam.useMutation({ onSuccess: () => { refetch(); } });
+  const createTeam = trpc.admin.createTeam.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Team created successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to create team"); }
+  });
+  const updateTeam = trpc.admin.updateTeam.useMutation({
+    onSuccess: () => { refetch(); setIsFormOpen(false); resetForm(); toast.success("Team updated successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to update team"); }
+  });
+  const deleteTeam = trpc.admin.deleteTeam.useMutation({
+    onSuccess: () => { refetch(); toast.success("Team archived successfully"); },
+    onError: (err) => { toast.error(err.message || "Failed to archive team"); }
+  });
 
   // UI States
   const [isFormOpen, setIsFormOpen] = useState(false);

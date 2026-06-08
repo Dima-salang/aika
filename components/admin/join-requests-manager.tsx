@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Check, X, ShieldAlert, UserCheck, UserX, Clock } from "lucide-react";
+import { toast } from "sonner";
 
 interface JoinRequestsManagerProps {
   initialData?: any[];
@@ -36,7 +37,11 @@ export function JoinRequestsManager({
   const reviewRequest = trpc.admin.reviewJoinRequest.useMutation({
     onSuccess: () => {
       refetch();
+      toast.success("Join request reviewed successfully");
     },
+    onError: (err) => {
+      toast.error(err.message || "Failed to process review");
+    }
   });
 
   const [processingId, setProcessingId] = useState<string | null>(null);

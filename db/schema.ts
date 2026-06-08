@@ -1,6 +1,7 @@
 import { pgTable, text, timestamp, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
 import { sqliteTable, text as sqliteText, integer as sqliteInteger, primaryKey as sqlitePrimaryKey } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
+import { createSelectSchema, createInsertSchema } from "drizzle-zod";
 
 // ==========================================
 // 1. POSTGRESQL SCHEMA DEFINITIONS
@@ -126,6 +127,7 @@ export const projects = pgTable("projects", {
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
+    user_id: text("user_id").references(() => user.id),
 });
 
 // Tasks
@@ -366,6 +368,7 @@ export const projectsSqlite = sqliteTable("projects", {
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
+    user_id: sqliteText("user_id").references(() => userSqlite.id),
 });
 
 // Tasks
@@ -569,205 +572,111 @@ export type NewJoinRequestSqlite = typeof joinRequestsSqlite.$inferInsert;
 // 4. ZOD SCHEMA SCHEMAS
 // ==========================================
 
-export const userZodSchema = z.object({
-  id: z.string(),
-  name: z.string(),
+export const userZodSchema = createSelectSchema(user, {
   email: z.string().email(),
-  emailVerified: z.boolean(),
-  image: z.string().nullable().optional(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-  is_admin: z.boolean().default(false),
-  last_active_team_id: z.string().nullable().optional(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
-export const newUserZodSchema = userZodSchema.omit({ createdAt: true, updatedAt: true }).partial({
+export const newUserZodSchema = createInsertSchema(user, {
+  email: z.string().email(),
+}).omit({ createdAt: true, updatedAt: true }).partial({
   id: true,
   emailVerified: true,
   is_admin: true,
 });
 
-export const sessionZodSchema = z.object({
-  id: z.string(),
-  expiresAt: z.coerce.date(),
-  token: z.string(),
-  createdAt: z.coerce.date(),
-  updatedAt: z.coerce.date(),
-  ipAddress: z.string().nullable().optional(),
-  userAgent: z.string().nullable().optional(),
-  userId: z.string(),
-  activeOrganizationId: z.string().nullable().optional(),
-  activeTeamId: z.string().nullable().optional(),
-});
+export const sessionZodSchema = createSelectSchema(session);
 
-export const organizationZodSchema = z.object({
-  id: z.string(),
+export const organizationZodSchema = createSelectSchema(organization, {
   name: z.string().min(1),
   slug: z.string().min(1),
-  logo: z.string().nullable().optional(),
-  createdAt: z.coerce.date(),
-  metadata: z.string().nullable().optional(),
 });
-export const newOrganizationZodSchema = organizationZodSchema.omit({ createdAt: true }).partial({
-  id: true,
-});
-
-export const memberZodSchema = z.object({
-  id: z.string(),
-  organizationId: z.string(),
-  userId: z.string(),
-  role: z.string(),
-  createdAt: z.coerce.date(),
-});
-
-export const teamZodSchema = z.object({
-  id: z.string(),
-  organization_id: z.string(),
+export const newOrganizationZodSchema = createInsertSchema(organization, {
   name: z.string().min(1),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
-});
-export const newTeamZodSchema = teamZodSchema.omit({ created_at: true, updated_at: true }).partial({
+  slug: z.string().min(1),
+}).omit({ createdAt: true }).partial({
   id: true,
 });
 
-export const teamMemberZodSchema = z.object({
-  id: z.string(),
-  team_id: z.string(),
-  user_id: z.string(),
+export const memberZodSchema = createSelectSchema(member);
+
+export const teamZodSchema = createSelectSchema(teams, {
+  name: z.string().min(1),
+});
+export const newTeamZodSchema = createInsertSchema(teams, {
+  name: z.string().min(1),
+}).omit({ created_at: true, updated_at: true }).partial({
+  id: true,
+});
+
+export const teamMemberZodSchema = createSelectSchema(teamMembers, {
   role: z.enum(["leader", "member"]),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
 
-export const projectZodSchema = z.object({
-  id: z.string(),
-  team_id: z.string().nullable().optional(),
-  organization_id: z.string(),
+export const projectZodSchema = createSelectSchema(projects, {
   name: z.string().min(1),
-  description: z.string().nullable().optional(),
-  start_date: z.coerce.date().nullable().optional(),
-  end_date: z.coerce.date().nullable().optional(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
-export const newProjectZodSchema = projectZodSchema.omit({ created_at: true, updated_at: true }).partial({
+export const newProjectZodSchema = createInsertSchema(projects, {
+  name: z.string().min(1),
+}).omit({ created_at: true, updated_at: true }).partial({
   id: true,
 });
 
-export const taskZodSchema = z.object({
-  id: z.string(),
+export const taskZodSchema = createSelectSchema(tasks, {
   title: z.string().min(1),
-  description: z.string().nullable().optional(),
   status: z.enum(["backlog", "todo", "in_progress", "done"]),
-  due_date: z.coerce.date().nullable().optional(),
   priority: z.enum(["low", "medium", "high"]).nullable().optional(),
-  project_id: z.string().nullable().optional(),
-  user_id: z.string(),
-  team_id: z.string().nullable().optional(),
-  organization_id: z.string(),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
-export const newTaskZodSchema = taskZodSchema.omit({ created_at: true, updated_at: true }).partial({
+export const newTaskZodSchema = createInsertSchema(tasks, {
+  title: z.string().min(1),
+  status: z.enum(["backlog", "todo", "in_progress", "done"]),
+  priority: z.enum(["low", "medium", "high"]).nullable().optional(),
+}).omit({ created_at: true, updated_at: true }).partial({
   id: true,
   status: true,
 });
 
-export const timeLogZodSchema = z.object({
-  id: z.string(),
-  user_id: z.string(),
-  team_id: z.string().nullable().optional(),
-  organization_id: z.string(),
-  project_id: z.string().nullable().optional(),
-  start_time: z.coerce.date(),
-  end_time: z.coerce.date(),
+export const timeLogZodSchema = createSelectSchema(timeLogs, {
   title: z.string().min(1),
   description: z.string().min(1),
-  created_at: z.coerce.date(),
-  updated_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
-export const newTimeLogZodSchema = timeLogZodSchema.omit({ created_at: true, updated_at: true }).partial({
+export const newTimeLogZodSchema = createInsertSchema(timeLogs, {
+  title: z.string().min(1),
+  description: z.string().min(1),
+}).omit({ created_at: true, updated_at: true }).partial({
   id: true,
 });
 
-export const timerZodSchema = z.object({
-  user_id: z.string(),
-  start_time: z.coerce.date(),
-  description: z.string().nullable().optional(),
-  project_id: z.string().nullable().optional(),
-  created_at: z.coerce.date(),
-});
-export const newTimerZodSchema = timerZodSchema.omit({ created_at: true }).partial({
+export const timerZodSchema = createSelectSchema(timers);
+export const newTimerZodSchema = createInsertSchema(timers).omit({ created_at: true }).partial({
   start_time: true,
 });
 
-export const documentEvidenceZodSchema = z.object({
-  id: z.string(),
-  time_log_id: z.string(),
+export const documentEvidenceZodSchema = createSelectSchema(documentEvidences, {
   file_url: z.string().url(),
-  file_key: z.string(),
-  file_name: z.string(),
   file_size: z.number().int().positive(),
-  mime_type: z.string(),
-  created_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
-export const newDocumentEvidenceZodSchema = documentEvidenceZodSchema.omit({ created_at: true }).partial({
+export const newDocumentEvidenceZodSchema = createInsertSchema(documentEvidences, {
+  file_url: z.string().url(),
+  file_size: z.number().int().positive(),
+}).omit({ created_at: true }).partial({
   id: true,
 });
 
-export const notificationZodSchema = z.object({
-  id: z.string(),
-  user_id: z.string(),
-  title: z.string(),
-  message: z.string(),
+export const notificationZodSchema = createSelectSchema(notifications, {
   type: z.enum(["team_invitation", "task_update", "time_log", "team_switch"]),
-  is_read: z.boolean(),
-  related_id: z.string().nullable().optional(),
-  created_at: z.coerce.date(),
-  deleted_at: z.coerce.date().nullable().optional(),
 });
 
-export const auditLogZodSchema = z.object({
-  id: z.string(),
-  user_id: z.string().nullable().optional(),
-  event: z.string(),
-  table_name: z.string().nullable().optional(),
-  record_id: z.string().nullable().optional(),
-  description: z.string(),
-  ip_address: z.string().nullable().optional(),
-  user_agent: z.string().nullable().optional(),
-  payload: z.string().nullable().optional(),
-  created_at: z.coerce.date(),
-});
-export const newAuditLogZodSchema = auditLogZodSchema.omit({ created_at: true }).partial({
+export const auditLogZodSchema = createSelectSchema(auditLogs);
+export const newAuditLogZodSchema = createInsertSchema(auditLogs).omit({ created_at: true }).partial({
   id: true,
 });
 
-export const joinTokenZodSchema = z.object({
-  id: z.string(),
-  organizationId: z.string(),
-  teamId: z.string().nullable().optional(),
-  createdBy: z.string(),
-  expiresAt: z.coerce.date(),
+export const joinTokenZodSchema = createSelectSchema(joinTokens, {
   maxUses: z.number().int().positive().nullable().optional(),
-  usesCount: z.number().int().nonnegative().default(0),
-  autoJoin: z.boolean().default(false),
+  usesCount: z.number().int().nonnegative(),
 });
 
-export const joinRequestZodSchema = z.object({
-  id: z.string(),
-  userId: z.string(),
-  organizationId: z.string(),
-  teamId: z.string().nullable().optional(),
-  status: z.enum(["pending", "approved", "rejected"]).default("pending"),
-  createdAt: z.coerce.date(),
+export const joinRequestZodSchema = createSelectSchema(joinRequests, {
+  status: z.enum(["pending", "approved", "rejected"]),
 });
 
 // ==========================================
@@ -900,6 +809,7 @@ export const projectFilterZodSchema = z.object({
   id: z.string().optional(),
   teamId: z.string().nullable().optional(),
   organizationId: z.string().optional(),
+  userId: z.string().optional(),
   deleted: z.boolean().optional(),
 });
 

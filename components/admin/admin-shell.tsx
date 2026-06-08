@@ -64,7 +64,23 @@ export function AdminShell({
   useEffect(() => {
     const isDarkClass = document.documentElement.classList.contains("dark");
     setIsDark(isDarkClass);
+
+    // Initial parsing of search params
+    const searchParams = new URLSearchParams(window.location.search);
+    const sectionParam = searchParams.get("section") as Section;
+    const validSections: Section[] = ["users", "orgs", "teams", "projects", "tasks", "timelogs", "notifications", "auditlogs", "tokens", "requests"];
+    if (sectionParam && validSections.includes(sectionParam)) {
+      setActiveSection(sectionParam);
+    }
   }, []);
+
+  const handleSetActiveSection = (section: Section) => {
+    setActiveSection(section);
+    const searchParams = new URLSearchParams(window.location.search);
+    searchParams.set("section", section);
+    const newUrl = `${window.location.pathname}?${searchParams.toString()}`;
+    window.history.replaceState(null, "", newUrl);
+  };
 
   const toggleTheme = () => {
     if (isDark) {
@@ -118,7 +134,7 @@ export function AdminShell({
 
         <nav className="flex-1 space-y-1">
           <button
-            onClick={() => setActiveSection("users")}
+            onClick={() => handleSetActiveSection("users")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "users"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -128,7 +144,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Users Pool</span>
           </button>
           <button
-            onClick={() => setActiveSection("orgs")}
+            onClick={() => handleSetActiveSection("orgs")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "orgs"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -138,7 +154,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Workspaces</span>
           </button>
           <button
-            onClick={() => setActiveSection("teams")}
+            onClick={() => handleSetActiveSection("teams")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "teams"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -148,7 +164,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Teams</span>
           </button>
           <button
-            onClick={() => setActiveSection("projects")}
+            onClick={() => handleSetActiveSection("projects")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "projects"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -158,7 +174,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Projects</span>
           </button>
           <button
-            onClick={() => setActiveSection("tasks")}
+            onClick={() => handleSetActiveSection("tasks")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "tasks"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -168,7 +184,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Tasks Backlog</span>
           </button>
           <button
-            onClick={() => setActiveSection("timelogs")}
+            onClick={() => handleSetActiveSection("timelogs")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "timelogs"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -178,7 +194,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Time Sheets</span>
           </button>
           <button
-            onClick={() => setActiveSection("notifications")}
+            onClick={() => handleSetActiveSection("notifications")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "notifications"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -188,7 +204,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Alert Delivery</span>
           </button>
           <button
-            onClick={() => setActiveSection("auditlogs")}
+            onClick={() => handleSetActiveSection("auditlogs")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "auditlogs"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -199,7 +215,7 @@ export function AdminShell({
           </button>
           <div className="h-px bg-outline-variant my-2" />
           <button
-            onClick={() => setActiveSection("tokens")}
+            onClick={() => handleSetActiveSection("tokens")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "tokens"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -209,7 +225,7 @@ export function AdminShell({
             <span className="font-label-md text-label-md">Onboarding Links</span>
           </button>
           <button
-            onClick={() => setActiveSection("requests")}
+            onClick={() => handleSetActiveSection("requests")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "requests"
                 ? "bg-secondary-container text-on-secondary-container"
                 : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
@@ -243,12 +259,16 @@ export function AdminShell({
         {/* Top Header */}
         <header className="h-16 sticky top-0 bg-surface-container-lowest border-b border-outline-variant flex items-center justify-between px-unit-6 z-10 shrink-0">
           <div className="flex items-center gap-2">
-            <h1 className="text-body-md font-extrabold uppercase tracking-widest text-outline">Aika Administrative Platform Panel</h1>
+            <h1 className="text-body-md font-extrabold uppercase tracking-widest text-outline">
+              Aika Administrative Platform Panel {!session?.user?.is_admin && initialOrgs && initialOrgs.length > 0 && `- ${initialOrgs.map((o: any) => o.name).join(", ")}`}
+            </h1>
           </div>
           <div className="flex items-center gap-3">
             <div className="flex flex-col text-right">
               <span className="text-xs font-extrabold text-on-surface">{session?.user?.name}</span>
-              <span className="text-[9px] font-bold text-primary font-mono-timer uppercase">Admin Console</span>
+              <span className="text-[9px] font-bold text-primary font-mono-timer uppercase">
+                {session?.user?.is_admin ? "Global Admin Console" : `Org Admin Console: ${initialOrgs?.map((o: any) => o.name).join(", ")}`}
+              </span>
             </div>
             {session?.user?.image ? (
               <img src={session.user.image} alt={session.user.name} className="h-8 w-8 rounded-full border border-outline-variant" />

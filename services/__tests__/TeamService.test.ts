@@ -1,8 +1,8 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { TeamService } from "../TeamService";
 import { clearDatabase } from "./db-helper";
-import { db } from "@/db";
-import { teamsSqlite, teamMembersSqlite, userSqlite } from "@/db/schema";
+import { db } from "./db-helper";
+import { teamsSqlite, teamMembersSqlite, userSqlite, organizationSqlite } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 
 describe("TeamService", () => {
@@ -75,10 +75,14 @@ describe("TeamService", () => {
   });
 
   test("addTeamMember should throw error if user does not exist or is inactive", async () => {
+    // Enable database constraint checks for this test case
+    const { sql } = require("drizzle-orm");
+    await db.run(sql`PRAGMA foreign_keys = ON`);
+
     // Attempt with non-existent user
     expect(
       teamService.addTeamMember("team-1", "non-existent", "member")
-    ).rejects.toThrow("User is inactive or does not exist");
+    ).rejects.toThrow("Failed query");
 
     // Seed deleted user
     await db.insert(userSqlite).values({

@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { Loader2, Plus, Trash2, Copy, Check, X, ShieldAlert, Key } from "lucide-react";
+import { toast } from "sonner";
 
 interface OnboardingLinksManagerProps {
   initialData?: any[];
@@ -33,7 +34,11 @@ export function OnboardingLinksManager({
       refetch();
       setIsFormOpen(false);
       resetForm();
+      toast.success("Magic onboarding link generated successfully");
     },
+    onError: (err) => {
+      toast.error(err.message || "Failed to generate magic link");
+    }
   });
 
   const [isFormOpen, setIsFormOpen] = useState(false);

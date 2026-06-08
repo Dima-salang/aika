@@ -1,9 +1,9 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
 import { UserService } from "../UserService";
-import { clearDatabase } from "./db-helper";
-import { db } from "@/db";
+import { clearDatabase, db } from "./db-helper";
 import { userSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { DBInstance } from "@/db";
 
 describe("UserService", () => {
   let mockOrganizationService: any;
@@ -110,7 +110,7 @@ describe("UserService", () => {
       },
     ]);
 
-    const res = await userService.listUsers(db, { email: "bob@example.com" });
+    const res = await userService.listUsers(db as unknown as DBInstance, { email: "bob@example.com" });
     expect(res.length).toBe(1);
     expect(res[0].id).toBe("user-2");
   });
@@ -141,7 +141,7 @@ describe("UserService", () => {
       return Promise.resolve([{ userId: "user-2" }]);
     });
 
-    const res = await userService.listUsers(db, { organizationId: "org-123" });
+    const res = await userService.listUsers(db as unknown as DBInstance, { organizationId: "org-123" });
     expect(res.length).toBe(1);
     expect(res[0].id).toBe("user-2");
   });
@@ -169,17 +169,17 @@ describe("UserService", () => {
 
     mockTeamService.getTeamMembers = mock((teamId: string) => {
       expect(teamId).toBe("team-456");
-      return Promise.resolve([{ userId: "user-1" }]);
+      return Promise.resolve([{ user_id: "user-1" }]);
     });
 
-    const res = await userService.listUsers(db, { teamId: "team-456" });
+    const res = await userService.listUsers(db as unknown as DBInstance, { teamId: "team-456" });
     expect(res.length).toBe(1);
     expect(res[0].id).toBe("user-1");
   });
 
   test("listUsers should return empty if members lists are empty", async () => {
     mockOrganizationService.getMembers = mock(() => Promise.resolve([]));
-    const res = await userService.listUsers(db, { organizationId: "org-empty" });
+    const res = await userService.listUsers(db as unknown as DBInstance, { organizationId: "org-empty" });
     expect(res.length).toBe(0);
   });
 
@@ -205,7 +205,7 @@ describe("UserService", () => {
       },
     ]);
 
-    const res = await userService.listUsers(db, { deleted: true });
+    const res = await userService.listUsers(db as unknown as DBInstance, { deleted: true });
     expect(res.length).toBe(1);
     expect(res[0].id).toBe("user-2");
   });

@@ -1,17 +1,28 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import {
   Team,
   TeamSqlite,
-  NewTeam,
-  NewTeamSqlite,
   TeamMember,
   TeamMemberSqlite,
+  teamFilterZodSchema,
+  createTeamInputZodSchema,
+  updateTeamInputZodSchema,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
 import { tables } from "./tables";
+import { z } from "zod";
+
+const addTeamMemberSchema = z.object({
+  teamId: z.string(),
+  userId: z.string(),
+  role: z.enum(["leader", "member"]),
+});
+
+const listTeamsFilterSchema = teamFilterZodSchema.optional();
 
 export class TeamService {
-  async getTeamMembers(teamId: string, tx: any = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
+  async getTeamMembers(teamId: string, tx: DBInstance = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
+    z.string().parse(teamId);
     const table = tables.teamMembers;
     return await tx
       .select()
@@ -23,24 +34,50 @@ export class TeamService {
     teamId: string,
     userId: string,
     role: "leader" | "member",
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<TeamMember | TeamMemberSqlite | null> {
+    const parsed = addTeamMemberSchema.parse({ teamId, userId, role });
     const table = tables.teamMembers;
-    const usersTable = tables.user;
-    const id = `${teamId}-${userId}`;
+    const id = `${parsed.teamId}-${parsed.userId}`;
 
-    // check if the user is not deleted
-    const userExists = await tx.select()
-      .from(usersTable)
-      .where(and(eq(usersTable.id, userId), isNull(usersTable.deleted_at)))
+    // Check if user is soft-deleted
+    const userTable = tables.user;
+    const [deletedUser] = await tx
+      .select()
+      .from(userTable)
+      .where(and(eq(userTable.id, parsed.userId), isNotNull(userTable.deleted_at)))
       .limit(1);
-    
-    if (userExists.length === 0) {
-      throw new Error("User is inactive or does not exist");
+    if (deletedUser) {
+      throw new Error("Validation Error: User is inactive or does not exist");
+    }
+
+    // Ensure the user is a member of the team's organization first
+    const team = await this.getTeam(parsed.teamId, tx);
+    if (team) {
+      const orgId = team.organization_id;
+      const orgMemberTable = tables.member;
+      const orgMemberId = `${orgId}-${parsed.userId}`;
+      const [existingOrgMember] = await tx
+        .select()
+        .from(orgMemberTable)
+        .where(eq(orgMemberTable.id, orgMemberId))
+        .limit(1);
+
+      if (!existingOrgMember) {
+        await tx
+          .insert(orgMemberTable)
+          .values({
+            id: orgMemberId,
+            organizationId: orgId,
+            userId: parsed.userId,
+            role: "member",
+            createdAt: new Date(),
+          });
+      }
     }
 
     // check if the team member already exists
-    const existingMember = await this.verifyTeamMember(teamId, userId, tx);
+    const existingMember = await this.verifyTeamMember(parsed.teamId, parsed.userId, tx);
     if (existingMember) {
         // set deleted_at to null to reactivate the member if they were soft-deleted
         const [reactivated] = await tx
@@ -57,9 +94,9 @@ export class TeamService {
       .insert(table)
       .values({
         id,
-        team_id: teamId,
-        user_id: userId,
-        role,
+        team_id: parsed.teamId,
+        user_id: parsed.userId,
+        role: parsed.role,
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -68,9 +105,10 @@ export class TeamService {
   }
 
   async updateTeamMember(
-    team_member: Partial<TeamMember | TeamMemberSqlite>,
-    tx: any = db
+    team_member: Partial<TeamMember | TeamMemberSqlite> & { id: string },
+    tx: DBInstance = db
   ): Promise<TeamMember | TeamMemberSqlite | null> {
+    z.string().parse(team_member.id);
     const table = tables.teamMembers;
     const [res] = await tx
       .update(table)
@@ -78,12 +116,14 @@ export class TeamService {
         ...team_member,
         updated_at: new Date(),
       })
-      .where(eq(table.id, team_member.id!))
+      .where(eq(table.id, team_member.id))
       .returning();
     return res || null;
   }
 
-  async removeTeamMember(teamId: string, userId: string, tx: any = db): Promise<TeamMember | TeamMemberSqlite | null> {
+  async removeTeamMember(teamId: string, userId: string, tx: DBInstance = db): Promise<TeamMember | TeamMemberSqlite | null> {
+    z.string().parse(teamId);
+    z.string().parse(userId);
     const table = tables.teamMembers;
     const id = `${teamId}-${userId}`;
 
@@ -100,7 +140,9 @@ export class TeamService {
   }
 
   // verify if user is a member of a team
-  async verifyTeamMember(teamId: string, userId: string, tx: any = db): Promise<boolean> {
+  async verifyTeamMember(teamId: string, userId: string, tx: DBInstance = db): Promise<boolean> {
+    z.string().parse(teamId);
+    z.string().parse(userId);
     const table = tables.teamMembers;
     const [res] = await tx
       .select()
@@ -111,7 +153,9 @@ export class TeamService {
   }
 
   // verify if user is a leader of a team
-  async verifyLeader(teamId: string, userId: string, tx: any = db): Promise<boolean> {
+  async verifyLeader(teamId: string, userId: string, tx: DBInstance = db): Promise<boolean> {
+    z.string().parse(teamId);
+    z.string().parse(userId);
     const table = tables.teamMembers;
     const [res] = await tx
       .select()
@@ -121,12 +165,13 @@ export class TeamService {
     return !!res;
   }
 
-  async addTeam(team: NewTeam | NewTeamSqlite, tx: any = db): Promise<Team | TeamSqlite | null> {
+  async addTeam(team: z.infer<typeof createTeamInputZodSchema>, tx: DBInstance = db): Promise<Team | TeamSqlite | null> {
+    const parsed = createTeamInputZodSchema.parse(team);
     const table = tables.teams;
     const [res] = await tx
       .insert(table)
       .values({
-        ...team,
+        ...parsed,
         created_at: new Date(),
         updated_at: new Date(),
       })
@@ -134,7 +179,8 @@ export class TeamService {
     return res || null;
   }
 
-  async getTeam(id: string, tx: any = db): Promise<Team | TeamSqlite | null> {
+  async getTeam(id: string, tx: DBInstance = db): Promise<Team | TeamSqlite | null> {
+    z.string().parse(id);
     const table = tables.teams;
     const [res] = await tx
       .select()
@@ -144,26 +190,30 @@ export class TeamService {
   }
 
   async listTeams(
-    filter?: { id?: string; organizationId?: string; organizations?: string[]; deleted?: boolean },
+    filter?: z.infer<typeof teamFilterZodSchema>,
     limit = 10,
     offset = 0,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Array<Team | TeamSqlite>> {
+    const parsedFilter = listTeamsFilterSchema.parse(filter);
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
+
     const table = tables.teams;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
-    if (filter) {
-      if (filter.id) {
-        conditions.push(eq(table.id, filter.id));
+    if (parsedFilter) {
+      if (parsedFilter.id) {
+        conditions.push(eq(table.id, parsedFilter.id));
       }
-      if (filter.organizationId) {
-        conditions.push(eq(table.organization_id, filter.organizationId));
+      if (parsedFilter.organizationId) {
+        conditions.push(eq(table.organization_id, parsedFilter.organizationId));
       }
-      if (filter.organizations && filter.organizations.length > 0) {
-        conditions.push(inArray(table.organization_id, filter.organizations));
+      if (parsedFilter.organizations && parsedFilter.organizations.length > 0) {
+        conditions.push(inArray(table.organization_id, parsedFilter.organizations));
       }
-      if (filter.deleted) {
+      if (parsedFilter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));
@@ -181,14 +231,16 @@ export class TeamService {
 
   async updateTeam(
     id: string,
-    team: Partial<NewTeam | NewTeamSqlite>,
-    tx: any = db
+    team: z.infer<typeof updateTeamInputZodSchema>,
+    tx: DBInstance = db
   ): Promise<Team | TeamSqlite | null> {
+    z.string().parse(id);
+    const parsed = updateTeamInputZodSchema.parse(team);
     const table = tables.teams;
     const [res] = await tx
       .update(table)
       .set({
-        ...team,
+        ...parsed,
         updated_at: new Date(),
       })
       .where(eq(table.id, id))
@@ -196,7 +248,8 @@ export class TeamService {
     return res || null;
   }
 
-  async deleteTeam(teamId: string, tx: any = db): Promise<Team | TeamSqlite | null> {
+  async deleteTeam(teamId: string, tx: DBInstance = db): Promise<Team | TeamSqlite | null> {
+    z.string().parse(teamId);
     const table = tables.teams;
     const [res] = await tx
       .update(table)
@@ -208,15 +261,28 @@ export class TeamService {
     return res || null;
   }
 
-  async getUserMemberships(userId: string, tx: any = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
-    const table = tables.teamMembers;
+  async getUserMemberships(userId: string, tx: DBInstance = db): Promise<any[]> {
+    z.string().parse(userId);
+    const teamMembersTable = tables.teamMembers;
+    const teamsTable = tables.teams;
     return await tx
-      .select()
-      .from(table)
-      .where(eq(table.user_id, userId));
+      .select({
+        id: teamMembersTable.id,
+        team_id: teamMembersTable.team_id,
+        user_id: teamMembersTable.user_id,
+        role: teamMembersTable.role,
+        created_at: teamMembersTable.created_at,
+        updated_at: teamMembersTable.updated_at,
+        deleted_at: teamMembersTable.deleted_at,
+        teamName: teamsTable.name,
+      })
+      .from(teamMembersTable)
+      .innerJoin(teamsTable, eq(teamMembersTable.team_id, teamsTable.id))
+      .where(eq(teamMembersTable.user_id, userId));
   }
 
-  async getTeamMembersWithDetails(teamId: string, tx: any = db): Promise<any[]> {
+  async getTeamMembersWithDetails(teamId: string, tx: DBInstance = db): Promise<any[]> {
+    z.string().parse(teamId);
     const membersTable = tables.teamMembers;
     const usersTable = tables.user;
 
@@ -234,7 +300,9 @@ export class TeamService {
       .where(eq(membersTable.team_id, teamId));
   }
 
-  async getUserTeamsInOrg(userId: string, organizationId: string, tx: any = db): Promise<any[]> {
+  async getUserTeamsInOrg(userId: string, organizationId: string, tx: DBInstance = db): Promise<any[]> {
+    z.string().parse(userId);
+    z.string().parse(organizationId);
     const teamsTable = tables.teams;
     const membersTable = tables.teamMembers;
 

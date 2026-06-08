@@ -6,8 +6,8 @@ import { Users, Shield, Trash2, Loader2 } from "lucide-react";
 interface TeamMembersTableProps {
   members: any[];
   membersLoading: boolean;
-  onRemoveMember: (userId: string, name: string) => void;
-  isRemoving: boolean;
+  onRemoveMember?: (userId: string, name: string) => void;
+  isRemoving?: boolean;
 }
 
 export function TeamMembersTable({
@@ -59,14 +59,16 @@ export function TeamMembersTable({
                     </td>
                     <td className="p-3 text-on-surface-variant font-mono-timer">{m.userEmail}</td>
                     <td className="p-3 text-right">
-                      <button
-                        onClick={() => onRemoveMember(m.userId, m.userName)}
-                        disabled={isRemoving}
-                        className="p-1 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer transition-colors inline-block"
-                        title="Remove Member from Team"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
+                      {onRemoveMember && (
+                        <button
+                          onClick={() => onRemoveMember(m.userId, m.userName)}
+                          disabled={isRemoving}
+                          className="p-1 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer transition-colors inline-block"
+                          title="Remove Member from Team"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
                     </td>
                   </tr>
                 ))}

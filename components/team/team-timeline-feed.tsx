@@ -284,7 +284,10 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
 
                 {logs.map((log) => {
                   const durationMs = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-                  const durationHrs = (durationMs / 3600000).toFixed(2);
+                  const minutes = Math.floor(durationMs / 60000);
+                  const hrs = Math.floor(minutes / 60);
+                  const mins = minutes % 60;
+                  const durationFormatted = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
                   
                   return (
                     <div key={log.id} className="relative pl-12 group animate-in fade-in duration-300">
@@ -293,7 +296,7 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
                       <div className="absolute left-[13px] top-4 h-3.5 w-3.5 rounded-full border-2 border-outline-variant bg-surface group-hover:border-primary transition-colors flex items-center justify-center">
                         <div className="h-1 w-1 rounded-full bg-outline group-hover:bg-primary transition-colors" />
                       </div>
-
+ 
                       <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:border-outline transition-all space-y-4 cursor-default">
                         
                         {/* Header details */}
@@ -318,10 +321,10 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
                               <span className="text-[10px] text-outline block">{log.userEmail}</span>
                             </div>
                           </div>
-
+ 
                           <div className="flex items-center gap-1.5 bg-surface-container-highest border border-outline-variant/60 px-2 py-0.5 rounded text-[10px] font-bold text-primary">
                             <Clock className="h-3 w-3" />
-                            <span className="font-mono-timer">{durationHrs} hrs</span>
+                            <span className="font-mono-timer">{durationFormatted}</span>
                           </div>
                         </div>
 

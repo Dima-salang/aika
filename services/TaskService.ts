@@ -1,15 +1,21 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import {
   Task,
   TaskSqlite,
+  taskFilterZodSchema,
+  newTaskZodSchema,
+  updateTaskInputZodSchema,
   NewTask,
-  NewTaskSqlite,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
 import { tables } from "./tables";
+import { z } from "zod";
+
+const listTasksFilterSchema = taskFilterZodSchema.optional();
 
 export class TaskService {
-  async getTaskById(id: string, tx: any = db): Promise<Task | TaskSqlite | null> {
+  async getTaskById(id: string, tx: DBInstance = db): Promise<Task | TaskSqlite | null> {
+    z.string().parse(id);
     const table = tables.tasks;
     const [res] = await tx
       .select()
@@ -18,7 +24,8 @@ export class TaskService {
     return res || null;
   }
 
-  async getTasksByIds(ids: string[], tx: any = db): Promise<Array<Task | TaskSqlite>> {
+  async getTasksByIds(ids: string[], tx: DBInstance = db): Promise<Array<Task | TaskSqlite>> {
+    z.array(z.string()).parse(ids);
     if (ids.length === 0) return [];
     const table = tables.tasks;
     return await tx
@@ -28,31 +35,34 @@ export class TaskService {
   }
 
   async createTask(
-    task: NewTask | NewTaskSqlite,
-    tx: any = db
+    task: z.infer<typeof newTaskZodSchema>,
+    tx: DBInstance = db
   ): Promise<Task | TaskSqlite | null> {
+    const parsed = newTaskZodSchema.parse(task);
     const table = tables.tasks;
     const [res] = await tx
       .insert(table)
       .values({
-        ...task,
+        ...parsed,
         created_at: new Date(),
         updated_at: new Date(),
-      })
+      } as NewTask)
       .returning();
     return res || null;
   }
 
   async updateTask(
     id: string,
-    data: Partial<NewTask | NewTaskSqlite>,
-    tx: any = db
+    data: z.infer<typeof updateTaskInputZodSchema>,
+    tx: DBInstance = db
   ): Promise<Task | TaskSqlite | null> {
+    z.string().parse(id);
+    const parsed = updateTaskInputZodSchema.parse(data);
     const table = tables.tasks;
     const [res] = await tx
       .update(table)
       .set({
-        ...data,
+        ...parsed,
         updated_at: new Date(),
       })
       .where(eq(table.id, id))
@@ -60,7 +70,8 @@ export class TaskService {
     return res || null;
   }
 
-  async deleteTask(id: string, tx: any = db): Promise<Task | TaskSqlite | null> {
+  async deleteTask(id: string, tx: DBInstance = db): Promise<Task | TaskSqlite | null> {
+    z.string().parse(id);
     const table = tables.tasks;
     const [res] = await tx
       .update(table)
@@ -73,55 +84,50 @@ export class TaskService {
   }
 
   async listTasks(
-    filter?: {
-      id?: string;
-      projectId?: string | null;
-      userId?: string;
-      teamId?: string | null;
-      organizationId?: string;
-      status?: "todo" | "in_progress" | "done";
-      priority?: "low" | "medium" | "high";
-      deleted?: boolean;
-    },
+    filter?: z.infer<typeof taskFilterZodSchema>,
     limit = 10,
     offset = 0,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Array<Task | TaskSqlite>> {
+    const parsedFilter = listTasksFilterSchema.parse(filter);
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
+
     const table = tables.tasks;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
-    if (filter) {
-      if (filter.id) {
-        conditions.push(eq(table.id, filter.id));
+    if (parsedFilter) {
+      if (parsedFilter.id) {
+        conditions.push(eq(table.id, parsedFilter.id));
       }
-      if (filter.projectId !== undefined) {
-        if (filter.projectId === null) {
+      if (parsedFilter.projectId !== undefined) {
+        if (parsedFilter.projectId === null) {
           conditions.push(isNull(table.project_id));
         } else {
-          conditions.push(eq(table.project_id, filter.projectId));
+          conditions.push(eq(table.project_id, parsedFilter.projectId));
         }
       }
-      if (filter.userId) {
-        conditions.push(eq(table.user_id, filter.userId));
+      if (parsedFilter.userId) {
+        conditions.push(eq(table.user_id, parsedFilter.userId));
       }
-      if (filter.teamId !== undefined) {
-        if (filter.teamId === null) {
+      if (parsedFilter.teamId !== undefined) {
+        if (parsedFilter.teamId === null) {
           conditions.push(isNull(table.team_id));
         } else {
-          conditions.push(eq(table.team_id, filter.teamId));
+          conditions.push(eq(table.team_id, parsedFilter.teamId));
         }
       }
-      if (filter.organizationId) {
-        conditions.push(eq(table.organization_id, filter.organizationId));
+      if (parsedFilter.organizationId) {
+        conditions.push(eq(table.organization_id, parsedFilter.organizationId));
       }
-      if (filter.status) {
-        conditions.push(eq(table.status, filter.status));
+      if (parsedFilter.status) {
+        conditions.push(eq(table.status, parsedFilter.status));
       }
-      if (filter.priority) {
-        conditions.push(eq(table.priority, filter.priority));
+      if (parsedFilter.priority) {
+        conditions.push(eq(table.priority, parsedFilter.priority));
       }
-      if (filter.deleted) {
+      if (parsedFilter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));

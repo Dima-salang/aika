@@ -242,7 +242,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/45 dark:bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
         
-        <div className="relative w-full max-w-6xl h-[88vh] max-h-[900px] flex flex-col bg-surface dark:bg-[#131315] border border-outline-variant rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
+        <div className="relative w-full max-w-7xl h-[90vh] max-h-[950px] flex flex-col bg-surface dark:bg-[#131315] border border-outline-variant rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
           
           {/* Header */}
           <div className="flex items-center justify-between px-unit-6 py-unit-4 border-b border-outline-variant bg-surface-container-lowest select-none shrink-0">
@@ -271,8 +271,8 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
           <div className="flex-1 flex overflow-hidden min-h-0 bg-surface">
             
             {/* Left Column: Log Details Form */}
-            <div className="w-1/2 overflow-y-auto px-unit-6 py-unit-5 space-y-6 border-r border-outline-variant/60 custom-scrollbar flex flex-col">
-              <form id="time-log-form" onSubmit={handleSubmit} className="space-y-5 flex-1">
+            <div className="w-1/2 overflow-y-auto px-unit-6 py-unit-6 space-y-8 border-r border-outline-variant/60 custom-scrollbar flex flex-col">
+              <form id="time-log-form" onSubmit={handleSubmit} className="space-y-7 flex-1">
                 {error && (
                   <div className="p-3.5 rounded-lg bg-error-container border border-error/20 text-error text-xs flex items-start gap-2.5 animate-in slide-in-from-top-2">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -281,8 +281,8 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 )}
     
                 {/* Core Details */}
-                <div className="space-y-4">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="md:col-span-2 space-y-1.5">
                       <Label htmlFor="log-title" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
                         Task Title
@@ -336,11 +336,11 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 </div>
     
                 {/* Time Window */}
-                <div className="p-4 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl space-y-3">
+                <div className="p-5 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl space-y-4">
                   <h4 className="text-[9px] font-extrabold uppercase text-outline tracking-wider flex items-center gap-1.5 select-none">
                     <Clock className="h-3.5 w-3.5 text-primary" /> Logged Time Interval
                   </h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <div className="space-y-1.5">
                       <Label htmlFor="log-start" className="text-[10px] font-bold text-on-surface-variant block">
                         Start Date & Time
@@ -482,8 +482,8 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
             </div>
     
             {/* Right Column: Kanban board */}
-            <div className="w-1/2 flex flex-col bg-surface-container-lowest/40 p-unit-5 min-h-0 overflow-hidden">
-              <div className="flex items-center justify-between mb-3 shrink-0">
+            <div className="w-1/2 flex flex-col bg-surface-container-lowest/40 p-unit-6 min-h-0 overflow-hidden">
+              <div className="flex items-center justify-between mb-5 shrink-0">
                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
                   <Kanban className="h-4 w-4 text-primary" /> Kanban Board
                 </h3>
@@ -493,7 +493,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   </span>
                 )}
               </div>
-    
+     
               {!projectId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
                   <Folder className="h-8 w-8 text-outline/65 mb-2 animate-bounce" />
@@ -512,10 +512,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 </div>
               ) : (
                 /* Kanban Columns Board */
-                <div className="flex-1 flex gap-3 overflow-x-auto pb-2 min-h-0 custom-scrollbar">
+                <div className="flex-1 flex gap-4 overflow-x-auto pb-2 min-h-0 custom-scrollbar">
                   {columns.map((col) => (
-                    <div key={col.id} className="flex-shrink-0 w-[170px] flex flex-col h-full bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-2.5">
-                      <div className="flex items-center justify-between mb-2 shrink-0 px-1">
+                    <div key={col.id} className="flex-shrink-0 w-[185px] flex flex-col h-full bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-3">
+                      <div className="flex items-center justify-between mb-3 shrink-0 px-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant truncate">
                           {col.title}
                         </span>

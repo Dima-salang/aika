@@ -1,24 +1,42 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { tables } from "./tables";
+import { Notification, NotificationSqlite, notificationZodSchema } from "@/db/schema";
+import { z } from "zod";
+
+const createNotificationSchema = z.object({
+  userId: z.string(),
+  title: z.string(),
+  message: z.string(),
+  type: z.enum(["team_invitation", "task_update", "time_log", "team_switch"]),
+  relatedId: z.string().nullable().optional(),
+});
+
+const listNotificationsFilterSchema = z.object({
+  userId: z.string().optional(),
+  type: z.enum(["team_invitation", "task_update", "time_log", "team_switch"]).optional(),
+  isRead: z.boolean().optional(),
+  deleted: z.boolean().optional(),
+}).optional();
 
 export class NotificationService {
   async createNotification(
     userId: string,
     title: string,
     message: string,
-    type: string,
-    relatedId?: string,
-    tx: any = db
-  ): Promise<any> {
+    type: "team_invitation" | "task_update" | "time_log" | "team_switch",
+    relatedId?: string | null,
+    tx: DBInstance = db
+  ): Promise<Notification | NotificationSqlite> {
+    const parsed = createNotificationSchema.parse({ userId, title, message, type, relatedId });
     const notificationData = {
       id: crypto.randomUUID(),
-      user_id: userId,
-      title,
-      message,
-      type,
+      user_id: parsed.userId,
+      title: parsed.title,
+      message: parsed.message,
+      type: parsed.type,
       is_read: false,
-      related_id: relatedId || null,
+      related_id: parsed.relatedId || null,
       created_at: new Date(),
     };
 
@@ -28,26 +46,30 @@ export class NotificationService {
   }
 
   async listNotifications(
-    filter?: { userId?: string; type?: string; isRead?: boolean; deleted?: boolean },
+    filter?: z.infer<typeof listNotificationsFilterSchema>,
     limit = 50,
     offset = 0,
-    tx: any = db
-  ): Promise<any[]> {
+    tx: DBInstance = db
+  ): Promise<Array<Notification | NotificationSqlite>> {
+    const parsedFilter = listNotificationsFilterSchema.parse(filter);
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
+
     const table = tables.notifications;
     let query = tx.select().from(table).$dynamic();
     const conditions: any[] = [];
 
-    if (filter) {
-      if (filter.userId) {
-        conditions.push(eq(table.user_id, filter.userId));
+    if (parsedFilter) {
+      if (parsedFilter.userId) {
+        conditions.push(eq(table.user_id, parsedFilter.userId));
       }
-      if (filter.type) {
-        conditions.push(eq(table.type, filter.type));
+      if (parsedFilter.type) {
+        conditions.push(eq(table.type, parsedFilter.type));
       }
-      if (filter.isRead !== undefined) {
-        conditions.push(eq(table.is_read, filter.isRead));
+      if (parsedFilter.isRead !== undefined) {
+        conditions.push(eq(table.is_read, parsedFilter.isRead));
       }
-      if (filter.deleted) {
+      if (parsedFilter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));
@@ -62,7 +84,8 @@ export class NotificationService {
     return await query.limit(limit).offset(offset);
   }
 
-  async getNotificationById(id: string, tx: any = db): Promise<any> {
+  async getNotificationById(id: string, tx: DBInstance = db): Promise<Notification | NotificationSqlite | null> {
+    z.string().parse(id);
     const table = tables.notifications;
     const [res] = await tx
       .select()
@@ -73,9 +96,10 @@ export class NotificationService {
 
   async updateNotification(
     id: string,
-    data: any,
-    tx: any = db
-  ): Promise<any> {
+    data: Partial<Omit<Notification | NotificationSqlite, "id">>,
+    tx: DBInstance = db
+  ): Promise<Notification | NotificationSqlite | null> {
+    z.string().parse(id);
     const table = tables.notifications;
     const [res] = await tx
       .update(table)
@@ -87,7 +111,8 @@ export class NotificationService {
     return res || null;
   }
 
-  async deleteNotification(id: string, tx: any = db): Promise<any> {
+  async deleteNotification(id: string, tx: DBInstance = db): Promise<Notification | NotificationSqlite | null> {
+    z.string().parse(id);
     const table = tables.notifications;
     const [res] = await tx
       .update(table)

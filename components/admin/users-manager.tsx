@@ -246,7 +246,6 @@ export function UsersManager({ initialData }: UsersManagerProps) {
                   <option value="member">Organization Member</option>
                   <option value="owner">Organization Owner</option>
                   <option value="admin">Organization Administrator</option>
-                  <option value="system_admin">Organization System Administrator</option>
                 </select>
               </div>
             </div>
@@ -373,27 +372,43 @@ export function UsersManager({ initialData }: UsersManagerProps) {
 function UserRow({ user, orgs, teams, handleEdit, handleDelete }: { user: any; orgs: any; teams: any; handleEdit: any; handleDelete: any }) {
   const { data: memberships } = trpc.admin.getUserMemberships.useQuery({ userId: user.id });
 
-  const activeOrg = memberships?.orgMemberships?.[0];
-  const activeTeam = memberships?.teamMemberships?.[0];
-
-  const orgName = orgs?.find((o: any) => o.id === activeOrg?.organizationId)?.name || activeOrg?.organizationId || "None (Guest)";
-  const teamName = teams?.find((t: any) => t.id === activeTeam?.team_id)?.name || activeTeam?.team_id || "None";
-
   return (
     <tr className="hover:bg-surface-container-highest/20 transition-colors">
       <td className="p-3 font-bold">{user.name}</td>
       <td className="p-3 font-mono-timer text-on-surface-variant">{user.email}</td>
       <td className="p-3">
-        <span className="font-extrabold">{orgName}</span>
-        {activeOrg && (
-          <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-secondary-container/40 text-on-secondary-container uppercase">{activeOrg.role}</span>
-        )}
+        <div className="flex flex-col gap-1.5">
+          {memberships?.orgMemberships && memberships.orgMemberships.length > 0 ? (
+            memberships.orgMemberships.map((m: any) => {
+              const orgName = orgs?.find((o: any) => o.id === m.organizationId)?.name || m.organizationName || m.organizationId;
+              return (
+                <div key={m.organizationId} className="flex items-center gap-1.5">
+                  <span className="font-extrabold truncate max-w-[120px]">{orgName}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-secondary-container/40 text-on-secondary-container uppercase">{m.role}</span>
+                </div>
+              );
+            })
+          ) : (
+            <span className="text-outline">None (Guest)</span>
+          )}
+        </div>
       </td>
       <td className="p-3">
-        <span>{teamName}</span>
-        {activeTeam && (
-          <span className="ml-1.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-tertiary-container/30 text-tertiary uppercase">{activeTeam.role}</span>
-        )}
+        <div className="flex flex-col gap-1.5">
+          {memberships?.teamMemberships && memberships.teamMemberships.length > 0 ? (
+            memberships.teamMemberships.map((t: any) => {
+              const teamName = teams?.find((team: any) => team.id === t.team_id)?.name || t.teamName || t.team_id;
+              return (
+                <div key={t.team_id} className="flex items-center gap-1.5">
+                  <span className="truncate max-w-[120px]">{teamName}</span>
+                  <span className="px-1.5 py-0.5 rounded text-[8px] font-bold bg-tertiary-container/30 text-tertiary uppercase">{t.role}</span>
+                </div>
+              );
+            })
+          ) : (
+            <span className="text-outline">None</span>
+          )}
+        </div>
       </td>
       <td className="p-3">
         {user.is_admin ? (
