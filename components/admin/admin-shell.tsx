@@ -136,8 +136,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("users")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "users"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Users className="h-4 w-4" />
@@ -146,8 +146,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("orgs")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "orgs"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Building className="h-4 w-4" />
@@ -156,8 +156,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("teams")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "teams"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Layers className="h-4 w-4" />
@@ -166,8 +166,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("projects")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "projects"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <FolderKanban className="h-4 w-4" />
@@ -176,8 +176,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("tasks")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "tasks"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <CheckSquare className="h-4 w-4" />
@@ -186,8 +186,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("timelogs")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "timelogs"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Clock className="h-4 w-4" />
@@ -196,8 +196,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("notifications")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "notifications"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Bell className="h-4 w-4" />
@@ -206,8 +206,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("auditlogs")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "auditlogs"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Activity className="h-4 w-4" />
@@ -217,8 +217,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("tokens")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "tokens"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <Link2 className="h-4 w-4" />
@@ -227,8 +227,8 @@ export function AdminShell({
           <button
             onClick={() => handleSetActiveSection("requests")}
             className={`w-full flex items-center gap-unit-3 px-unit-3 py-unit-2 rounded-lg transition-all active:scale-[0.98] duration-100 text-left ${activeSection === "requests"
-                ? "bg-secondary-container text-on-secondary-container"
-                : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
+              ? "bg-secondary-container text-on-secondary-container"
+              : "text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface"
               }`}
           >
             <UserPlus className="h-4 w-4" />
