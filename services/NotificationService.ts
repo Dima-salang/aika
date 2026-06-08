@@ -1,5 +1,5 @@
 import { db, DBInstance } from "@/db";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
 import { tables } from "./tables";
 import { Notification, NotificationSqlite, notificationZodSchema } from "@/db/schema";
 import { z } from "zod";
@@ -12,6 +12,8 @@ const createNotificationSchema = z.object({
   relatedId: z.string().nullable().optional(),
 });
 
+type notificationSchema = z.infer<typeof createNotificationSchema>;
+
 const listNotificationsFilterSchema = z.object({
   userId: z.string().optional(),
   type: z.enum(["team_invitation", "task_update", "time_log", "team_switch"]).optional(),
@@ -21,14 +23,10 @@ const listNotificationsFilterSchema = z.object({
 
 export class NotificationService {
   async createNotification(
-    userId: string,
-    title: string,
-    message: string,
-    type: "team_invitation" | "task_update" | "time_log" | "team_switch",
-    relatedId?: string | null,
+    notification: notificationSchema,
     tx: DBInstance = db
   ): Promise<Notification | NotificationSqlite> {
-    const parsed = createNotificationSchema.parse({ userId, title, message, type, relatedId });
+    const parsed = createNotificationSchema.parse(notification);
     const notificationData = {
       id: crypto.randomUUID(),
       user_id: parsed.userId,
@@ -81,6 +79,8 @@ export class NotificationService {
     if (conditions.length > 0) {
       query = query.where(and(...conditions));
     }
+    // order by descending
+    query.orderBy(desc(table.created_at));
     return await query.limit(limit).offset(offset);
   }
 

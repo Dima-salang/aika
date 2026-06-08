@@ -18,12 +18,12 @@ describe("NotificationService", () => {
     const message = "You have been assigned a task.";
     const type = "task_update";
 
-    const notif = await notificationService.createNotification(
+    const notif = await notificationService.createNotification({
       userId,
       title,
       message,
       type
-    );
+    });
 
     expect(notif).toBeDefined();
     expect(notif.id).toBeDefined();
@@ -51,13 +51,13 @@ describe("NotificationService", () => {
     const type = "team_invitation";
     const relatedId = "team-abc";
 
-    const notif = await notificationService.createNotification(
+    const notif = await notificationService.createNotification({
       userId,
       title,
       message,
       type,
       relatedId
-    );
+    });
 
     expect(notif).toBeDefined();
     expect(notif.related_id).toBe(relatedId);
@@ -65,18 +65,18 @@ describe("NotificationService", () => {
 
   test("should successfully list, update, and delete notifications", async () => {
     const userId = "user-123";
-    const notif1 = await notificationService.createNotification(
+    const notif1 = await notificationService.createNotification({
       userId,
-      "Notif 1",
-      "Msg 1",
-      "task_update"
-    );
-    const notif2 = await notificationService.createNotification(
+      title: "Notif 1",
+      message: "Msg 1",
+      type: "task_update"
+    });
+    const notif2 = await notificationService.createNotification({
       userId,
-      "Notif 2",
-      "Msg 2",
-      "time_log"
-    );
+      title: "Notif 2",
+      message: "Msg 2",
+      type: "time_log"
+    });
 
     // List notifications
     const list = await notificationService.listNotifications({ userId });
