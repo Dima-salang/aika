@@ -14,3 +14,10 @@ A teamless workspace context. When a user has no active Team within an Organizat
 
 ## Global Admin
 A system-wide administrative role (governed by the user's `is_admin` attribute) with full read and write access across all organizations, teams, and user profiles. This is distinct from organization-level administrators or owners whose visibility and management rights are limited to their specific organization.
+
+## Personal Report
+A user-scoped report compiling an individual's own time logs and task metrics. Can be scoped to a single team, their Personal View, or aggregated across all teams in the active organization.
+
+## Team Report
+A team-scoped report aggregating time logs, workload distribution, and task metrics across all members of a specific Team. Visible only to Team Leaders, Organization Admins, or Global Admins.
+
