@@ -92,12 +92,12 @@ export function AuthCard() {
 
 
   return (
-    <Card className="w-full max-w-md overflow-hidden border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 shadow-xl rounded-2xl transition-all duration-300">
+    <Card className="w-full max-w-md overflow-hidden border border-outline-variant/10 bg-surface-container-lowest/60 dark:bg-[#131315]/60 backdrop-blur-md shadow-2xl rounded-2xl transition-all duration-300">
       <CardHeader className="space-y-1 text-center pb-6 pt-8">
-        <CardTitle className="text-2xl font-bold tracking-tight">
+        <CardTitle className="text-2xl font-bold tracking-tight text-on-surface">
           {mode === "signin" ? "Welcome Back!" : "Create an Account"}
         </CardTitle>
-        <CardDescription className="text-xs text-zinc-550 dark:text-zinc-400 font-medium">
+        <CardDescription className="text-xs text-outline font-medium">
           {mode === "signin"
             ? "Sign in to view and log your work hours"
             : "Sign up now to start tracking your time"}
@@ -106,7 +106,7 @@ export function AuthCard() {
       
       <CardContent className="space-y-4 px-6 pb-6">
         {error && (
-          <Alert variant="destructive" className="rounded-xl border border-red-200 bg-red-50 dark:bg-red-950/20 text-red-650 dark:text-red-400">
+          <Alert variant="destructive" className="rounded-xl border border-error/25 bg-error/10 text-error">
             <AlertCircle className="h-4 w-4 shrink-0" />
             <AlertTitle className="font-bold text-xs">Error</AlertTitle>
             <AlertDescription className="text-[11px] font-medium">{error}</AlertDescription>
@@ -116,14 +116,14 @@ export function AuthCard() {
         <form onSubmit={handleSubmit} className="space-y-4">
           {mode === "signup" && (
             <div className="space-y-1.5">
-              <Label htmlFor="name" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-                <UserCircle className="h-4 w-4 text-zinc-400" /> Full Name
+              <Label htmlFor="name" className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+                <UserCircle className="h-4 w-4 text-outline" /> Full Name
               </Label>
               <Input
                 id="name"
                 type="text"
                 placeholder="e.g. John Doe"
-                className="bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
+                className="bg-surface-container-low/60 border-outline-variant/15 text-on-surface rounded-xl text-xs focus:border-primary/50 focus:ring-0 placeholder:text-outline/40 dark:bg-[#0a0a0c]/60"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -132,14 +132,14 @@ export function AuthCard() {
           )}
           
           <div className="space-y-1.5">
-            <Label htmlFor="email" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-              <Mail className="h-4 w-4 text-zinc-400" /> Email address
+            <Label htmlFor="email" className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+              <Mail className="h-4 w-4 text-outline" /> Email address
             </Label>
             <Input
               id="email"
               type="email"
               placeholder="name@example.com"
-              className="bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
+              className="bg-surface-container-low/60 border-outline-variant/15 text-on-surface rounded-xl text-xs focus:border-primary/50 focus:ring-0 placeholder:text-outline/40 dark:bg-[#0a0a0c]/60"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -147,14 +147,14 @@ export function AuthCard() {
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="password" className="text-xs font-bold text-zinc-700 dark:text-zinc-300 flex items-center gap-1.5">
-              <Key className="h-4 w-4 text-zinc-400" /> Password
+            <Label htmlFor="password" className="text-xs font-bold text-on-surface flex items-center gap-1.5">
+              <Key className="h-4 w-4 text-outline" /> Password
             </Label>
             <Input
               id="password"
               type="password"
               placeholder="••••••••"
-              className="bg-zinc-50 dark:bg-zinc-950 border-zinc-200 dark:border-zinc-800 rounded-xl text-xs"
+              className="bg-surface-container-low/60 border-outline-variant/15 text-on-surface rounded-xl text-xs focus:border-primary/50 focus:ring-0 placeholder:text-outline/40 dark:bg-[#0a0a0c]/60"
               required
               value={password}
               onChange={(e) => setPassword(e.target.value)}
@@ -163,7 +163,7 @@ export function AuthCard() {
           
           <Button
             type="submit"
-            className="w-full bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-zinc-200 dark:text-zinc-900 rounded-xl font-bold text-xs h-10.5 shadow-md shadow-zinc-900/10 dark:shadow-zinc-50/5 transition-all"
+            className="w-full bg-primary hover:bg-primary/95 text-on-primary rounded-xl font-bold text-xs h-10.5 shadow-lg shadow-primary/20 transition-all active:scale-[0.98]"
             disabled={loading}
           >
             {loading ? (
@@ -180,40 +180,40 @@ export function AuthCard() {
         </form>
 
         <div className="relative flex py-2 items-center">
-          <div className="flex-grow border-t border-zinc-200 dark:border-zinc-850"></div>
-          <span className="flex-shrink mx-4 text-[10px] text-zinc-400 uppercase tracking-widest font-bold">
+          <div className="flex-grow border-t border-outline-variant/10"></div>
+          <span className="flex-shrink mx-4 text-[10px] text-outline uppercase tracking-widest font-bold">
             or continue with
           </span>
-          <div className="flex-grow border-t border-zinc-200 dark:border-zinc-850"></div>
+          <div className="flex-grow border-t border-outline-variant/10"></div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
           <Button
             variant="outline"
             onClick={() => handleSocialSignIn("google")}
-            className="rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-bold bg-white dark:bg-zinc-900 hover:bg-zinc-50 transition-all"
+            className="rounded-xl border border-outline-variant/10 text-xs font-bold bg-surface-container-low/40 hover:bg-surface-container-low/80 dark:bg-[#131315]/40 dark:hover:bg-[#131315]/80 text-on-surface transition-all active:scale-[0.98]"
           >
             Google
           </Button>
           <Button
             variant="outline"
             onClick={() => handleSocialSignIn("github")}
-            className="rounded-xl border border-zinc-200 dark:border-zinc-800 text-xs font-bold bg-white dark:bg-zinc-900 hover:bg-zinc-50 transition-all"
+            className="rounded-xl border border-outline-variant/10 text-xs font-bold bg-surface-container-low/40 hover:bg-surface-container-low/80 dark:bg-[#131315]/40 dark:hover:bg-[#131315]/80 text-on-surface transition-all active:scale-[0.98]"
           >
             GitHub
           </Button>
         </div>
       </CardContent>
       
-      <CardFooter className="justify-center border-t border-zinc-100 dark:border-zinc-850 bg-zinc-50/50 dark:bg-zinc-900/10 p-4">
-        <p className="text-xs text-zinc-500 font-medium">
+      <CardFooter className="justify-center border-t border-outline-variant/10 bg-surface-container-low/20 dark:bg-[#131315]/20 p-4">
+        <p className="text-xs text-outline font-medium">
           {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
           <button
             onClick={() => {
               setMode(mode === "signin" ? "signup" : "signin");
               setError(null);
             }}
-            className="font-bold text-zinc-950 dark:text-zinc-50 underline hover:no-underline transition-all"
+            className="font-bold text-on-surface underline hover:no-underline transition-all"
           >
             {mode === "signin" ? "Register here" : "Sign in here"}
           </button>
