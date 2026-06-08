@@ -126,29 +126,29 @@ describe("ProjectService", () => {
     ]);
 
     // Test default lists only active
-    const listAll = await projectService.listProjects();
+    const listAll = await projectService.listProjects({});
     expect(listAll.length).toBe(2);
 
     // Test filter id
-    const listId = await projectService.listProjects({ id: "project-1" });
+    const listId = await projectService.listProjects({}, { id: "project-1" });
     expect(listId.length).toBe(1);
 
     // Test filter teamId is null
-    const listNullTeam = await projectService.listProjects({ teamId: null });
+    const listNullTeam = await projectService.listProjects({}, { teamId: null });
     expect(listNullTeam.length).toBe(1);
     expect(listNullTeam[0].id).toBe("project-2");
 
     // Test filter teamId is specific
-    const listTeam = await projectService.listProjects({ teamId: "team-1" });
+    const listTeam = await projectService.listProjects({}, { teamId: "team-1" });
     expect(listTeam.length).toBe(1);
     expect(listTeam[0].id).toBe("project-1");
 
     // Test filter organizationId
-    const listOrg = await projectService.listProjects({ organizationId: "org-1" });
+    const listOrg = await projectService.listProjects({}, { organizationId: "org-1" });
     expect(listOrg.length).toBe(2);
 
     // Test filter deleted
-    const listDeleted = await projectService.listProjects({ deleted: true });
+    const listDeleted = await projectService.listProjects({}, { deleted: true });
     expect(listDeleted.length).toBe(1);
     expect(listDeleted[0].id).toBe("project-3");
   });

@@ -1,6 +1,12 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { newProjectZodSchema, projectZodSchema } from "@/db/schema";
+import {
+  getProjectInputZodSchema,
+  getProjectsInputZodSchema,
+  createProjectRouterInputZodSchema,
+  updateProjectRouterInputZodSchema,
+  idInputZodSchema,
+} from "@/db/schema";
 import { ProjectService } from "@/services/ProjectService";
 import { handleDbError } from "@/utils/db-errors";
 
@@ -8,7 +14,7 @@ const projectService = new ProjectService();
 
 export const projectsRouter = router({
   getProject: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(getProjectInputZodSchema)
     .query(async ({ input }) => {
       try {
         return await projectService.getProject(input.id);
@@ -18,25 +24,22 @@ export const projectsRouter = router({
     }),
 
   getProjects: publicProcedure
-    .input(z.object({ 
-      organizationId: z.string(),
-      teamId: z.string().nullable().optional()
-    }))
+    .input(getProjectsInputZodSchema)
     .query(async ({ input, ctx }) => {
       try {
         const userId = ctx.session?.user?.id;
-        return await projectService.listProjects({
+        return await projectService.listProjects(input.pagination, {
           organizationId: input.organizationId,
           teamId: input.teamId,
           userId,
-        }, 1000);
+        });
       } catch (error) {
         handleDbError(error);
       }
     }),
 
   createProject: publicProcedure
-    .input(newProjectZodSchema.extend({ userId: z.string().optional() }))
+    .input(createProjectRouterInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         const { userId, ...projectData } = input;
@@ -53,7 +56,7 @@ export const projectsRouter = router({
     }),
 
   updateProject: publicProcedure
-    .input(projectZodSchema.partial().required({ id: true }))
+    .input(updateProjectRouterInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await projectService.updateProject(input.id, input);
@@ -63,7 +66,7 @@ export const projectsRouter = router({
     }),
 
   deleteProject: publicProcedure
-    .input(z.object({ id: z.string() }))
+    .input(idInputZodSchema)
     .mutation(async ({ input }) => {
       try {
         return await projectService.deleteProject(input.id);

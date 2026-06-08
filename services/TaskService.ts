@@ -6,12 +6,15 @@ import {
   newTaskZodSchema,
   updateTaskInputZodSchema,
   NewTask,
+  PaginationInput,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
-import { tables } from "./tables";
+import { eq, and, isNull, isNotNull, inArray, desc } from "drizzle-orm";
+import { tables } from "@/services/tables";
 import { z } from "zod";
 
 const listTasksFilterSchema = taskFilterZodSchema.optional();
+type ListTasksFilterSchema = z.infer<typeof listTasksFilterSchema>;
+
 
 export class TaskService {
   async getTaskById(id: string, tx: DBInstance = db): Promise<Task | TaskSqlite | null> {
@@ -84,50 +87,45 @@ export class TaskService {
   }
 
   async listTasks(
-    filter?: z.infer<typeof taskFilterZodSchema>,
-    limit = 10,
-    offset = 0,
+    filter: ListTasksFilterSchema,
+    pagination: PaginationInput,
     tx: DBInstance = db
   ): Promise<Array<Task | TaskSqlite>> {
-    const parsedFilter = listTasksFilterSchema.parse(filter);
-    z.number().int().nonnegative().parse(offset);
-    z.number().int().positive().parse(limit);
-
     const table = tables.tasks;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
-    if (parsedFilter) {
-      if (parsedFilter.id) {
-        conditions.push(eq(table.id, parsedFilter.id));
+    if (filter) {
+      if (filter.id) {
+        conditions.push(eq(table.id, filter.id));
       }
-      if (parsedFilter.projectId !== undefined) {
-        if (parsedFilter.projectId === null) {
+      if (filter.projectId !== undefined) {
+        if (filter.projectId === null) {
           conditions.push(isNull(table.project_id));
         } else {
-          conditions.push(eq(table.project_id, parsedFilter.projectId));
+          conditions.push(eq(table.project_id, filter.projectId));
         }
       }
-      if (parsedFilter.userId) {
-        conditions.push(eq(table.user_id, parsedFilter.userId));
+      if (filter.userId) {
+        conditions.push(eq(table.user_id, filter.userId));
       }
-      if (parsedFilter.teamId !== undefined) {
-        if (parsedFilter.teamId === null) {
+      if (filter.teamId !== undefined) {
+        if (filter.teamId === null) {
           conditions.push(isNull(table.team_id));
         } else {
-          conditions.push(eq(table.team_id, parsedFilter.teamId));
+          conditions.push(eq(table.team_id, filter.teamId));
         }
       }
-      if (parsedFilter.organizationId) {
-        conditions.push(eq(table.organization_id, parsedFilter.organizationId));
+      if (filter.organizationId) {
+        conditions.push(eq(table.organization_id, filter.organizationId));
       }
-      if (parsedFilter.status) {
-        conditions.push(eq(table.status, parsedFilter.status));
+      if (filter.status) {
+        conditions.push(eq(table.status, filter.status));
       }
-      if (parsedFilter.priority) {
-        conditions.push(eq(table.priority, parsedFilter.priority));
+      if (filter.priority) {
+        conditions.push(eq(table.priority, filter.priority));
       }
-      if (parsedFilter.deleted) {
+      if (filter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));
@@ -140,6 +138,9 @@ export class TaskService {
       query = query.where(and(...conditions));
     }
 
-    return await query.limit(limit).offset(offset);
+    // sort in descending
+    query = query.orderBy(desc(table.updated_at));
+
+    return await query.limit(pagination.limit ?? 10).offset(pagination.offset ?? 0);
   }
 }

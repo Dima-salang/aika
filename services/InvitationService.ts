@@ -16,6 +16,8 @@ import { TeamService } from "./TeamService";
 import { tables } from "./tables";
 import { z } from "zod";
 
+
+
 const inviteUserSchema = z.object({
   email: z.string().email(),
   role: z.string(),
@@ -23,6 +25,8 @@ const inviteUserSchema = z.object({
   organizationId: z.string(),
   inviterId: z.string(),
 });
+
+type InviteUser = z.infer<typeof inviteUserSchema>
 
 const generateJoinTokenSchema = z.object({
   organizationId: z.string(),
@@ -64,14 +68,10 @@ export class InvitationService {
 
   // 1. Outbound Invitation
   async inviteUser(
-    email: string,
-    role: string,
-    teamId: string | null,
-    organizationId: string,
-    inviterId: string,
+    input: InviteUser,
     tx: DBInstance = db
   ): Promise<Invitation | InvitationSqlite | null> {
-    const parsed = inviteUserSchema.parse({ email, role, teamId, organizationId, inviterId });
+    const parsed = inviteUserSchema.parse(input);
     const table = tables.invitation;
     const userTable = tables.user;
     const id = crypto.randomUUID();

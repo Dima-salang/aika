@@ -1,7 +1,7 @@
 import { pgTable, text, timestamp, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
 import { sqliteTable, text as sqliteText, integer as sqliteInteger, primaryKey as sqlitePrimaryKey } from "drizzle-orm/sqlite-core";
 import { z } from "zod";
-import { createSelectSchema, createInsertSchema } from "drizzle-zod";
+import { createSelectSchema, createInsertSchema} from "drizzle-zod";
 
 // ==========================================
 // 1. POSTGRESQL SCHEMA DEFINITIONS
@@ -572,11 +572,21 @@ export type NewJoinRequestSqlite = typeof joinRequestsSqlite.$inferInsert;
 // 4. ZOD SCHEMA SCHEMAS
 // ==========================================
 
+// Pagination Schema
+export const paginationInputZodSchema = z.object({
+  limit: z.number().positive().int().optional().default(10),
+  offset: z.number().positive().int().optional().default(0),
+});
+
+export type PaginationInput = z.input<typeof paginationInputZodSchema>;
+
+
+
 export const userZodSchema = createSelectSchema(user, {
-  email: z.string().email(),
+  email: z.email(),
 });
 export const newUserZodSchema = createInsertSchema(user, {
-  email: z.string().email(),
+  email: z.email(),
 }).omit({ createdAt: true, updatedAt: true }).partial({
   id: true,
   emailVerified: true,
@@ -837,6 +847,171 @@ export const taskFilterZodSchema = z.object({
   priority: z.enum(["low", "medium", "high"]).optional(),
   deleted: z.boolean().optional(),
 });
+
+// ==========================================
+// 6. SHARED TRPC ROUTER INPUT SCHEMAS
+// ==========================================
+
+export const idInputZodSchema = z.object({
+  id: z.string(),
+});
+
+export const userIdInputZodSchema = z.object({
+  userId: z.string(),
+});
+
+export const tokenInputZodSchema = z.object({
+  token: z.string(),
+});
+
+export const tokenAndUserIdInputZodSchema = z.object({
+  token: z.string(),
+  userId: z.string(),
+});
+
+export const orgIdAndTeamIdInputZodSchema = z.object({
+  organizationId: z.string().optional(),
+  teamId: z.string().optional(),
+});
+
+export const logIdAndUserIdInputZodSchema = z.object({
+  logId: z.string(),
+  userId: z.string(),
+});
+
+export const updateLogParentInputZodSchema = z.object({
+  logId: z.string(),
+  userId: z.string(),
+  input: updateLogInputZodSchema,
+});
+
+export const getUserLogsInputZodSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string().optional(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+});
+
+export const startTimerInputZodSchema = z.object({
+  userId: z.string(),
+  projectId: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+});
+
+export const stopTimerInputZodSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string(),
+  teamId: z.string().nullable().optional(),
+  taskIds: z.array(z.string()),
+  evidence: z.array(
+    z.object({
+      fileUrl: z.string(),
+      fileKey: z.string(),
+      fileName: z.string(),
+      fileSize: z.number(),
+      mimeType: z.string(),
+    })
+  ),
+  projectId: z.string().nullable().optional(),
+  title: z.string().optional(),
+  description: z.string().optional(),
+});
+
+export const getPersonalReportInputZodSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string(),
+  teamIdFilter: z.string().nullable().optional(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const getTeamReportInputZodSchema = z.object({
+  requestingUserId: z.string(),
+  organizationId: z.string(),
+  teamId: z.string(),
+  startDate: z.string().optional(),
+  endDate: z.string().optional(),
+});
+
+export const getTeamTimelineInputZodSchema = z.object({
+  userId: z.string(),
+  teamId: z.string(),
+  startDate: z.coerce.date().optional(),
+  endDate: z.coerce.date().optional(),
+});
+
+export const getTeamMembersInputZodSchema = z.object({
+  userId: z.string(),
+  teamId: z.string(),
+});
+
+export const removeTeamMemberInputZodSchema = z.object({
+  userId: z.string(),
+  teamId: z.string(),
+  memberIdToRemove: z.string(),
+});
+
+export const getUserTeamsInputZodSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string(),
+});
+
+export const setActiveTeamInputZodSchema = z.object({
+  userId: z.string(),
+  teamId: z.string().nullable(),
+});
+
+export const getProjectsInputZodSchema = z.object({
+  organizationId: z.string(),
+  teamId: z.string().nullable().optional(),
+  pagination: paginationInputZodSchema.optional().default({ limit: 10, offset: 0 }),
+});
+
+export const getTasksInputZodSchema = z.object({
+  userId: z.string(),
+  pagination: paginationInputZodSchema.optional().default({ limit: 10, offset: 0 }),
+});
+
+export const createJoinTokenInputZodSchema = z.object({
+  organizationId: z.string(),
+  teamId: z.string().nullable(),
+  createdBy: z.string(),
+  expiresInSeconds: z.number().int().positive().default(86400),
+  maxUses: z.number().int().positive().nullable().optional(),
+  autoJoin: z.boolean().default(false),
+});
+
+export const reviewJoinRequestInputZodSchema = z.object({
+  requestId: z.string(),
+  status: z.enum(["approved", "rejected"]),
+  adminId: z.string(),
+});
+
+export const getProjectInputZodSchema = projectZodSchema.pick({ id: true });
+export const getLogInputZodSchema = z.object({
+  id: z.string(),
+});
+
+export const updateUserMembershipsInputZodSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string().nullable(),
+  orgRole: z.string().nullable(),
+  teamId: z.string().nullable(),
+  teamRole: z.enum(["leader", "member"]).nullable(),
+});
+
+export const createProjectRouterInputZodSchema = newProjectZodSchema.extend({
+  userId: z.string().optional(),
+});
+
+export const updateUserRouterInputZodSchema = userZodSchema.partial().required({ id: true });
+export const updateOrganizationRouterInputZodSchema = organizationZodSchema.partial().required({ id: true });
+export const updateTeamRouterInputZodSchema = teamZodSchema.partial().required({ id: true });
+export const updateProjectRouterInputZodSchema = projectZodSchema.partial().required({ id: true });
+export const updateTaskRouterInputZodSchema = taskZodSchema.partial().required({ id: true });
+export const updateTimeLogRouterInputZodSchema = timeLogZodSchema.partial().required({ id: true });
+export const updateNotificationRouterInputZodSchema = notificationZodSchema.partial().required({ id: true });
+
 
 
 
