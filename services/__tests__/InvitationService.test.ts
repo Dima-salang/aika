@@ -49,13 +49,13 @@ describe("InvitationService", () => {
       updatedAt: new Date(),
     });
 
-    const invite = await invitationService.inviteUser(
-      "invitee@aika.com",
-      "member",
-      null,
-      "org-1",
-      "inviter-1"
-    );
+    const invite = await invitationService.inviteUser({
+      email: "invitee@aika.com",
+      role: "member",
+      teamId: null,
+      organizationId: "org-1",
+      inviterId: "inviter-1",
+    });
 
     expect(invite).toBeDefined();
     expect(invite!.id).toBeDefined();

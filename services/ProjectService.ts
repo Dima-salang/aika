@@ -5,8 +5,9 @@ import {
   projectFilterZodSchema,
   createProjectInputZodSchema,
   updateProjectInputZodSchema,
+  PaginationInput,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
 import { tables } from "./tables";
 import { z } from "zod";
 
@@ -115,14 +116,11 @@ export class ProjectService {
   }
 
   async listProjects(
+    pagination: PaginationInput,
     filter?: z.infer<typeof projectFilterZodSchema>,
-    limit = 10,
-    offset = 0,
     tx: DBInstance = db
   ): Promise<Array<Project | ProjectSqlite>> {
     const parsedFilter = listProjectsFilterSchema.parse(filter);
-    z.number().int().nonnegative().parse(offset);
-    z.number().int().positive().parse(limit);
 
     const table = tables.projects;
     let query = tx.select().from(table).$dynamic();
@@ -158,6 +156,6 @@ export class ProjectService {
       query = query.where(and(...conditions));
     }
 
-    return await query.limit(limit).offset(offset);
+    return await query.limit(pagination.limit ?? 10).offset(pagination.offset ?? 0).orderBy(desc(table.updated_at));
   }
 }

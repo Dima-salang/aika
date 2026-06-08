@@ -6,7 +6,6 @@ import {
   newTaskZodSchema,
   updateTaskInputZodSchema,
   NewTask,
-  paginationInputZodSchema,
   PaginationInput,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray, desc } from "drizzle-orm";

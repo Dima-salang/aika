@@ -150,52 +150,52 @@ describe("TaskService", () => {
     ]);
 
     // Default lists only active tasks
-    const listAll = await taskService.listTasks();
+    const listAll = await taskService.listTasks(undefined, {});
     expect(listAll.length).toBe(2);
 
     // Filter id
-    const listId = await taskService.listTasks({ id: "task-1" });
+    const listId = await taskService.listTasks({ id: "task-1" }, {});
     expect(listId.length).toBe(1);
 
     // Filter projectId null
-    const listNullProject = await taskService.listTasks({ projectId: null });
+    const listNullProject = await taskService.listTasks({ projectId: null }, {});
     expect(listNullProject.length).toBe(1);
     expect(listNullProject[0].id).toBe("task-2");
 
     // Filter projectId specific
-    const listProject = await taskService.listTasks({ projectId: "project-1" });
+    const listProject = await taskService.listTasks({ projectId: "project-1" }, {});
     expect(listProject.length).toBe(1);
     expect(listProject[0].id).toBe("task-1");
 
     // Filter userId
-    const listUser = await taskService.listTasks({ userId: "user-1" });
+    const listUser = await taskService.listTasks({ userId: "user-1" }, {});
     expect(listUser.length).toBe(2);
 
     // Filter teamId null
-    const listNullTeam = await taskService.listTasks({ teamId: null });
+    const listNullTeam = await taskService.listTasks({ teamId: null }, {});
     expect(listNullTeam.length).toBe(1);
     expect(listNullTeam[0].id).toBe("task-2");
 
     // Filter teamId specific
-    const listTeam = await taskService.listTasks({ teamId: "team-1" });
+    const listTeam = await taskService.listTasks({ teamId: "team-1" }, {});
     expect(listTeam.length).toBe(1);
 
     // Filter organizationId
-    const listOrg = await taskService.listTasks({ organizationId: "org-1" });
+    const listOrg = await taskService.listTasks({ organizationId: "org-1" }, {});
     expect(listOrg.length).toBe(2);
 
     // Filter status
-    const listStatus = await taskService.listTasks({ status: "todo" });
+    const listStatus = await taskService.listTasks({ status: "todo" }, {});
     expect(listStatus.length).toBe(1);
     expect(listStatus[0].id).toBe("task-1");
 
     // Filter priority
-    const listPriority = await taskService.listTasks({ priority: "medium" });
+    const listPriority = await taskService.listTasks({ priority: "medium" }, {});
     expect(listPriority.length).toBe(1);
     expect(listPriority[0].id).toBe("task-2");
 
     // Filter deleted
-    const listDeleted = await taskService.listTasks({ deleted: true });
+    const listDeleted = await taskService.listTasks({ deleted: true }, {});
     expect(listDeleted.length).toBe(1);
     expect(listDeleted[0].id).toBe("task-3");
   });
