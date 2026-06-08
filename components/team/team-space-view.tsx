@@ -10,9 +10,9 @@ import {
   Settings
 } from "lucide-react";
 import { toast } from "sonner";
-import { TeamMembersTable } from "./team/team-members-table";
-import { TeamOnboardingControls } from "./team/team-onboarding-controls";
-import { TeamTimelineFeed } from "./team/team-timeline-feed";
+import { TeamMembersTable } from "@/components/team/team-members-table";
+import { TeamOnboardingControls } from "@/components/team/team-onboarding-controls";
+import { TeamTimelineFeed } from "@/components/team/team-timeline-feed";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface TeamSpaceViewProps {
