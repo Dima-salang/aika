@@ -1,4 +1,4 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import {
   Invitation,
   InvitationSqlite,
@@ -14,6 +14,35 @@ import { NotificationService } from "./NotificationService";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
 import { tables } from "./tables";
+import { z } from "zod";
+
+const inviteUserSchema = z.object({
+  email: z.string().email(),
+  role: z.string(),
+  teamId: z.string().nullable(),
+  organizationId: z.string(),
+  inviterId: z.string(),
+});
+
+const generateJoinTokenSchema = z.object({
+  organizationId: z.string(),
+  teamId: z.string().nullable(),
+  createdBy: z.string(),
+  expiresInSeconds: z.number().int().positive().optional().default(86400),
+  maxUses: z.number().int().positive().nullable().optional(),
+  autoJoin: z.boolean().optional().default(false),
+});
+
+const applyWithTokenSchema = z.object({
+  tokenString: z.string(),
+  userId: z.string(),
+});
+
+const reviewJoinRequestSchema = z.object({
+  requestId: z.string(),
+  status: z.enum(["approved", "rejected"]),
+  adminId: z.string(),
+});
 
 export class InvitationService {
   private auditService: AuditService;
@@ -40,8 +69,9 @@ export class InvitationService {
     teamId: string | null,
     organizationId: string,
     inviterId: string,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Invitation | InvitationSqlite | null> {
+    const parsed = inviteUserSchema.parse({ email, role, teamId, organizationId, inviterId });
     const table = tables.invitation;
     const userTable = tables.user;
     const id = crypto.randomUUID();
@@ -51,13 +81,13 @@ export class InvitationService {
       .insert(table)
       .values({
         id,
-        email,
-        role,
-        organizationId,
+        email: parsed.email,
+        role: parsed.role,
+        organizationId: parsed.organizationId,
         status: "pending",
         expiresAt,
-        inviterId,
-        teamId,
+        inviterId: parsed.inviterId,
+        teamId: parsed.teamId,
       })
       .returning();
 
@@ -65,7 +95,7 @@ export class InvitationService {
     const [existingUser] = await tx
       .select()
       .from(userTable)
-      .where(and(eq(userTable.email, email), isNull(userTable.deleted_at)))
+      .where(and(eq(userTable.email, parsed.email), isNull(userTable.deleted_at)))
       .limit(1);
 
     if (existingUser) {
@@ -81,12 +111,12 @@ export class InvitationService {
 
     // Write audit log
     await this.auditService.createAuditLog(
-      inviterId,
+      parsed.inviterId,
       "MEMBER_INVITED",
       "invitation",
       id,
-      `Invited ${email} to organization ${organizationId} with role ${role}`,
-      { email, role, teamId, organizationId },
+      `Invited ${parsed.email} to organization ${parsed.organizationId} with role ${parsed.role}`,
+      { email: parsed.email, role: parsed.role, teamId: parsed.teamId, organizationId: parsed.organizationId },
       undefined,
       undefined,
       tx
@@ -103,33 +133,41 @@ export class InvitationService {
     expiresInSeconds = 86400, // Default 24 hours
     maxUses: number | null = null,
     autoJoin = false,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<JoinToken | JoinTokenSqlite | null> {
+    const parsed = generateJoinTokenSchema.parse({
+      organizationId,
+      teamId,
+      createdBy,
+      expiresInSeconds,
+      maxUses,
+      autoJoin,
+    });
     const table = tables.joinTokens;
     const token = crypto.randomBytes(32).toString("hex");
-    const expiresAt = new Date(Date.now() + expiresInSeconds * 1000);
+    const expiresAt = new Date(Date.now() + parsed.expiresInSeconds * 1000);
 
     const [res] = await tx
       .insert(table)
       .values({
         id: token,
-        organizationId,
-        teamId,
-        createdBy,
+        organizationId: parsed.organizationId,
+        teamId: parsed.teamId,
+        createdBy: parsed.createdBy,
         expiresAt,
-        maxUses,
+        maxUses: parsed.maxUses,
         usesCount: 0,
-        autoJoin,
+        autoJoin: parsed.autoJoin,
       })
       .returning();
 
     await this.auditService.createAuditLog(
-      createdBy,
+      parsed.createdBy,
       "JOIN_TOKEN_GENERATED",
       "join_tokens",
       token,
-      `Generated secure join token for organization ${organizationId}`,
-      { organizationId, teamId, expiresAt, maxUses, autoJoin },
+      `Generated secure join token for organization ${parsed.organizationId}`,
+      { organizationId: parsed.organizationId, teamId: parsed.teamId, expiresAt, maxUses: parsed.maxUses, autoJoin: parsed.autoJoin },
       undefined,
       undefined,
       tx
@@ -142,8 +180,9 @@ export class InvitationService {
   async applyWithToken(
     tokenString: string,
     userId: string,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<JoinRequest | JoinRequestSqlite | null> {
+    const parsed = applyWithTokenSchema.parse({ tokenString, userId });
     const tokenTable = tables.joinTokens;
     const requestTable = tables.joinRequests;
     const membersTable = tables.member;
@@ -152,7 +191,7 @@ export class InvitationService {
     const [token] = await tx
       .select()
       .from(tokenTable)
-      .where(eq(tokenTable.id, tokenString))
+      .where(eq(tokenTable.id, parsed.tokenString))
       .limit(1);
 
     if (!token) {
@@ -171,7 +210,7 @@ export class InvitationService {
     const [existingMember] = await tx
       .select()
       .from(membersTable)
-      .where(and(eq(membersTable.organizationId, token.organizationId), eq(membersTable.userId, userId)))
+      .where(and(eq(membersTable.organizationId, token.organizationId), eq(membersTable.userId, parsed.userId)))
       .limit(1);
 
     if (existingMember) {
@@ -182,20 +221,20 @@ export class InvitationService {
     await tx
       .update(tokenTable)
       .set({ usesCount: token.usesCount + 1 })
-      .where(eq(tokenTable.id, tokenString));
+      .where(eq(tokenTable.id, parsed.tokenString));
 
     if (token.autoJoin) {
       // 1. Instantly add user to organization
-      await this.organizationService.addMember(token.organizationId, userId, "member", tx);
+      await this.organizationService.addMember(token.organizationId, parsed.userId, "member", tx);
 
       // 2. Instantly add user to team if specified
       if (token.teamId) {
-        await this.teamService.addTeamMember(token.teamId, userId, "member", tx);
+        await this.teamService.addTeamMember(token.teamId, parsed.userId, "member", tx);
         const userTable = tables.user;
         await tx
           .update(userTable)
           .set({ last_active_team_id: token.teamId, updatedAt: new Date() })
-          .where(eq(userTable.id, userId));
+          .where(eq(userTable.id, parsed.userId));
       }
 
       // 3. Create approved join request record
@@ -204,7 +243,7 @@ export class InvitationService {
         .insert(requestTable)
         .values({
           id: requestId,
-          userId,
+          userId: parsed.userId,
           organizationId: token.organizationId,
           teamId: token.teamId,
           status: "approved",
@@ -214,7 +253,7 @@ export class InvitationService {
 
       // Notify applicant
       await this.notificationService.createNotification(
-        userId,
+        parsed.userId,
         "Welcome to Organization",
         `You have successfully joined the organization via magic link.`,
         "team_switch",
@@ -224,12 +263,12 @@ export class InvitationService {
 
       // Audit log auto-approval
       await this.auditService.createAuditLog(
-        userId,
+        parsed.userId,
         "JOIN_REQUEST_AUTO_APPROVED",
         "join_requests",
         requestId,
         `Instantly joined organization ${token.organizationId} via auto-join magic link`,
-        { token: tokenString, organizationId: token.organizationId, teamId: token.teamId },
+        { token: parsed.tokenString, organizationId: token.organizationId, teamId: token.teamId },
         undefined,
         undefined,
         tx
@@ -244,7 +283,7 @@ export class InvitationService {
       .from(requestTable)
       .where(
         and(
-          eq(requestTable.userId, userId),
+          eq(requestTable.userId, parsed.userId),
           eq(requestTable.organizationId, token.organizationId),
           eq(requestTable.status, "pending")
         )
@@ -261,7 +300,7 @@ export class InvitationService {
       .insert(requestTable)
       .values({
         id: requestId,
-        userId,
+        userId: parsed.userId,
         organizationId: token.organizationId,
         teamId: token.teamId,
         status: "pending",
@@ -285,12 +324,12 @@ export class InvitationService {
     }
 
     await this.auditService.createAuditLog(
-      userId,
+      parsed.userId,
       "JOIN_REQUEST_SUBMITTED",
       "join_requests",
       requestId,
       `Submitted request to join organization ${token.organizationId}`,
-      { token: tokenString, organizationId: token.organizationId, teamId: token.teamId },
+      { token: parsed.tokenString, organizationId: token.organizationId, teamId: token.teamId },
       undefined,
       undefined,
       tx
@@ -304,14 +343,15 @@ export class InvitationService {
     requestId: string,
     status: "approved" | "rejected",
     adminId: string,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<JoinRequest | JoinRequestSqlite | null> {
+    const parsed = reviewJoinRequestSchema.parse({ requestId, status, adminId });
     const requestTable = tables.joinRequests;
 
     const [req] = await tx
       .select()
       .from(requestTable)
-      .where(eq(requestTable.id, requestId))
+      .where(eq(requestTable.id, parsed.requestId))
       .limit(1);
 
     if (!req) {
@@ -324,11 +364,11 @@ export class InvitationService {
 
     const [updatedReq] = await tx
       .update(requestTable)
-      .set({ status })
-      .where(eq(requestTable.id, requestId))
+      .set({ status: parsed.status })
+      .where(eq(requestTable.id, parsed.requestId))
       .returning();
 
-    if (status === "approved") {
+    if (parsed.status === "approved") {
       // 1. Add user to organization
       await this.organizationService.addMember(req.organizationId, req.userId, "member", tx);
 
@@ -352,12 +392,12 @@ export class InvitationService {
       );
 
       await this.auditService.createAuditLog(
-        adminId,
+        parsed.adminId,
         "JOIN_REQUEST_APPROVED",
         "join_requests",
-        requestId,
+        parsed.requestId,
         `Approved join request of user ${req.userId} to organization ${req.organizationId}`,
-        { requestId, userId: req.userId, organizationId: req.organizationId, teamId: req.teamId },
+        { requestId: parsed.requestId, userId: req.userId, organizationId: req.organizationId, teamId: req.teamId },
         undefined,
         undefined,
         tx
@@ -373,12 +413,12 @@ export class InvitationService {
       );
 
       await this.auditService.createAuditLog(
-        adminId,
+        parsed.adminId,
         "JOIN_REQUEST_REJECTED",
         "join_requests",
-        requestId,
+        parsed.requestId,
         `Declined join request of user ${req.userId} to organization ${req.organizationId}`,
-        { requestId, userId: req.userId, organizationId: req.organizationId },
+        { requestId: parsed.requestId, userId: req.userId, organizationId: req.organizationId },
         undefined,
         undefined,
         tx

@@ -1,9 +1,15 @@
-import { db } from "@/db";
+import { db, DBInstance, runTransaction } from "@/db";
 import {
   NewTimeLog,
   newTimeLogZodSchema,
   CreateLogInput,
   UpdateLogInput,
+  createLogInputZodSchema,
+  updateLogInputZodSchema,
+  TimeLog,
+  TimeLogSqlite,
+  Timer,
+  TimerSqlite,
 } from "@/db/schema";
 import { eq, and, lt, gt, isNull, ne, inArray, lte, gte } from "drizzle-orm";
 import { AuditService } from "./AuditService";
@@ -11,6 +17,27 @@ import { NotificationService } from "./NotificationService";
 import { TaskService } from "./TaskService";
 import { UserService } from "./UserService";
 import { tables } from "./tables";
+import crypto from "crypto";
+import { z } from "zod";
+
+const stopTimerSchema = z.object({
+  userId: z.string(),
+  organizationId: z.string(),
+  teamId: z.string().nullable(),
+  taskIds: z.array(z.string()),
+  evidence: z.array(
+    z.object({
+      fileUrl: z.string().url(),
+      fileKey: z.string(),
+      fileName: z.string(),
+      fileSize: z.number().int().positive(),
+      mimeType: z.string(),
+    })
+  ),
+  description: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  title: z.string().optional(),
+});
 
 export class LogService {
   private auditService: AuditService;
@@ -38,8 +65,13 @@ export class LogService {
     startTime: Date,
     endTime: Date,
     excludeLogId?: string,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<boolean> {
+    z.string().parse(userId);
+    z.date().parse(startTime);
+    z.date().parse(endTime);
+    z.string().optional().parse(excludeLogId);
+
     if (startTime >= endTime) {
       throw new Error("Validation Error: Start time must be before end time");
     }
@@ -73,20 +105,18 @@ export class LogService {
     input: CreateLogInput,
     ipAddress?: string,
     userAgent?: string,
-    outerTx?: any
-  ): Promise<any> {
-    const execute = async (tx: any) => {
-      // 1. Core validations
-      const userExists = await this.userService.getUserById(input.userId, tx);
-      if (!userExists) {
-        throw new Error(`Validation Error: User with ID ${input.userId} does not exist`);
-      }
+    outerTx?: DBInstance
+  ): Promise<TimeLog | TimeLogSqlite> {
+    const parsedInput = createLogInputZodSchema.parse(input);
+    z.string().optional().parse(ipAddress);
+    z.string().optional().parse(userAgent);
 
-      if (!input.evidence || input.evidence.length === 0) {
+    const execute = async (tx: DBInstance) => {
+      if (!parsedInput.evidence || parsedInput.evidence.length === 0) {
         throw new Error("Validation Error: At least one Document Evidence file is required");
       }
 
-      for (const file of input.evidence) {
+      for (const file of parsedInput.evidence) {
         if (file.fileSize > 10 * 1024 * 1024) {
           throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
         }
@@ -97,11 +127,11 @@ export class LogService {
       }
 
       // Verify tasks exist
-      if (input.taskIds && input.taskIds.length > 0) {
-        const existingTasks = await this.taskService.getTasksByIds(input.taskIds, tx);
-        if (existingTasks.length !== input.taskIds.length) {
+      if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
+        const existingTasks = await this.taskService.getTasksByIds(parsedInput.taskIds, tx);
+        if (existingTasks.length !== parsedInput.taskIds.length) {
           const existingIds = new Set(existingTasks.map((t) => t.id));
-          for (const taskId of input.taskIds) {
+          for (const taskId of parsedInput.taskIds) {
             if (!existingIds.has(taskId)) {
               throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
             }
@@ -110,7 +140,7 @@ export class LogService {
       }
 
       // Overlap check
-      const overlaps = await this.checkOverlap(input.userId, input.startTime, input.endTime, undefined, tx);
+      const overlaps = await this.checkOverlap(parsedInput.userId, parsedInput.startTime, parsedInput.endTime, undefined, tx);
       if (overlaps) {
         throw new Error("Validation Error: Time log overlaps with an existing active log");
       }
@@ -119,26 +149,26 @@ export class LogService {
 
       const logData: NewTimeLog = {
         id: logId,
-        user_id: input.userId,
-        organization_id: input.organizationId,
-        team_id: input.teamId || null,
-        project_id: input.projectId || null,
-        start_time: input.startTime,
-        end_time: input.endTime,
-        title: input.title || "Untitled Task",
-        description: input.description,
+        user_id: parsedInput.userId,
+        organization_id: parsedInput.organizationId,
+        team_id: parsedInput.teamId || null,
+        project_id: parsedInput.projectId || null,
+        start_time: parsedInput.startTime,
+        end_time: parsedInput.endTime,
+        title: parsedInput.title || "Untitled Task",
+        description: parsedInput.description,
         created_at: new Date(),
         updated_at: new Date(),
         deleted_at: null,
       };
 
-      const validatedLog = newTimeLogZodSchema.parse(logData);
+      const validatedLog = newTimeLogZodSchema.parse(logData) as NewTimeLog;
 
       const [insertedLog] = await tx.insert(tables.timeLogs).values(validatedLog).returning();
 
       // Insert tasks join entries
-      if (input.taskIds && input.taskIds.length > 0) {
-        const taskLinks = input.taskIds.map((taskId) => ({
+      if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
+        const taskLinks = parsedInput.taskIds.map((taskId) => ({
           time_log_id: logId,
           task_id: taskId,
         }));
@@ -146,7 +176,7 @@ export class LogService {
       }
 
       // Insert Document Evidence entries
-      const evidenceEntries = input.evidence.map((file) => ({
+      const evidenceEntries = parsedInput.evidence.map((file) => ({
         id: crypto.randomUUID(),
         time_log_id: logId,
         file_url: file.fileUrl,
@@ -161,12 +191,12 @@ export class LogService {
 
       // Record Audit Log
       await this.auditService.createAuditLog(
-        input.userId,
+        parsedInput.userId,
         "time_log_creation",
         "time_logs",
         logId,
-        `Created time log for duration ${input.endTime.getTime() - input.startTime.getTime()}ms`,
-        { description: input.description, taskIds: input.taskIds },
+        `Created time log for duration ${parsedInput.endTime.getTime() - parsedInput.startTime.getTime()}ms`,
+        { description: parsedInput.description, taskIds: parsedInput.taskIds },
         ipAddress,
         userAgent,
         tx
@@ -178,7 +208,7 @@ export class LogService {
     if (outerTx) {
       return await execute(outerTx);
     } else {
-      return await db.transaction(execute);
+      return await runTransaction(execute);
     }
   }
 
@@ -191,8 +221,12 @@ export class LogService {
     input: UpdateLogInput,
     ipAddress?: string,
     userAgent?: string
-  ): Promise<any> {
-    return await db.transaction(async (tx: any) => {
+  ): Promise<TimeLog | TimeLogSqlite> {
+    z.string().parse(logId);
+    z.string().parse(userId);
+    const parsedInput = updateLogInputZodSchema.parse(input);
+
+    return await runTransaction(async (tx: DBInstance) => {
       const existing = await this.getLogById(logId);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
@@ -202,12 +236,12 @@ export class LogService {
         throw new Error("Security Error: Unauthorized to modify this time log");
       }
 
-      const startTime = input.startTime ?? existing.start_time;
-      const endTime = input.endTime ?? existing.end_time;
+      const startTime = parsedInput.startTime ?? existing.start_time;
+      const endTime = parsedInput.endTime ?? existing.end_time;
 
       // Validate size and mimes of new evidence files if passed
-      if (input.evidence) {
-        for (const file of input.evidence) {
+      if (parsedInput.evidence) {
+        for (const file of parsedInput.evidence) {
           if (file.fileSize > 10 * 1024 * 1024) {
             throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
           }
@@ -219,11 +253,11 @@ export class LogService {
       }
 
       // Verify tasks exist
-      if (input.taskIds && input.taskIds.length > 0) {
-        const existingTasks = await this.taskService.getTasksByIds(input.taskIds, tx);
-        if (existingTasks.length !== input.taskIds.length) {
+      if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
+        const existingTasks = await this.taskService.getTasksByIds(parsedInput.taskIds, tx);
+        if (existingTasks.length !== parsedInput.taskIds.length) {
           const existingIds = new Set(existingTasks.map((t) => t.id));
-          for (const taskId of input.taskIds) {
+          for (const taskId of parsedInput.taskIds) {
             if (!existingIds.has(taskId)) {
               throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
             }
@@ -233,8 +267,8 @@ export class LogService {
 
       // Overlap check - only if start or end times actually changed
       const timeChanged =
-        (input.startTime && input.startTime.getTime() !== existing.start_time.getTime()) ||
-        (input.endTime && input.endTime.getTime() !== existing.end_time.getTime());
+        (parsedInput.startTime && parsedInput.startTime.getTime() !== existing.start_time.getTime()) ||
+        (parsedInput.endTime && parsedInput.endTime.getTime() !== existing.end_time.getTime());
 
       if (timeChanged) {
         const overlaps = await this.checkOverlap(userId, startTime, endTime, logId, tx);
@@ -245,13 +279,13 @@ export class LogService {
 
       // Update log properties
       const updateData = {
-        organization_id: input.organizationId ?? existing.organization_id,
-        team_id: input.teamId !== undefined ? input.teamId : existing.team_id,
-        project_id: input.projectId !== undefined ? input.projectId : existing.project_id,
+        organization_id: parsedInput.organizationId ?? existing.organization_id,
+        team_id: parsedInput.teamId !== undefined ? parsedInput.teamId : existing.team_id,
+        project_id: parsedInput.projectId !== undefined ? parsedInput.projectId : existing.project_id,
         start_time: startTime,
         end_time: endTime,
-        title: input.title ?? existing.title,
-        description: input.description ?? existing.description,
+        title: parsedInput.title ?? existing.title,
+        description: parsedInput.description ?? existing.description,
         updated_at: new Date(),
       };
 
@@ -262,10 +296,10 @@ export class LogService {
         .returning();
 
       // Synchronize tasks join entries
-      if (input.taskIds !== undefined) {
+      if (parsedInput.taskIds !== undefined) {
         await tx.delete(tables.timeLogTasks).where(eq(tables.timeLogTasks.time_log_id, logId));
-        if (input.taskIds.length > 0) {
-          const taskLinks = input.taskIds.map((taskId) => ({
+        if (parsedInput.taskIds.length > 0) {
+          const taskLinks = parsedInput.taskIds.map((taskId) => ({
             time_log_id: logId,
             task_id: taskId,
           }));
@@ -274,16 +308,16 @@ export class LogService {
       }
 
       // Synchronize Document Evidence entries
-      if (input.evidence !== undefined) {
+      if (parsedInput.evidence !== undefined) {
         await tx
           .update(tables.documentEvidences)
           .set({ deleted_at: new Date() })
           .where(eq(tables.documentEvidences.time_log_id, logId));
 
-        if (input.evidence.length === 0) {
+        if (parsedInput.evidence.length === 0) {
           throw new Error("Validation Error: At least one Document Evidence file is required");
         }
-        const evidenceEntries = input.evidence.map((file) => ({
+        const evidenceEntries = parsedInput.evidence.map((file) => ({
           id: crypto.randomUUID(),
           time_log_id: logId,
           file_url: file.fileUrl,
@@ -304,7 +338,7 @@ export class LogService {
         "time_logs",
         logId,
         `Updated time log ${logId}`,
-        { input },
+        { input: parsedInput },
         ipAddress,
         userAgent,
         tx
@@ -317,8 +351,11 @@ export class LogService {
   /**
    * Soft-delete a Time Log
    */
-  async deleteLog(logId: string, userId: string, ipAddress?: string, userAgent?: string): Promise<any> {
-    return await db.transaction(async (tx: any) => {
+  async deleteLog(logId: string, userId: string, ipAddress?: string, userAgent?: string): Promise<boolean> {
+    z.string().parse(logId);
+    z.string().parse(userId);
+
+    return await runTransaction(async (tx: DBInstance) => {
       const existing = await this.getLogById(logId);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
@@ -359,11 +396,10 @@ export class LogService {
     description: string | null = null,
     ipAddress?: string,
     userAgent?: string
-  ): Promise<any> {
-    const userExists = await this.userService.getUserById(userId);
-    if (!userExists) {
-      throw new Error(`Validation Error: User with ID ${userId} does not exist`);
-    }
+  ): Promise<Timer | TimerSqlite> {
+    z.string().parse(userId);
+    z.string().nullable().parse(projectId);
+    z.string().nullable().parse(description);
 
     // Check if running timer already exists
     const active = await this.getRunningTimer(userId);
@@ -415,8 +451,19 @@ export class LogService {
     userAgent?: string,
     projectId?: string | null,
     title?: string
-  ): Promise<any> {
-    const active = await this.getRunningTimer(userId);
+  ): Promise<TimeLog | TimeLogSqlite> {
+    const parsed = stopTimerSchema.parse({
+      userId,
+      organizationId,
+      teamId,
+      taskIds,
+      evidence,
+      description,
+      projectId,
+      title,
+    });
+
+    const active = await this.getRunningTimer(parsed.userId);
     if (!active) {
       throw new Error("Validation Error: No active running timer found for this user");
     }
@@ -424,22 +471,22 @@ export class LogService {
     const startTime = active.start_time;
     const endTime = new Date();
 
-    return await db.transaction(async (tx: any) => {
+    return await runTransaction(async (tx: DBInstance) => {
       // 1. Delete the timer first
-      await tx.delete(tables.timers).where(eq(tables.timers.user_id, userId));
+      await tx.delete(tables.timers).where(eq(tables.timers.user_id, parsed.userId));
 
       const log = await this.createLog(
         {
-          userId,
-          organizationId,
-          teamId,
-          projectId: projectId !== undefined ? projectId : active.project_id,
+          userId: parsed.userId,
+          organizationId: parsed.organizationId,
+          teamId: parsed.teamId,
+          projectId: parsed.projectId !== undefined ? parsed.projectId : active.project_id,
           startTime,
           endTime,
-          title: title || description || active.description || "Timer-logged hours",
-          description: description || active.description || "Logged via active running timer.",
-          taskIds,
-          evidence,
+          title: parsed.title || parsed.description || active.description || "Timer-logged hours",
+          description: parsed.description || active.description || "Logged via active running timer.",
+          taskIds: parsed.taskIds,
+          evidence: parsed.evidence,
         },
         ipAddress,
         userAgent,
@@ -447,10 +494,10 @@ export class LogService {
       );
 
       await this.auditService.createAuditLog(
-        userId,
+        parsed.userId,
         "timer_stop",
         "timers",
-        userId,
+        parsed.userId,
         `Stopped running timer and saved time log ${log.id}`,
         undefined,
         ipAddress,
@@ -465,7 +512,8 @@ export class LogService {
   /**
    * Retrieve active running timer for a user
    */
-  async getRunningTimer(userId: string): Promise<any> {
+  async getRunningTimer(userId: string): Promise<Timer | TimerSqlite | null> {
+    z.string().parse(userId);
     const [res] = await db.select().from(tables.timers).where(eq(tables.timers.user_id, userId));
     return res || null;
   }
@@ -474,6 +522,7 @@ export class LogService {
    * Discard active running timer for a user
    */
   async discardTimer(userId: string, ipAddress?: string, userAgent?: string): Promise<boolean> {
+    z.string().parse(userId);
     const active = await this.getRunningTimer(userId);
     if (!active) {
       throw new Error("Validation Error: No active running timer found for this user");
@@ -499,6 +548,7 @@ export class LogService {
    * Fetch single log by ID
    */
   async getLogById(logId: string): Promise<any> {
+    z.string().parse(logId);
     const [log] = await db
       .select()
       .from(tables.timeLogs)
@@ -517,7 +567,7 @@ export class LogService {
 
     return {
       ...log,
-      tasks: tasksList.map((t: any) => t.task_id),
+      tasks: tasksList.map((t) => t.task_id),
       evidence: evidenceList,
     };
   }
@@ -537,6 +587,7 @@ export class LogService {
     limit?: number,
     offset?: number
   ): Promise<any[]> {
+    z.string().parse(userId);
     const table = tables.timeLogs;
     const conditions = [
       eq(table.user_id, userId),
@@ -569,7 +620,7 @@ export class LogService {
       }
     }
 
-    let query = db.select().from(table).where(and(...conditions));
+    let query = db.select().from(table).where(and(...conditions)).$dynamic();
 
     if (limit) {
       query = query.limit(limit);
@@ -595,6 +646,7 @@ export class LogService {
     limit?: number,
     offset?: number
   ): Promise<any[]> {
+    z.string().parse(teamId);
     const table = tables.timeLogs;
     const conditions = [
       eq(table.team_id, teamId),
@@ -617,7 +669,7 @@ export class LogService {
       }
     }
 
-    let query = db.select().from(table).where(and(...conditions));
+    let query = db.select().from(table).where(and(...conditions)).$dynamic();
 
     if (limit) {
       query = query.limit(limit);
@@ -630,7 +682,9 @@ export class LogService {
     return await query;
   }
 
-  async adminListLogs(limit = 100, offset = 0, tx: any = db): Promise<any[]> {
+  async adminListLogs(limit = 100, offset = 0, tx: DBInstance = db): Promise<any[]> {
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
     const table = tables.timeLogs;
     return await tx
       .select()
@@ -639,7 +693,7 @@ export class LogService {
       .offset(offset);
   }
 
-  async adminCreateLog(data: any, tx: any = db): Promise<any> {
+  async adminCreateLog(data: any, tx: DBInstance = db): Promise<any> {
     const table = tables.timeLogs;
     const newId = crypto.randomUUID();
     const [res] = await tx
@@ -654,7 +708,8 @@ export class LogService {
     return res;
   }
 
-  async adminUpdateLog(id: string, data: any, tx: any = db): Promise<any> {
+  async adminUpdateLog(id: string, data: any, tx: DBInstance = db): Promise<any> {
+    z.string().parse(id);
     const table = tables.timeLogs;
     const [res] = await tx
       .update(table)
@@ -667,7 +722,8 @@ export class LogService {
     return res;
   }
 
-  async adminDeleteLog(id: string, tx: any = db): Promise<any> {
+  async adminDeleteLog(id: string, tx: DBInstance = db): Promise<any> {
+    z.string().parse(id);
     const table = tables.timeLogs;
     const [res] = await tx
       .update(table)
@@ -680,12 +736,13 @@ export class LogService {
     return res;
   }
 
-  async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: any = db): Promise<any[]> {
+  async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: DBInstance = db): Promise<any[]> {
+    z.string().parse(teamId);
     const members = await tx
       .select()
       .from(tables.teamMembers)
       .where(eq(tables.teamMembers.team_id, teamId));
-    const memberUserIds = members.map((m: any) => m.user_id);
+    const memberUserIds = members.map((m) => m.user_id);
 
     if (memberUserIds.length === 0) {
       return [];
@@ -733,7 +790,7 @@ export class LogService {
       return [];
     }
 
-    const logIds = logs.map((l: any) => l.id);
+    const logIds = logs.map((l) => l.id);
 
     // 2. Fetch all evidence in a single query
     const evidenceTable = tables.documentEvidences;
@@ -757,7 +814,7 @@ export class LogService {
 
     // Map evidence and tasks in memory
     const evidenceMap: Record<string, any[]> = {};
-    evidenceList.forEach((ev: any) => {
+    evidenceList.forEach((ev) => {
       if (!evidenceMap[ev.time_log_id]) {
         evidenceMap[ev.time_log_id] = [];
       }
@@ -765,7 +822,7 @@ export class LogService {
     });
 
     const tasksMap: Record<string, Array<{ id: string; title: string }>> = {};
-    tasksList.forEach((t: any) => {
+    tasksList.forEach((t) => {
       if (!tasksMap[t.time_log_id]) {
         tasksMap[t.time_log_id] = [];
       }
@@ -776,12 +833,12 @@ export class LogService {
     });
 
     const memberRoleMap: Record<string, string> = {};
-    members.forEach((m: any) => {
+    members.forEach((m) => {
       memberRoleMap[m.user_id] = m.role;
     });
 
     // Hydrate logs in memory
-    const hydrated = logs.map((log: any) => {
+    const hydrated = logs.map((log) => {
       return {
         ...log,
         userRole: memberRoleMap[log.user_id] || "member",
@@ -791,7 +848,7 @@ export class LogService {
     });
 
     return hydrated.sort(
-      (a: any, b: any) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+      (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
     );
   }
 }

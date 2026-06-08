@@ -1,10 +1,5 @@
-import { db, isSQLite } from "@/db";
-import {
-  user,
-  userSqlite,
-  organization,
-  organizationSqlite,
-} from "@/db/schema";
+import { db } from "@/db";
+import { tables } from "@/services/tables";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 
@@ -16,7 +11,7 @@ export async function ensureSeed() {
   isSeeding = true;
   try {
     // 1. Seed default organization
-    const orgTable = isSQLite ? organizationSqlite : organization;
+    const orgTable = tables.organization;
     const existingOrg = await db.select().from(orgTable).where(eq(orgTable.id, "org-default"));
     if (existingOrg.length === 0) {
       await db.insert(orgTable).values({
@@ -29,7 +24,7 @@ export async function ensureSeed() {
     }
 
     // 2. Seed default admin account
-    const userTable = isSQLite ? userSqlite : user;
+    const userTable = tables.user;
     const existingAdmin = await db.select().from(userTable).where(eq(userTable.email, "iozera_admin@gmail.com"));
     if (existingAdmin.length === 0) {
       console.log("[Aika Seeder] Registering admin account...");

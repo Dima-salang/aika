@@ -2,20 +2,9 @@ import { router, publicProcedure, mergeRouters } from "../trpc";
 import { ensureSeed } from "@/db/seed";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
-import { db, isSQLite } from "@/db";
+import { db } from "@/db";
 import { eq, and, or } from "drizzle-orm";
-import {
-  joinTokens,
-  joinTokensSqlite,
-  member,
-  memberSqlite,
-  teamMembers,
-  teamMembersSqlite,
-  organization,
-  organizationSqlite,
-  teams,
-  teamsSqlite,
-} from "@/db/schema";
+import { tables } from "@/services/tables";
 
 // Router Imports
 import { adminRouter } from "./admin";
@@ -54,7 +43,7 @@ const baseRouter = router({
   validateJoinToken: publicProcedure
     .input(z.object({ token: z.string() }))
     .query(async ({ input }) => {
-      const tokenTable = isSQLite ? joinTokensSqlite : joinTokens;
+      const tokenTable = tables.joinTokens;
       const [tokenRecord] = await db
         .select()
         .from(tokenTable)
@@ -106,8 +95,8 @@ const baseRouter = router({
   getMyManageProfile: publicProcedure
     .input(z.object({ userId: z.string() }))
     .query(async ({ input }) => {
-      const memberTable = isSQLite ? memberSqlite : member;
-      const teamMembersTable = isSQLite ? teamMembersSqlite : teamMembers;
+      const memberTable = tables.member;
+      const teamMembersTable = tables.teamMembers;
 
       const orgMemberships = await db
         .select()

@@ -1,12 +1,23 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import {
   User,
   UserSqlite,
+  userFilterZodSchema,
+  updateUserInputZodSchema,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
 import { tables } from "./tables";
+import { z } from "zod";
+
+const createUserSchema = z.object({
+  name: z.string().min(1),
+  email: z.string().email(),
+  is_admin: z.boolean().optional(),
+});
+
+const listUsersFilterSchema = userFilterZodSchema.optional();
 
 export class UserService {
   private organizationService: OrganizationService;
@@ -17,7 +28,8 @@ export class UserService {
     this.teamService = teamService;
   }
 
-  async getUserById(id: string, tx: any = db): Promise<User | UserSqlite | null> {
+  async getUserById(id: string, tx: DBInstance = db): Promise<User | UserSqlite | null> {
+    z.string().parse(id);
     const table = tables.user;
     const [res] = await tx
       .select()
@@ -27,38 +39,42 @@ export class UserService {
   }
 
   async listUsers(
-    tx: any = db,
-    filter?: { email?: string; organizationId?: string; teamId?: string; deleted?: boolean },
+    tx: DBInstance = db,
+    filter?: z.infer<typeof userFilterZodSchema>,
     offset = 0,
     limit = 10
   ): Promise<Array<User | UserSqlite>> {
+    const parsedFilter = listUsersFilterSchema.parse(filter);
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
+
     const table = tables.user;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
-    if (filter) {
-      if (filter.email) {
-        conditions.push(eq(table.email, filter.email));
+    if (parsedFilter) {
+      if (parsedFilter.email) {
+        conditions.push(eq(table.email, parsedFilter.email));
       }
-      if (filter.organizationId) {
-        const members = await this.organizationService.getMembers(filter.organizationId, tx);
-        const userIds = members.map((m: any) => m.userId);
+      if (parsedFilter.organizationId) {
+        const members = await this.organizationService.getMembers(parsedFilter.organizationId, tx);
+        const userIds = members.map((m) => m.userId);
         if (userIds.length > 0) {
           conditions.push(inArray(table.id, userIds));
         } else {
           return [];
         }
       }
-      if (filter.teamId) {
-        const members = await this.teamService.getTeamMembers(filter.teamId, tx);
-        const userIds = members.map((m: any) => m.user_id || m.userId);
+      if (parsedFilter.teamId) {
+        const members = await this.teamService.getTeamMembers(parsedFilter.teamId, tx);
+        const userIds = members.map((m) => m.user_id);
         if (userIds.length > 0) {
           conditions.push(inArray(table.id, userIds));
         } else {
           return [];
         }
       }
-      if (filter.deleted) {
+      if (parsedFilter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));
@@ -74,12 +90,14 @@ export class UserService {
     return await query.limit(limit).offset(offset);
   }
 
-  async updateUser(id: string, data: Partial<User> | Partial<UserSqlite>, tx: any = db): Promise<User | UserSqlite | null> {
+  async updateUser(id: string, data: z.infer<typeof updateUserInputZodSchema>, tx: DBInstance = db): Promise<User | UserSqlite | null> {
+    z.string().parse(id);
+    const parsedData = updateUserInputZodSchema.parse(data);
     const table = tables.user;
     const [res] = await tx
       .update(table)
       .set({
-        ...data,
+        ...parsedData,
         updatedAt: new Date(),
       })
       .where(eq(table.id, id))
@@ -87,7 +105,8 @@ export class UserService {
     return res || null;
   }
 
-  async deleteUser(id: string, tx: any = db): Promise<User | UserSqlite | null> {
+  async deleteUser(id: string, tx: DBInstance = db): Promise<User | UserSqlite | null> {
+    z.string().parse(id);
     const table = tables.user;
     const [res] = await tx
       .update(table)
@@ -99,17 +118,18 @@ export class UserService {
     return res || null;
   }
 
-  async createUser(data: { name: string; email: string; is_admin?: boolean }, tx: any = db): Promise<User | UserSqlite | null> {
+  async createUser(data: z.infer<typeof createUserSchema>, tx: DBInstance = db): Promise<User | UserSqlite | null> {
+    const parsedData = createUserSchema.parse(data);
     const table = tables.user;
     const newId = crypto.randomUUID();
     const [res] = await tx
       .insert(table)
       .values({
         id: newId,
-        name: data.name,
-        email: data.email,
+        name: parsedData.name,
+        email: parsedData.email,
         emailVerified: false,
-        is_admin: data.is_admin || false,
+        is_admin: parsedData.is_admin || false,
         createdAt: new Date(),
         updatedAt: new Date(),
       })
@@ -117,7 +137,11 @@ export class UserService {
     return res || null;
   }
 
-  async setActiveTeam(userId: string, sessionId: string | undefined, teamId: string | null, tx: any = db): Promise<boolean> {
+  async setActiveTeam(userId: string, sessionId: string | undefined, teamId: string | null, tx: DBInstance = db): Promise<boolean> {
+    z.string().parse(userId);
+    z.string().optional().parse(sessionId);
+    z.string().nullable().parse(teamId);
+
     const userTable = tables.user;
     await tx
       .update(userTable)
@@ -140,4 +164,3 @@ export class UserService {
     return true;
   }
 }
-

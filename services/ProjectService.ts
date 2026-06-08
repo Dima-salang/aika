@@ -1,15 +1,20 @@
-import { db } from "@/db";
+import { db, DBInstance } from "@/db";
 import {
   Project,
   ProjectSqlite,
-  NewProject,
-  NewProjectSqlite,
+  projectFilterZodSchema,
+  createProjectInputZodSchema,
+  updateProjectInputZodSchema,
 } from "@/db/schema";
-import { eq, and, or, isNull, isNotNull } from "drizzle-orm";
+import { eq, and, isNull, isNotNull } from "drizzle-orm";
 import { tables } from "./tables";
+import { z } from "zod";
+
+const listProjectsFilterSchema = projectFilterZodSchema.optional();
 
 export class ProjectService {
-  async getProject(id: string, tx: any = db): Promise<Project | ProjectSqlite | null> {
+  async getProject(id: string, tx: DBInstance = db): Promise<Project | ProjectSqlite | null> {
+    z.string().parse(id);
     const table = tables.projects;
     const [res] = await tx
       .select()
@@ -19,41 +24,46 @@ export class ProjectService {
   }
 
   async createProject(
-    project: NewProject | NewProjectSqlite,
+    project: z.infer<typeof createProjectInputZodSchema>,
     userId?: string,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Project | ProjectSqlite | null> {
-    if (userId) {
-      const orgMemberTable = tables.member;
-      const isOrgMember = await tx
-        .select()
-        .from(orgMemberTable)
-        .where(
-          and(
-            eq(orgMemberTable.organizationId, project.organization_id),
-            eq(orgMemberTable.userId, userId)
-          )
-        )
-        .limit(1);
+    const parsedProject = createProjectInputZodSchema.parse(project);
+    z.string().optional().parse(userId);
 
-      if (isOrgMember.length === 0) {
-        throw new Error("Validation Error: User does not belong to the specified organization");
+    if (userId) {
+      if (parsedProject.organization_id !== "org-default") {
+        const orgMemberTable = tables.member;
+        const [isOrgMember] = await tx
+          .select()
+          .from(orgMemberTable)
+          .where(
+            and(
+              eq(orgMemberTable.organizationId, parsedProject.organization_id),
+              eq(orgMemberTable.userId, userId)
+            )
+          )
+          .limit(1);
+
+        if (!isOrgMember) {
+          throw new Error("Validation Error: User does not belong to the specified organization");
+        }
       }
 
-      if (project.team_id) {
+      if (parsedProject.team_id) {
         const teamMemberTable = tables.teamMembers;
-        const isTeamMember = await tx
+        const [isTeamMember] = await tx
           .select()
           .from(teamMemberTable)
           .where(
             and(
-              eq(teamMemberTable.team_id, project.team_id),
+              eq(teamMemberTable.team_id, parsedProject.team_id),
               eq(teamMemberTable.user_id, userId)
             )
           )
           .limit(1);
 
-        if (isTeamMember.length === 0) {
+        if (!isTeamMember) {
           throw new Error("Validation Error: User does not belong to the specified team");
         }
       }
@@ -63,7 +73,7 @@ export class ProjectService {
     const [res] = await tx
       .insert(table)
       .values({
-        ...project,
+        ...parsedProject,
         user_id: userId || null,
         created_at: new Date(),
         updated_at: new Date(),
@@ -72,17 +82,18 @@ export class ProjectService {
     return res || null;
   }
 
-
   async updateProject(
     id: string,
-    data: Partial<NewProject | NewProjectSqlite>,
-    tx: any = db
+    data: z.infer<typeof updateProjectInputZodSchema>,
+    tx: DBInstance = db
   ): Promise<Project | ProjectSqlite | null> {
+    z.string().parse(id);
+    const parsedData = updateProjectInputZodSchema.parse(data);
     const table = tables.projects;
     const [res] = await tx
       .update(table)
       .set({
-        ...data,
+        ...parsedData,
         updated_at: new Date(),
       })
       .where(eq(table.id, id))
@@ -90,7 +101,8 @@ export class ProjectService {
     return res || null;
   }
 
-  async deleteProject(id: string, tx: any = db): Promise<Project | ProjectSqlite | null> {
+  async deleteProject(id: string, tx: DBInstance = db): Promise<Project | ProjectSqlite | null> {
+    z.string().parse(id);
     const table = tables.projects;
     const [res] = await tx
       .update(table)
@@ -103,41 +115,37 @@ export class ProjectService {
   }
 
   async listProjects(
-    filter?: { id?: string; teamId?: string | null; organizationId?: string; deleted?: boolean; userId?: string },
+    filter?: z.infer<typeof projectFilterZodSchema>,
     limit = 10,
     offset = 0,
-    tx: any = db
+    tx: DBInstance = db
   ): Promise<Array<Project | ProjectSqlite>> {
+    const parsedFilter = listProjectsFilterSchema.parse(filter);
+    z.number().int().nonnegative().parse(offset);
+    z.number().int().positive().parse(limit);
+
     const table = tables.projects;
     let query = tx.select().from(table).$dynamic();
 
     const conditions: any[] = [];
-    if (filter) {
-      if (filter.id) {
-        conditions.push(eq(table.id, filter.id));
+    if (parsedFilter) {
+      if (parsedFilter.id) {
+        conditions.push(eq(table.id, parsedFilter.id));
       }
-      if (filter.teamId !== undefined) {
-        if (filter.teamId === null) {
+      if (parsedFilter.teamId !== undefined) {
+        if (parsedFilter.teamId === null) {
           conditions.push(isNull(table.team_id));
         } else {
-          conditions.push(eq(table.team_id, filter.teamId));
+          conditions.push(eq(table.team_id, parsedFilter.teamId));
         }
       }
-      if (filter.organizationId) {
-        if (filter.organizationId === "org-default" && filter.userId) {
-          // In the default workspace, only show team projects OR personal projects created by this user
-          conditions.push(eq(table.organization_id, filter.organizationId));
-          conditions.push(
-            or(
-              isNotNull(table.team_id),
-              eq(table.user_id, filter.userId)
-            )
-          );
-        } else {
-          conditions.push(eq(table.organization_id, filter.organizationId));
-        }
+      if (parsedFilter.organizationId) {
+        conditions.push(eq(table.organization_id, parsedFilter.organizationId));
       }
-      if (filter.deleted) {
+      if (parsedFilter.userId) {
+        conditions.push(eq(table.user_id, parsedFilter.userId));
+      }
+      if (parsedFilter.deleted) {
         conditions.push(isNotNull(table.deleted_at));
       } else {
         conditions.push(isNull(table.deleted_at));

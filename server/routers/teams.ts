@@ -8,6 +8,7 @@ import { NotificationService } from "@/services/NotificationService";
 import { TaskService } from "@/services/TaskService";
 import { UserService } from "@/services/UserService";
 import { OrganizationService } from "@/services/OrganizationService";
+import { handleDbError } from "@/utils/db-errors";
 
 const auditService = new AuditService();
 const organizationService = new OrganizationService();
@@ -28,13 +29,17 @@ export const teamsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      if (!(await teamService.verifyLeader(input.teamId, input.userId))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You must be a team leader to view this timeline.",
-        });
+      try {
+        if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You must be a team member to view this timeline.",
+          });
+        }
+        return await logService.getTeamTimeline(input.teamId, input.startDate, input.endDate);
+      } catch (error) {
+        handleDbError(error);
       }
-      return await logService.getTeamTimeline(input.teamId, input.startDate, input.endDate);
     }),
 
   getTeamMembers: publicProcedure
@@ -45,13 +50,17 @@ export const teamsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      if (!(await teamService.verifyLeader(input.teamId, input.userId))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You must be a team leader to view team members.",
-        });
+      try {
+        if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You must be a team member to view team members.",
+          });
+        }
+        return await teamService.getTeamMembersWithDetails(input.teamId);
+      } catch (error) {
+        handleDbError(error);
       }
-      return await teamService.getTeamMembersWithDetails(input.teamId);
     }),
 
   removeTeamMember: publicProcedure
@@ -63,14 +72,18 @@ export const teamsRouter = router({
       })
     )
     .mutation(async ({ input }) => {
-      if (!(await teamService.verifyLeader(input.teamId, input.userId))) {
-        throw new TRPCError({
-          code: "FORBIDDEN",
-          message: "You must be a team leader to manage membership.",
-        });
+      try {
+        if (!(await teamService.verifyLeader(input.teamId, input.userId))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You must be a team leader to manage membership.",
+          });
+        }
+        await teamService.removeTeamMember(input.teamId, input.memberIdToRemove);
+        return { success: true };
+      } catch (error) {
+        handleDbError(error);
       }
-      await teamService.removeTeamMember(input.teamId, input.memberIdToRemove);
-      return { success: true };
     }),
 
   getUserTeams: publicProcedure
@@ -81,7 +94,11 @@ export const teamsRouter = router({
       })
     )
     .query(async ({ input }) => {
-      return await teamService.getUserTeamsInOrg(input.userId, input.organizationId);
+      try {
+        return await teamService.getUserTeamsInOrg(input.userId, input.organizationId);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
   setActiveTeam: publicProcedure
@@ -92,8 +109,11 @@ export const teamsRouter = router({
       })
     )
     .mutation(async ({ input, ctx }) => {
-      const sessionId = ctx.session?.session?.id;
-      return await userService.setActiveTeam(input.userId, sessionId, input.teamId);
+      try {
+        const sessionId = ctx.session?.session?.id;
+        return await userService.setActiveTeam(input.userId, sessionId, input.teamId);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 });
-
