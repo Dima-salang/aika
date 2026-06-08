@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { TeamMembersTable } from "./team/team-members-table";
 import { TeamOnboardingControls } from "./team/team-onboarding-controls";
 import { TeamTimelineFeed } from "./team/team-timeline-feed";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface TeamSpaceViewProps {
   userId: string;
@@ -21,7 +22,7 @@ interface TeamSpaceViewProps {
 }
 
 export function TeamSpaceView({ userId, organizationId, activeTeamId: propActiveTeamId }: TeamSpaceViewProps) {
-  const [activeSubTab, setActiveSubTab] = useState<"feed" | "manage">("feed");
+  const [activeSubTab, setActiveSubTab] = useState<"feed" | "members" | "manage">("feed");
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [generatedLink, setGeneratedLink] = useState<string | null>(null);
@@ -32,9 +33,12 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
     { enabled: !!userId }
   );
 
-  const managedTeams = profile?.managedTeams || [];
-  const activeTeamId = selectedTeamId || propActiveTeamId || managedTeams[0]?.id || "";
-  const activeTeam = managedTeams.find((t) => t.id === activeTeamId);
+  const { data: userTeams, isLoading: userTeamsLoading } = trpc.getUserTeams.useQuery(
+    { userId, organizationId },
+    { enabled: !!userId && !!organizationId }
+  );
+
+  const activeTeamId = selectedTeamId || propActiveTeamId || userTeams?.[0]?.id || "";
 
   // Queries
   const { data: members, refetch: refetchMembers, isLoading: membersLoading } = trpc.getTeamMembers.useQuery(
@@ -56,6 +60,10 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
     { userId, teamId: activeTeamId },
     { enabled: !!activeTeamId }
   );
+
+  // Determine user leadership status
+  const currentUserMember = members?.find((m) => m.userId === userId);
+  const isLeader = currentUserMember?.role === "leader" || profile?.managedOrgs?.some(o => o.id === organizationId);
 
   // Mutations
   const removeMemberMutation = trpc.removeTeamMember.useMutation({
@@ -130,12 +138,38 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
     }
   };
 
-  if (profileLoading) {
+  if (profileLoading || userTeamsLoading) {
     return (
-      <div className="flex-1 flex justify-center items-center py-12 bg-surface-container-lowest h-[calc(100vh-3rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-outline text-xs font-semibold">Syncing team parameters...</p>
+      <div className="flex-1 flex flex-col bg-surface-container-lowest h-screen overflow-hidden">
+        {/* Skeleton Header */}
+        <header className="p-unit-6 border-b border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-unit-3 shrink-0">
+          <div className="space-y-2">
+            <Skeleton className="h-6 w-48" />
+            <Skeleton className="h-4 w-72 sm:w-96" />
+          </div>
+          <div className="flex gap-4 items-center">
+            <Skeleton className="h-9 w-48 rounded-lg" />
+            <Skeleton className="h-9.5 w-36 rounded-lg" />
+          </div>
+        </header>
+
+        {/* Skeleton Content Body */}
+        <div className="flex-1 p-unit-6 space-y-6 overflow-y-auto">
+          <div className="space-y-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-10 w-10 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-1/4" />
+                <Skeleton className="h-3 w-1/2" />
+              </div>
+            </div>
+            <Skeleton className="h-32 w-full rounded-xl" />
+            <div className="space-y-3 pt-4">
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+              <Skeleton className="h-12 w-full rounded-lg" />
+            </div>
+          </div>
         </div>
       </div>
     );
@@ -154,14 +188,14 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
     );
   }
 
-  if (managedTeams.length === 0) {
+  if (!userTeams || userTeams.length === 0) {
     return (
       <div className="flex-1 flex flex-col justify-center items-center text-center p-8 space-y-4 bg-surface-container-lowest h-[calc(100vh-3rem)]">
         <Users className="h-16 w-16 text-outline/50 animate-pulse" />
-        <h3 className="text-headline-md font-bold text-on-surface">No Teams Managed</h3>
+        <h3 className="text-headline-md font-bold text-on-surface">No Teams Joined</h3>
         <p className="text-outline text-body-sm max-w-md mx-auto leading-relaxed">
-          You are currently not listed as a Team Leader of any teams in this organization workspace. 
-          Contact your owner or administrator to assign leadership roles.
+          You are currently not listed as a member of any teams in this organization workspace. 
+          Contact your owner or administrator to invite you to teams.
         </p>
       </div>
     );
@@ -177,7 +211,7 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
             <Users className="h-6 w-6 text-primary" /> Team Space
           </h2>
           <p className="text-body-sm text-outline mt-0.5">
-            Manage onboarding tokens, directories, and view staff timelines for your team.
+            View staff timelines, active directories, and onboard new members for your team.
           </p>
         </div>
 
@@ -194,15 +228,27 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
               <Clock className="h-3.5 w-3.5" /> Activity Feed
             </button>
             <button
-              onClick={() => setActiveSubTab("manage")}
+              onClick={() => setActiveSubTab("members")}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
-                activeSubTab === "manage"
+                activeSubTab === "members"
                   ? "bg-primary text-on-primary shadow-sm"
                   : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
               }`}
             >
-              <Settings className="h-3.5 w-3.5" /> Management
+              <Users className="h-3.5 w-3.5" /> Team Members
             </button>
+            {isLeader && (
+              <button
+                onClick={() => setActiveSubTab("manage")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-bold transition-all ${
+                  activeSubTab === "manage"
+                    ? "bg-primary text-on-primary shadow-sm"
+                    : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                }`}
+              >
+                <Settings className="h-3.5 w-3.5" /> Management
+              </button>
+            )}
           </div>
 
           <div className="flex gap-2 items-center">
@@ -211,10 +257,14 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
               onChange={(e) => {
                 setSelectedTeamId(e.target.value);
                 setGeneratedLink(null);
+                // Switch tab back if we shift teams and are no longer a leader in the new team
+                if (activeSubTab === "manage") {
+                  setActiveSubTab("feed");
+                }
               }}
               className="bg-surface border border-outline-variant rounded-lg px-3 py-1.5 text-xs text-on-surface font-bold focus:outline-none focus:border-primary cursor-pointer shadow-sm animate-in fade-in"
             >
-              {managedTeams.map((t) => (
+              {userTeams.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name}
                 </option>
@@ -226,21 +276,23 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
 
       {/* Main Workspace Scrollable Body */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 space-y-6 pb-12">
-        {activeSubTab === "feed" ? (
+        {activeSubTab === "feed" && (
           <TeamTimelineFeed
             timeline={teamTimeline || []}
             timelineLoading={timelineLoading}
             members={members || []}
           />
-        ) : (
+        )}
+        {activeSubTab === "members" && (
+          <TeamMembersTable
+            members={members || []}
+            membersLoading={membersLoading}
+            onRemoveMember={isLeader ? handleRemoveMember : undefined}
+            isRemoving={removeMemberMutation.isPending}
+          />
+        )}
+        {activeSubTab === "manage" && isLeader && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            <TeamMembersTable
-              members={members || []}
-              membersLoading={membersLoading}
-              onRemoveMember={handleRemoveMember}
-              isRemoving={removeMemberMutation.isPending}
-            />
-
             <TeamOnboardingControls
               userId={userId}
               organizationId={organizationId}
