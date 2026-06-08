@@ -17,6 +17,7 @@ import { DashboardView } from "@/components/dashboard-view";
 import { DetailViewDialog } from "@/components/detail-view-dialog";
 import { DashboardManageControls } from "@/components/admin/dashboard-manage-controls";
 import { TeamSpaceView } from "@/components/team-space-view";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import {
   Loader2,
@@ -74,9 +75,54 @@ export default function Home() {
   );
   
   const { data: projects } = trpc.getProjects.useQuery(
-    { organizationId: activeOrgId },
+    { organizationId: activeOrgId, teamId: activeTeamId },
     { enabled: !!userId }
   );
+
+  const { data: userTeams } = trpc.getUserTeams.useQuery(
+    { userId, organizationId: activeOrgId },
+    { enabled: !!userId && activeOrgId !== "org-default" }
+  );
+
+  const setActiveTeamMutation = trpc.setActiveTeam.useMutation({
+    onSuccess: () => {
+      window.location.reload();
+    }
+  });
+
+  // Load tab from localStorage on mount
+  useEffect(() => {
+    const savedTab = localStorage.getItem("aika-active-tab");
+    if (savedTab && ["dashboard", "logs", "profile", "org", "projects", "team"].includes(savedTab)) {
+      setActiveTab(savedTab as any);
+    }
+  }, []);
+
+  // Update localStorage helper
+  const handleSetActiveTab = (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team") => {
+    localStorage.setItem("aika-active-tab", tab);
+    setActiveTab(tab);
+  };
+
+  // Switch organizations/teams logic: auto-activate first team in new org
+  useEffect(() => {
+    if (userId && activeOrgId !== "org-default" && userTeams !== undefined) {
+      if (activeTeamId === null) {
+        if (userTeams.length > 0) {
+          // Store team tab state and activate the first team
+          localStorage.setItem("aika-active-tab", "team");
+          setActiveTeamMutation.mutate({ userId, teamId: userTeams[0].id });
+        } else {
+          // If no teams in the new organization, redirect back to dashboard view
+          const currentSavedTab = localStorage.getItem("aika-active-tab");
+          if (currentSavedTab === "team") {
+            localStorage.setItem("aika-active-tab", "dashboard");
+            setActiveTab("dashboard");
+          }
+        }
+      }
+    }
+  }, [userTeams, activeTeamId, activeOrgId, userId]);
 
   const { data: runningTimer, refetch: refetchTimer } = trpc.getRunningTimer.useQuery(
     { userId },
@@ -361,10 +407,53 @@ export default function Home() {
 
   if (isPending) {
     return (
-      <div className="min-h-screen w-full flex items-center justify-center bg-zinc-50 dark:bg-[#0c0c0e]">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-8 w-8 animate-spin text-zinc-900 dark:text-zinc-100" />
-          <p className="text-zinc-500 text-sm font-semibold tracking-wide">Syncing session...</p>
+      <div className="relative min-h-screen w-full flex bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
+        {/* Skeleton Sidebar */}
+        <aside className="w-sidebar-width h-screen bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant flex flex-col p-unit-4 gap-unit-6 shrink-0 animate-pulse">
+          <div className="flex items-center gap-unit-3">
+            <Skeleton className="h-10 w-10 rounded-xl" />
+            <Skeleton className="h-5 w-24" />
+          </div>
+          <nav className="flex-1 space-y-4 pt-4">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <div key={i} className="flex items-center gap-unit-3 py-1">
+                <Skeleton className="h-5 w-5 rounded-md" />
+                <Skeleton className="h-4 w-24" />
+              </div>
+            ))}
+          </nav>
+          <div className="mt-auto space-y-4">
+            <Skeleton className="h-9 w-full rounded-lg" />
+            <Skeleton className="h-9 w-full rounded-lg" />
+          </div>
+        </aside>
+
+        {/* Main Content Area */}
+        <div className="flex-1 flex flex-col overflow-hidden h-screen bg-surface-container-lowest">
+          {/* Skeleton Header */}
+          <header className="h-16 border-b border-outline-variant flex items-center justify-between px-unit-6 shrink-0">
+            <Skeleton className="h-5 w-64" />
+            <div className="flex items-center gap-3">
+              <div className="space-y-1.5 flex flex-col items-end">
+                <Skeleton className="h-3.5 w-20" />
+                <Skeleton className="h-2.5 w-24" />
+              </div>
+              <Skeleton className="h-8 w-8 rounded-full" />
+            </div>
+          </header>
+
+          {/* Skeleton Content Grid */}
+          <main className="flex-1 p-unit-6 space-y-6 overflow-y-auto custom-scrollbar">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <Skeleton className="h-28 rounded-xl" />
+              <Skeleton className="h-28 rounded-xl" />
+              <Skeleton className="h-28 rounded-xl" />
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <Skeleton className="h-64 rounded-xl" />
+              <Skeleton className="h-64 rounded-xl" />
+            </div>
+          </main>
         </div>
       </div>
     );
@@ -408,7 +497,7 @@ export default function Home() {
         <>
           <Sidebar
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleSetActiveTab}
             session={session}
             handleSignOut={handleSignOut}
             isDark={isDark}
@@ -438,6 +527,7 @@ export default function Home() {
                 <ProjectsTasksTab
                   userId={userId}
                   organizationId={activeOrgId}
+                  activeTeamId={activeTeamId}
                   onSelectTask={(task) => {
                     setDetailTask(task);
                     setDetailLog(null);
