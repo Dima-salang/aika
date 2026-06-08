@@ -1,7 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { AuditService } from "../AuditService";
-import { clearDatabase } from "./db-helper";
-import { db } from "@/db";
+import { clearDatabase, db } from "./db-helper";
 import { auditLogsSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -107,9 +106,9 @@ describe("AuditService", () => {
     );
 
     const retrievedLog1 = await auditService.getAuditLogById(log1.id);
-    expect(retrievedLog1).toBeDefined();
-    expect(retrievedLog1.id).toBe(log1.id);
-    expect(retrievedLog1.event).toBe("user_login");
+    expect(retrievedLog1).not.toBeNull();
+    expect(retrievedLog1!.id).toBe(log1.id);
+    expect(retrievedLog1!.event).toBe("user_login");
 
     const allLogs = await auditService.listAuditLogs(10, 0);
     expect(allLogs.length).toBeGreaterThanOrEqual(2);

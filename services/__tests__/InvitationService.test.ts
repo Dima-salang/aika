@@ -1,7 +1,6 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { InvitationService } from "../InvitationService";
-import { clearDatabase } from "./db-helper";
-import { db } from "@/db";
+import { clearDatabase, db } from "./db-helper";
 import {
   userSqlite,
   organizationSqlite,

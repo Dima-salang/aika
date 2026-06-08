@@ -1,7 +1,7 @@
 import { describe, test, expect, beforeEach } from "bun:test";
 import { NotificationService } from "../NotificationService";
 import { clearDatabase } from "./db-helper";
-import { db } from "@/db";
+import { db } from "./db-helper";
 import { notificationsSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -84,12 +84,13 @@ describe("NotificationService", () => {
 
     // Get single notification
     const single = await notificationService.getNotificationById(notif1.id);
-    expect(single).toBeDefined();
-    expect(single.title).toBe("Notif 1");
+    expect(single).not.toBeNull();
+    expect(single!.title).toBe("Notif 1");
 
     // Update notification
     const updated = await notificationService.updateNotification(notif1.id, { is_read: true });
-    expect(updated.is_read).toBe(true);
+    expect(updated).not.toBeNull();
+    expect(updated!.is_read).toBe(true);
 
     // Delete notification
     await notificationService.deleteNotification(notif2.id);

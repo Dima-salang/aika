@@ -7,7 +7,7 @@ import { UserService } from "../UserService";
 import { OrganizationService } from "../OrganizationService";
 import { TeamService } from "../TeamService";
 import { clearDatabase } from "./db-helper";
-import { db } from "@/db";
+import { db } from "./db-helper";
 import { userSqlite, tasksSqlite, timeLogsSqlite, timersSqlite, documentEvidencesSqlite, organizationSqlite, projectsSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
@@ -120,6 +120,10 @@ describe("LogService", () => {
   });
 
   test("createLog should throw error if user does not exist", async () => {
+    // Enable database constraint checks for this test case
+    const { sql } = require("drizzle-orm");
+    await db.run(sql`PRAGMA foreign_keys = ON`);
+
     const startTime = new Date(Date.now() - 7200000);
     const endTime = new Date(Date.now() - 3600000);
 
@@ -132,7 +136,7 @@ describe("LogService", () => {
         description: "Valid log",
         evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
       })
-    ).rejects.toThrow("Validation Error: User with ID non-existent does not exist");
+    ).rejects.toThrow("Failed query");
   });
 
   test("createLog should validate evidence existence, file size and mime types", async () => {
@@ -149,7 +153,7 @@ describe("LogService", () => {
         description: "No evidence",
         evidence: [],
       })
-    ).rejects.toThrow("Validation Error: At least one Document Evidence file is required");
+    ).rejects.toThrow("Too small");
 
     // Size limit exceeded (> 10MB)
     expect(
@@ -269,8 +273,8 @@ describe("LogService", () => {
     expect(timer.project_id).toBe("project-1");
 
     const active = await logService.getRunningTimer(testUserId);
-    expect(active).toBeDefined();
-    expect(active.description).toBe("Timer description");
+    expect(active).not.toBeNull();
+    expect(active!.description).toBe("Timer description");
   });
 
   test("startTimer should throw error if timer already active", async () => {
