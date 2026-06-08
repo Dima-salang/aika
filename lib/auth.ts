@@ -55,6 +55,11 @@ export const auth = betterAuth({
             const { TeamService } = await import("@/services/TeamService");
             const teamService = new TeamService();
             await teamService.addTeamMember(invitation.teamId, user.id, "member");
+            
+            const { UserService } = await import("@/services/UserService");
+            const { OrganizationService } = await import("@/services/OrganizationService");
+            const userService = new UserService(new OrganizationService(), teamService);
+            await userService.setActiveTeam(user.id, undefined, invitation.teamId);
           }
         },
       },
