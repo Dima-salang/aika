@@ -10,14 +10,15 @@ import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { userSqlite, tasksSqlite, timeLogsSqlite, timersSqlite, documentEvidencesSqlite, organizationSqlite, projectsSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
+import { StorageService } from "@/services/StorageService";
+import { MockProvider } from "./StorageService.test";
 
 describe("LogService", () => {
   let auditService: AuditService;
-  let notificationService: NotificationService;
   let taskService: TaskService;
   let organizationService: OrganizationService;
   let teamService: TeamService;
-  let userService: UserService;
+  let storageService: StorageService;
   let logService: LogService;
 
   const testUserId = "user-123";
@@ -27,17 +28,18 @@ describe("LogService", () => {
   beforeEach(async () => {
     await clearDatabase();
 
+    const cloudinaryMock = new MockProvider("cloudinary");
+    const supabaseMock = new MockProvider("supabase");
+
     auditService = new AuditService();
-    notificationService = new NotificationService();
     taskService = new TaskService();
     organizationService = new OrganizationService();
     teamService = new TeamService();
-    userService = new UserService(organizationService, teamService);
+    storageService = new StorageService(cloudinaryMock, supabaseMock);
     logService = new LogService(
       auditService,
-      notificationService,
       taskService,
-      userService
+      storageService
     );
 
     // Seed base organization, user, project and task to satisfy FKs
@@ -174,10 +176,10 @@ describe("LogService", () => {
         organizationId: testOrgId,
         startTime,
         endTime,
-        description: "PDF file",
-        evidence: [{ fileUrl: "https://x.com/a.pdf", fileKey: "k", fileName: "a.pdf", fileSize: 100, mimeType: "application/pdf" }],
+        description: "Unsupported file",
+        evidence: [{ fileUrl: "https://x.com/a.exe", fileKey: "k", fileName: "a.exe", fileSize: 100, mimeType: "application/x-msdownload" }],
       })
-    ).rejects.toThrow("Validation Error: File a.pdf has unsupported type. Images only.");
+    ).rejects.toThrow("Validation Error: File a.exe has unsupported type.");
   });
 
   test("createLog should throw error if task does not exist", async () => {
