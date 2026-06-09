@@ -168,7 +168,7 @@ Constraints:
 
 The system shall support:
 
-- Image uploads
+- Image and Document uploads (PDF, Word, Excel, PowerPoint, Text, Zip)
 - Document Evidence attachment to logs
 - Document Evidence deletion
 
@@ -180,7 +180,6 @@ Constraints:
 
 Out of Scope:
 
-- PDF uploads
 - Versioning systems
 
 ---
@@ -320,7 +319,7 @@ Soft delete behavior:
 - **Projects** — Tasks under a deleted project are unassigned from the project (not deleted). Time logs on those tasks are unaffected.
 - **Teams** — Team becomes "deleted." Members lose access. Members' personal tasks and time logs are preserved in their personal history but are no longer visible under the team context. Team invitation links become invalid.
 - **Users (deactivated by admin)** — User cannot log in. All personal data (tasks, time logs, evidence) is preserved and remains visible to leaders and admins in reports.
-- **Document Evidence** — Files remain stored in ImageKit/Cloudinary. The attachment reference is marked deleted. Files are never physically deleted from storage.
+- **Document Evidence** — Files remain stored in Cloudinary or Supabase Object Storage. The attachment reference is marked deleted. Files are never physically deleted from storage.
 
 Constraints:
 
