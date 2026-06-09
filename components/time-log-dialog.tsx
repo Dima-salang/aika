@@ -180,7 +180,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
           previewUrl: isImage ? URL.createObjectURL(file) : undefined,
         });
       } catch (err: any) {
-        setError(`Failed to upload ${file.name}: ${err.message || err}`);
+        setError(`Failed to upload ${file.name}. Please try again.`);
       }
     }
 

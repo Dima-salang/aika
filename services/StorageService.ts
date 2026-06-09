@@ -104,16 +104,16 @@ export class CloudinaryStorageProvider implements StorageProvider {
 export class SupabaseStorageProvider implements StorageProvider {
   async upload(fileBuffer: Buffer, path: string, mimeType: string): Promise<string> {
     if (isSupabasePlaceholder()) {
-      return `https://mock-supabase-storage.co/object/public/evidences/${path}`;
+      return `https://mock-supabase-storage.co/object/public/documents/${path}`;
     }
 
     const supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
     );
 
     const { error } = await supabase.storage
-      .from("evidences")
+      .from("documents")
       .upload(path, fileBuffer, {
         contentType: mimeType,
         upsert: true,
@@ -123,11 +123,15 @@ export class SupabaseStorageProvider implements StorageProvider {
       throw new Error(`Supabase Storage upload failed: ${error.message}`);
     }
 
-    const { data } = supabase.storage
-      .from("evidences")
-      .getPublicUrl(path);
+    const { data: signData, error: signError } = await supabase.storage
+      .from("documents")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 100); // 100 years
 
-    return data.publicUrl;
+    if (signError || !signData) {
+      throw new Error(`Failed to generate signed URL: ${signError?.message || "Unknown error"}`);
+    }
+
+    return signData.signedUrl;
   }
 
   async delete(fileUrl: string): Promise<void> {
@@ -141,16 +145,16 @@ export class SupabaseStorageProvider implements StorageProvider {
 
     const supabase = createClient(
       process.env.SUPABASE_URL!,
-      process.env.SUPABASE_ANON_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
     );
 
     const { error } = await supabase.storage
-      .from("evidences")
+      .from("documents")
       .remove([path]);
 
     if (error) {
       console.error(`Supabase Storage deletion error for ${path}:`, error);
-      throw new Error(`Supabase deletion failed: ${error.message}`);
+      throw new Error(`Attachment deletion failed. Please try again.`);
     }
   }
 
@@ -171,7 +175,7 @@ export class StorageService {
   constructor(
     private cloudinaryProvider: StorageProvider = new CloudinaryStorageProvider(),
     private supabaseProvider: StorageProvider = new SupabaseStorageProvider()
-  ) {}
+  ) { }
 
   static getInstance(): StorageService {
     if (!this.instance) {
