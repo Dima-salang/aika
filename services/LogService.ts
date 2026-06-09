@@ -13,6 +13,7 @@ import {
 } from "@/db/schema";
 import { eq, and, lt, gt, isNull, ne, inArray, lte, gte } from "drizzle-orm";
 import { AuditService } from "./AuditService";
+import { isSupportedMimeType } from "@/utils/file";
 import { NotificationService } from "./NotificationService";
 import { TaskService } from "./TaskService";
 import { UserService } from "./UserService";
@@ -121,8 +122,8 @@ export class LogService {
           throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
         }
         const mime = file.mimeType.toLowerCase();
-        if (!mime.startsWith("image/")) {
-          throw new Error(`Validation Error: File ${file.fileName} has unsupported type. Images only.`);
+        if (!isSupportedMimeType(mime)) {
+          throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
         }
       }
 
@@ -246,8 +247,8 @@ export class LogService {
             throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
           }
           const mime = file.mimeType.toLowerCase();
-          if (!mime.startsWith("image/")) {
-            throw new Error(`Validation Error: File ${file.fileName} has unsupported type. Images only.`);
+          if (!isSupportedMimeType(mime)) {
+            throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
           }
         }
       }
