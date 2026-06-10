@@ -378,7 +378,9 @@ export class ReportService {
       conditions.push(gte(logTable.start_time, new Date(startDateStr)));
     }
     if (endDateStr) {
-      conditions.push(lte(logTable.end_time, new Date(endDateStr)));
+      const endLimit = new Date(endDateStr);
+      endLimit.setUTCHours(23, 59, 59, 999);
+      conditions.push(lte(logTable.end_time, endLimit));
     }
 
     const rawLogs = await tx
@@ -423,7 +425,9 @@ export class ReportService {
       conditions.push(gte(logTable.start_time, new Date(startDateStr)));
     }
     if (endDateStr) {
-      conditions.push(lte(logTable.end_time, new Date(endDateStr)));
+      const endLimit = new Date(endDateStr);
+      endLimit.setUTCHours(23, 59, 59, 999);
+      conditions.push(lte(logTable.end_time, endLimit));
     }
 
     const rawLogs = await tx
