@@ -28,3 +28,6 @@ jobs:
 
       - name: Run Tests
         run: bun test
+
+      - name: Run TypeScript check
+        run: bun tsc --noEmit
