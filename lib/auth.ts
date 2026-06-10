@@ -10,6 +10,10 @@ export const auth = betterAuth({
     provider: isSQLite ? "sqlite" : "pg",
     schema: schema,
   }),
+  pages: {
+    signIn: "/auth",
+    error: "/auth",
+  },
   session: {
     additionalFields: {
       activeTeamId: {
