@@ -94,8 +94,8 @@ export function OnboardingLinksManager({
         maxUses: maxUses ? parseInt(maxUses) : null,
         autoJoin,
       });
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to generate secure onboarding link.");
+    } catch (err) {
+      setErrorMsg((err as Error)?.message || "Failed to generate secure onboarding link.");
     }
   };
 

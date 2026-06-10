@@ -68,8 +68,8 @@ export function JoinRequestsManager({
         status,
         adminId: currentUserId,
       });
-    } catch (err: any) {
-      setErrorMsg(err?.message || "Failed to process approval decision.");
+    } catch (err) {
+      setErrorMsg((err as Error)?.message || "Failed to process approval decision.");
     } finally {
       setProcessingId(null);
     }

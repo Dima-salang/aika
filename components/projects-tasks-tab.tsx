@@ -270,7 +270,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   // Project Logged Time Helper
   const getProjectTime = (projId: string) => {
     const logs = rawLogs?.filter((l: any) => l.project_id === projId) || [];
-    const totalMs = logs.reduce((acc, log) => {
+    const totalMs = logs.reduce((acc, log: any) => {
       const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
       return acc + (diff > 0 ? diff : 0);
     }, 0);

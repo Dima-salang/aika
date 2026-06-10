@@ -14,7 +14,7 @@ import { handleDbError } from "@/utils/db-errors";
 // Service Imports & Instantiation
 import { AuditService } from "@/services/AuditService";
 import { TaskService } from "@/services/TaskService";
-import { LogService } from "@/services/LogService";
+import { LogService, DetailedTimeLog } from "@/services/LogService";
 import { StorageService } from "@/services/StorageService";
 
 const auditService = new AuditService();
@@ -51,7 +51,7 @@ export const logsRouter = router({
         );
 
         // Sort logs by start_time descending
-        return hydrated.filter(Boolean).sort(
+        return (hydrated.filter(Boolean) as DetailedTimeLog[]).sort(
           (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
         );
       } catch (error) {

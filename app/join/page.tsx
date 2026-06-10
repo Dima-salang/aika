@@ -156,7 +156,7 @@ function JoinContent() {
           <div className="h-12 w-12 rounded-xl bg-primary/10 text-primary flex items-center justify-center mx-auto mb-2">
             <Sparkles className="h-6 w-6" />
           </div>
-          <CardTitle className="text-2xl font-bold tracking-tight">You've Been Invited!</CardTitle>
+          <CardTitle className="text-2xl font-bold tracking-tight">You&apos;ve Been Invited!</CardTitle>
           <CardDescription className="text-xs font-medium text-zinc-550 dark:text-zinc-400">
             Join <span className="font-extrabold text-primary">{tokenInfo.organizationName}</span>
             {tokenInfo.teamName && (
