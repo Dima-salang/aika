@@ -38,6 +38,7 @@ import { UserService } from "@/services/UserService";
 import { ProjectService } from "@/services/ProjectService";
 import { LogService } from "@/services/LogService";
 import { InvitationService } from "@/services/InvitationService";
+import { StorageService } from "@/services/StorageService";
 
 // Instantiate services
 const auditService = new AuditService();
@@ -47,7 +48,9 @@ const notificationService = new NotificationService();
 const taskService = new TaskService();
 const projectService = new ProjectService();
 const userService = new UserService(organizationService, teamService);
-const logService = new LogService(auditService, notificationService, taskService, userService);
+const storageService = StorageService.getInstance();
+
+const logService = new LogService(auditService, taskService, storageService);
 const invitationService = new InvitationService(auditService, notificationService, organizationService, teamService);
 
 interface AdminCtx {

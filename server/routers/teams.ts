@@ -16,6 +16,7 @@ import { TaskService } from "@/services/TaskService";
 import { UserService } from "@/services/UserService";
 import { OrganizationService } from "@/services/OrganizationService";
 import { handleDbError } from "@/utils/db-errors";
+import { StorageService } from "@/services/StorageService";
 
 const auditService = new AuditService();
 const organizationService = new OrganizationService();
@@ -23,7 +24,9 @@ const teamService = new TeamService();
 const notificationService = new NotificationService();
 const taskService = new TaskService();
 const userService = new UserService(organizationService, teamService);
-const logService = new LogService(auditService, notificationService, taskService, userService);
+const storageService = StorageService.getInstance();
+
+const logService = new LogService(auditService, taskService, storageService);
 
 export const teamsRouter = router({
   getTeamTimeline: publicProcedure
