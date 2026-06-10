@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, Suspense } from "react";
 import { AuthCard } from "@/components/auth/auth-card";
 import Image from "next/image";
-import { Sun, Moon } from "lucide-react";
+import { Sun, Moon, Loader2 } from "lucide-react";
 
 export default function AuthPage() {
   const [isDark, setIsDark] = useState(false);
@@ -61,7 +61,14 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <AuthCard />
+        <Suspense fallback={
+          <div className="w-full max-w-md border border-outline-variant/10 bg-surface-container-lowest/60 dark:bg-[#131315]/60 backdrop-blur-md shadow-md rounded-2xl p-8 flex flex-col items-center justify-center space-y-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-xs font-medium text-outline">Loading authentication portal...</p>
+          </div>
+        }>
+          <AuthCard />
+        </Suspense>
       </div>
     </div>
   );
