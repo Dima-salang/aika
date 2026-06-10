@@ -8,7 +8,7 @@ import {
   NewTask,
   PaginationInput,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, inArray, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray, desc, SQL } from "drizzle-orm";
 import { tables } from "@/services/tables";
 import { z } from "zod";
 
@@ -94,7 +94,7 @@ export class TaskService {
     const table = tables.tasks;
     let query = tx.select().from(table).$dynamic();
 
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (filter) {
       if (filter.id) {
         conditions.push(eq(table.id, filter.id));

@@ -5,7 +5,7 @@ import {
   userFilterZodSchema,
   updateUserInputZodSchema,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray, SQL } from "drizzle-orm";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
 import { tables } from "./tables";
@@ -51,7 +51,7 @@ export class UserService {
     const table = tables.user;
     let query = tx.select().from(table).$dynamic();
 
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (parsedFilter) {
       if (parsedFilter.email) {
         conditions.push(eq(table.email, parsedFilter.email));

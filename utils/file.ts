@@ -27,10 +27,15 @@ export function isImageUrl(url: string): boolean {
   return ["png", "jpg", "jpeg", "webp", "gif"].includes(ext || "");
 }
 
-export function formatErrorMessage(err: any): string {
+export function formatErrorMessage(err: unknown): string {
   if (!err) return "An unexpected error occurred.";
   
-  const rawMessage = err.message || (typeof err === "string" ? err : "");
+  let rawMessage = "";
+  if (typeof err === "object" && err !== null && "message" in err) {
+    rawMessage = String((err as { message: unknown }).message);
+  } else if (typeof err === "string") {
+    rawMessage = err;
+  }
   
   try {
     const jsonStart = rawMessage.indexOf("[");
@@ -40,32 +45,34 @@ export function formatErrorMessage(err: any): string {
       const parsed = JSON.parse(jsonStr);
       if (Array.isArray(parsed)) {
         return parsed
-          .map((issue: any) => {
-            const field = issue.path ? issue.path.join(".") : "";
+          .map((issue: unknown) => {
+            if (typeof issue !== "object" || issue === null) return "";
+            const issueObj = issue as Record<string, unknown>;
+            const field = Array.isArray(issueObj.path) ? issueObj.path.join(".") : "";
             const fieldLabel = field ? field.charAt(0).toUpperCase() + field.slice(1) : "Field";
-            let msg = issue.message || "is invalid";
+            let msg = typeof issueObj.message === "string" ? issueObj.message : "is invalid";
             
             // Format specific error codes cleanly
-            if (issue.code === "too_small") {
-              if (issue.type === "string") {
+            if (issueObj.code === "too_small") {
+              if (issueObj.type === "string") {
                 msg = "is required and cannot be empty";
               } else {
-                msg = `must be at least ${issue.minimum}`;
+                msg = `must be at least ${issueObj.minimum}`;
               }
-            } else if (issue.code === "too_big") {
-              if (issue.type === "string") {
-                msg = `cannot exceed ${issue.maximum} characters`;
+            } else if (issueObj.code === "too_big") {
+              if (issueObj.type === "string") {
+                msg = `cannot exceed ${issueObj.maximum} characters`;
               } else {
-                msg = `must be at most ${issue.maximum}`;
+                msg = `must be at most ${issueObj.maximum}`;
               }
-            } else if (issue.code === "invalid_type") {
-              if (issue.received === "undefined" || issue.received === "null") {
+            } else if (issueObj.code === "invalid_type") {
+              if (issueObj.received === "undefined" || issueObj.received === "null") {
                 msg = "is required";
               } else {
                 msg = "has an invalid type";
               }
-            } else if (issue.code === "invalid_string") {
-              msg = `must be a valid ${issue.validation || "format"}`;
+            } else if (issueObj.code === "invalid_string") {
+              msg = `must be a valid ${typeof issueObj.validation === "string" ? issueObj.validation : "format"}`;
             } else if (msg.includes("Required")) {
               msg = "is required";
             } else if (msg.includes("Too small") || msg.includes("expected string to have >=1 characters")) {
@@ -74,6 +81,7 @@ export function formatErrorMessage(err: any): string {
             
             return `${fieldLabel} ${msg}.`;
           })
+          .filter(Boolean)
           .join(" ");
       }
     }
@@ -82,18 +90,27 @@ export function formatErrorMessage(err: any): string {
   }
 
   // Handle nested or structured validation errors
-  if (err.shape?.message) {
-    return formatErrorMessage({ message: err.shape.message });
-  }
-  if (err.data?.zodError?.fieldErrors) {
-    const fieldErrors = err.data.zodError.fieldErrors;
-    const messages: string[] = [];
-    for (const [field, msgs] of Object.entries(fieldErrors)) {
-      const fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
-      const fieldMsgs = Array.isArray(msgs) ? msgs.join(", ") : String(msgs);
-      messages.push(`${fieldLabel}: ${fieldMsgs}`);
+  if (typeof err === "object" && err !== null) {
+    const errObj = err as Record<string, unknown>;
+    if (errObj.shape && typeof errObj.shape === "object" && "message" in (errObj.shape as Record<string, unknown>)) {
+      return formatErrorMessage({ message: (errObj.shape as Record<string, unknown>).message });
     }
-    if (messages.length > 0) return messages.join(". ");
+    if (errObj.data && typeof errObj.data === "object") {
+      const dataObj = errObj.data as Record<string, unknown>;
+      if (dataObj.zodError && typeof dataObj.zodError === "object") {
+        const zodErrorObj = dataObj.zodError as Record<string, unknown>;
+        if (zodErrorObj.fieldErrors && typeof zodErrorObj.fieldErrors === "object") {
+          const fieldErrors = zodErrorObj.fieldErrors as Record<string, unknown>;
+          const messages: string[] = [];
+          for (const [field, msgs] of Object.entries(fieldErrors)) {
+            const fieldLabel = field.charAt(0).toUpperCase() + field.slice(1);
+            const fieldMsgs = Array.isArray(msgs) ? msgs.join(", ") : String(msgs);
+            messages.push(`${fieldLabel}: ${fieldMsgs}`);
+          }
+          if (messages.length > 0) return messages.join(". ");
+        }
+      }
+    }
   }
 
   return rawMessage || "An unexpected error occurred.";

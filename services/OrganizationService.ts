@@ -8,7 +8,7 @@ import {
   createOrganizationInputZodSchema,
   updateOrganizationInputZodSchema,
 } from "@/db/schema";
-import { eq, and, like } from "drizzle-orm";
+import { eq, and, like, SQL } from "drizzle-orm";
 import { tables } from "./tables";
 import { z } from "zod";
 
@@ -19,6 +19,15 @@ const addMemberSchema = z.object({
 });
 
 const listOrganizationsFilterSchema = organizationFilterZodSchema.optional();
+
+export interface UserMembership {
+  id: string;
+  organizationId: string;
+  userId: string;
+  role: string;
+  createdAt: Date;
+  organizationName: string;
+}
 
 export class OrganizationService {
   async getOrganization(id: string, tx: DBInstance = db): Promise<Organization | OrganizationSqlite | null> {
@@ -86,7 +95,7 @@ export class OrganizationService {
     const table = tables.organization;
     let query = tx.select().from(table).$dynamic();
 
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (parsedFilter) {
       if (parsedFilter.slug) {
         conditions.push(eq(table.slug, parsedFilter.slug));
@@ -145,7 +154,7 @@ export class OrganizationService {
     return res || null;
   }
 
-  async getUserMemberships(userId: string, tx: DBInstance = db): Promise<any[]> {
+  async getUserMemberships(userId: string, tx: DBInstance = db): Promise<UserMembership[]> {
     z.string().parse(userId);
     const memberTable = tables.member;
     const orgTable = tables.organization;

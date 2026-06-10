@@ -7,7 +7,7 @@ import {
   updateProjectInputZodSchema,
   PaginationInput,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, SQL } from "drizzle-orm";
 import { tables } from "./tables";
 import { z } from "zod";
 
@@ -125,7 +125,7 @@ export class ProjectService {
     const table = tables.projects;
     let query = tx.select().from(table).$dynamic();
 
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (parsedFilter) {
       if (parsedFilter.id) {
         conditions.push(eq(table.id, parsedFilter.id));

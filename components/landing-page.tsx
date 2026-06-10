@@ -140,7 +140,7 @@ export function LandingPage() {
               </div>
               <h3 className="text-lg font-bold text-on-surface">1. Type & Start</h3>
               <p className="text-body-sm text-outline leading-relaxed">
-                Just type what you're doing and press the Play button. No confusing setup, no annoying spreadsheets.
+                Just type what you&apos;re doing and press the Play button. No confusing setup, no annoying spreadsheets.
               </p>
             </div>
             {/* Step 2 */}

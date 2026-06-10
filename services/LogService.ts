@@ -15,9 +15,7 @@ import { eq, and, lt, gt, isNull, ne, inArray, lte, gte } from "drizzle-orm";
 import { AuditService } from "./AuditService";
 import { isSupportedMimeType } from "@/utils/file";
 import { StorageService } from "./StorageService";
-import { NotificationService } from "./NotificationService";
 import { TaskService } from "./TaskService";
-import { UserService } from "./UserService";
 import { tables } from "./tables";
 import crypto from "crypto";
 import { z } from "zod";
@@ -40,6 +38,33 @@ const stopTimerSchema = z.object({
   projectId: z.string().nullable().optional(),
   title: z.string().optional(),
 });
+
+export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_at"> {
+  deleted_at: Date | null;
+  tasks: string[];
+  evidence: unknown[];
+}
+
+export interface TimelineLog {
+  id: string;
+  user_id: string;
+  organization_id: string;
+  team_id: string | null;
+  project_id: string | null;
+  start_time: Date;
+  end_time: Date;
+  title: string;
+  description: string | null;
+  created_at: Date;
+  updated_at: Date;
+  userName: string | null;
+  userEmail: string;
+  userImage: string | null;
+  projectName: string | null;
+  userRole: string;
+  tasks: Array<{ id: string; title: string }>;
+  evidence: unknown[];
+}
 
 export class LogService {
   private auditService: AuditService;
@@ -566,7 +591,7 @@ export class LogService {
   /**
    * Fetch single log by ID
    */
-  async getLogById(logId: string): Promise<any> {
+  async getLogById(logId: string): Promise<DetailedTimeLog | null> {
     z.string().parse(logId);
     const [log] = await db
       .select()
@@ -605,7 +630,7 @@ export class LogService {
     },
     limit?: number,
     offset?: number
-  ): Promise<any[]> {
+  ): Promise<Array<TimeLog | TimeLogSqlite>> {
     z.string().parse(userId);
     const table = tables.timeLogs;
     const conditions = [
@@ -664,7 +689,7 @@ export class LogService {
     },
     limit?: number,
     offset?: number
-  ): Promise<any[]> {
+  ): Promise<Array<TimeLog | TimeLogSqlite>> {
     z.string().parse(teamId);
     const table = tables.timeLogs;
     const conditions = [
@@ -701,7 +726,7 @@ export class LogService {
     return await query;
   }
 
-  async adminListLogs(limit = 100, offset = 0, tx: DBInstance = db): Promise<any[]> {
+  async adminListLogs(limit = 100, offset = 0, tx: DBInstance = db): Promise<Array<TimeLog | TimeLogSqlite>> {
     z.number().int().nonnegative().parse(offset);
     z.number().int().positive().parse(limit);
     const table = tables.timeLogs;
@@ -712,7 +737,7 @@ export class LogService {
       .offset(offset);
   }
 
-  async adminCreateLog(data: any, tx: DBInstance = db): Promise<any> {
+  async adminCreateLog(data: Partial<NewTimeLog>, tx: DBInstance = db): Promise<TimeLog | TimeLogSqlite> {
     const table = tables.timeLogs;
     const newId = crypto.randomUUID();
     const [res] = await tx
@@ -722,12 +747,12 @@ export class LogService {
         ...data,
         created_at: new Date(),
         updated_at: new Date(),
-      })
+      } as any)
       .returning();
     return res;
   }
 
-  async adminUpdateLog(id: string, data: any, tx: DBInstance = db): Promise<any> {
+  async adminUpdateLog(id: string, data: Partial<NewTimeLog>, tx: DBInstance = db): Promise<TimeLog | TimeLogSqlite> {
     z.string().parse(id);
     const table = tables.timeLogs;
     const [res] = await tx
@@ -741,7 +766,7 @@ export class LogService {
     return res;
   }
 
-  async adminDeleteLog(id: string, tx: DBInstance = db): Promise<any> {
+  async adminDeleteLog(id: string, tx: DBInstance = db): Promise<TimeLog | TimeLogSqlite> {
     z.string().parse(id);
     const table = tables.timeLogs;
     const [res] = await tx
@@ -755,7 +780,7 @@ export class LogService {
     return res;
   }
 
-  async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: DBInstance = db): Promise<any[]> {
+  async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: DBInstance = db): Promise<TimelineLog[]> {
     z.string().parse(teamId);
     const members = await tx
       .select()
@@ -832,7 +857,7 @@ export class LogService {
       .where(inArray(tasksJoinTable.time_log_id, logIds));
 
     // Map evidence and tasks in memory
-    const evidenceMap: Record<string, any[]> = {};
+    const evidenceMap: Record<string, unknown[]> = {};
     evidenceList.forEach((ev) => {
       if (!evidenceMap[ev.time_log_id]) {
         evidenceMap[ev.time_log_id] = [];

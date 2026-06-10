@@ -23,7 +23,7 @@ export let db: DBInstance;
 
 if (isSQLite) {
   // Convert standard sqlite:/// URI to a file path compatible with LibSQL if needed
-  let url = databaseUrl;
+  const url = databaseUrl;
   sqliteClient = createClient({ url });
   db = sqliteDrizzle(sqliteClient, { schema }) as unknown as DBInstance;
 } else {

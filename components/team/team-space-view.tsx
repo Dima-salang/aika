@@ -278,7 +278,7 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
       <div className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 space-y-6 pb-12">
         {activeSubTab === "feed" && (
           <TeamTimelineFeed
-            timeline={teamTimeline || []}
+            timeline={(teamTimeline || []) as any}
             timelineLoading={timelineLoading}
             members={members || []}
           />
