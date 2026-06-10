@@ -15,6 +15,8 @@ import { logsRouter } from "./logs";
 import { teamsRouter } from "./teams";
 import { reportsRouter } from "./reports";
 
+import { notificationsRouter } from "./notifications";
+
 // Service Imports
 
 import { InvitationService } from "@/services/InvitationService";
@@ -158,7 +160,8 @@ export const appRouter = mergeRouters(
   projectsRouter,
   logsRouter,
   teamsRouter,
-  reportsRouter
+  reportsRouter,
+  notificationsRouter
 );
 
 export type AppRouter = typeof appRouter;

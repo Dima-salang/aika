@@ -99,14 +99,13 @@ export class InvitationService {
       .limit(1);
 
     if (existingUser) {
-      await this.notificationService.createNotification(
-        existingUser.id,
-        "Organization Invitation",
-        `You have been invited to join the organization.`,
-        "team_invitation",
-        id,
-        tx
-      );
+      await this.notificationService.createNotification({
+        userId: existingUser.id,
+        title: "Organization Invitation",
+        message: `You have been invited to join the organization.`,
+        type: "team_invitation",
+        relatedId: id,
+      }, tx);
     }
 
     // Write audit log
@@ -252,14 +251,13 @@ export class InvitationService {
         .returning();
 
       // Notify applicant
-      await this.notificationService.createNotification(
-        parsed.userId,
-        "Welcome to Organization",
-        `You have successfully joined the organization via magic link.`,
-        "team_switch",
-        token.organizationId,
-        tx
-      );
+      await this.notificationService.createNotification({
+        userId: parsed.userId,
+        title: "Welcome to Organization",
+        message: `You have successfully joined the organization via magic link.`,
+        type: "team_switch",
+        relatedId: token.organizationId,
+      }, tx);
 
       // Audit log auto-approval
       await this.auditService.createAuditLog(
@@ -313,14 +311,13 @@ export class InvitationService {
     const adminsToNotify = orgMembers.filter((m: any) => m.role === "admin" || m.role === "owner" || m.role === "Admin");
 
     for (const adminUser of adminsToNotify) {
-      await this.notificationService.createNotification(
-        adminUser.userId,
-        "New Membership Request",
-        `A user has requested to join your organization via magic link.`,
-        "team_invitation",
-        requestId,
-        tx
-      );
+      await this.notificationService.createNotification({
+        userId: adminUser.userId,
+        title: "New Membership Request",
+        message: `A user has requested to join your organization via magic link.`,
+        type: "team_invitation",
+        relatedId: requestId,
+      }, tx);
     }
 
     await this.auditService.createAuditLog(
@@ -382,14 +379,13 @@ export class InvitationService {
           .where(eq(userTable.id, req.userId));
       }
 
-      await this.notificationService.createNotification(
-        req.userId,
-        "Request Approved",
-        `Your request to join the organization has been approved.`,
-        "team_switch",
-        req.organizationId,
-        tx
-      );
+      await this.notificationService.createNotification({
+        userId: req.userId,
+        title: "Request Approved",
+        message: `Your request to join the organization has been approved.`,
+        type: "team_switch",
+        relatedId: req.organizationId,
+      }, tx);
 
       await this.auditService.createAuditLog(
         parsed.adminId,
@@ -403,14 +399,13 @@ export class InvitationService {
         tx
       );
     } else {
-      await this.notificationService.createNotification(
-        req.userId,
-        "Request Declined",
-        `Your request to join the organization was declined.`,
-        "team_switch",
-        req.organizationId,
-        tx
-      );
+      await this.notificationService.createNotification({
+        userId: req.userId,
+        title: "Request Declined",
+        message: `Your request to join the organization was declined.`,
+        type: "team_switch",
+        relatedId: req.organizationId,
+      }, tx);
 
       await this.auditService.createAuditLog(
         parsed.adminId,
