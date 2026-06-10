@@ -169,6 +169,23 @@ export default function Home() {
     },
   });
 
+  const handleStartTimer = async () => {
+    if (!userId) return;
+    await startTimerMutation.mutateAsync({
+      userId,
+      projectId: timerProjId || null,
+      description: timerDesc || "Work session",
+    });
+  };
+
+  const handleDiscardTimer = async () => {
+    if (!userId) return;
+    if (confirm("Are you sure you want to discard this clock-in session? All untracked time will be lost.")) {
+      await discardTimerMutation.mutateAsync({ userId });
+      setIsDialogOpen(false);
+    }
+  };
+
   // Theme Sync
   useEffect(() => {
     const isDarkClass = document.documentElement.classList.contains("dark");
@@ -334,23 +351,6 @@ export default function Home() {
     return `${hrs.toString().padStart(2, "0")}:${mins
       .toString()
       .padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
-  };
-
-  const handleStartTimer = async () => {
-    if (!userId) return;
-    await startTimerMutation.mutateAsync({
-      userId,
-      projectId: timerProjId || null,
-      description: timerDesc || "Work session",
-    });
-  };
-
-  const handleDiscardTimer = async () => {
-    if (!userId) return;
-    if (confirm("Are you sure you want to discard this clock-in session? All untracked time will be lost.")) {
-      await discardTimerMutation.mutateAsync({ userId });
-      setIsDialogOpen(false);
-    }
   };
 
   const handleStopTimerWithEvidence = async (evidenceData: any) => {
