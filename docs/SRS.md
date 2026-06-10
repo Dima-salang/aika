@@ -53,7 +53,7 @@ The system supports 50–100 concurrent users and is optimized for fast delivery
 - Frontend: Next.js (SPA + SSR hybrid)
 - Backend: Next.js API routes
 - Database: Supabase (PostgreSQL)
-- File Storage: ImageKit / Cloudinary
+- File Storage: Cloudinary (images) / Supabase Object Storage (documents)
 - Auth: Better Auth (with Google & GitHub OAuth)
 - Deployment: Vercel
 - Tanstack Query + TRPC
@@ -227,14 +227,14 @@ Note: Duration is always computed from end time minus start time. It is never st
 ### FR-20 Document Evidence Constraints
 
 - Max file size: 10MB
-- Supported formats: images only (optimized storage)
+- Supported formats: images, PDFs, standard office documents (Word, Excel, PowerPoint), text files, and zip archives
 
 ---
 
 ### FR-21 Document Evidence Storage Rules
 
-- Stored in ImageKit / Cloudinary
-- Files converted to optimized formats (e.g., WebP or JPG)
+- Images stored in Cloudinary; non-image documents stored in Supabase Object Storage
+- Files organized by organization and user under the `evidences` bucket
 - Document Evidence cannot be reused across logs
 
 ---
@@ -456,7 +456,7 @@ The system shall log the following mutation events only (reads/page views are NO
 
 - Fast delivery priority
 - Minimal storage usage
-- Image-only evidence
+- Support for image and document (PDF, Office, Zip) evidence
 
 - No AI features
 - No chat system

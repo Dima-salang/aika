@@ -2,7 +2,9 @@
 
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
-import { Loader2, Plus, Trash2, Copy, Check, X, ShieldAlert, Key, Sparkles, UserCheck, UserX, Clock } from "lucide-react";
+import { Loader2, Plus, Trash2, Copy, Check, X, ShieldAlert, Key, Sparkles, UserCheck, UserX, Clock, FileText } from "lucide-react";
+import { useImageViewer } from "@/utils/image-viewer-store";
+import { isImageUrl } from "@/utils/file";
 
 interface DashboardManageControlsProps {
   userId: string;
@@ -461,20 +463,38 @@ export function DashboardManageControls({ userId }: DashboardManageControlsProps
                         <div className="space-y-1.5 pt-1">
                           <span className="text-[9px] font-bold uppercase text-outline tracking-wider block">Attached Proofs ({log.evidence.length})</span>
                           <div className="flex flex-wrap gap-2">
-                            {log.evidence.map((ev: any) => (
-                              <a
-                                key={ev.id}
-                                href={ev.file_url}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="relative h-12 w-12 border border-outline-variant rounded overflow-hidden hover:scale-105 active:scale-95 transition-all block shadow-sm group/ev"
-                              >
-                                <img src={ev.file_url} alt={ev.file_name} className="h-full w-full object-cover" />
-                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/ev:opacity-100 flex items-center justify-center transition-all">
-                                  <span className="material-symbols-outlined text-white text-[14px]">open_in_new</span>
-                                </div>
-                              </a>
-                            ))}
+                            {(() => {
+                              const imageList = log.evidence
+                                .filter((e: any) => e.mime_type ? e.mime_type.startsWith("image/") : isImageUrl(e.file_url))
+                                .map((e: any) => e.file_url);
+
+                              return log.evidence.map((ev: any) => {
+                                const isImg = ev.mime_type ? ev.mime_type.startsWith("image/") : isImageUrl(ev.file_url);
+                                return (
+                                  <button
+                                    key={ev.id}
+                                    onClick={() => {
+                                      if (isImg) {
+                                        const imgIdx = imageList.indexOf(ev.file_url);
+                                        useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
+                                      } else {
+                                        window.open(ev.file_url, "_blank");
+                                      }
+                                    }}
+                                    className="relative h-12 w-12 border border-outline-variant rounded overflow-hidden hover:scale-105 active:scale-95 transition-all block shadow-sm group/ev flex items-center justify-center bg-surface-container-high/40 cursor-pointer focus:outline-none"
+                                  >
+                                    {isImg ? (
+                                      <img src={ev.file_url} alt={ev.file_name} className="h-full w-full object-cover" />
+                                    ) : (
+                                      <FileText className="h-4 w-4 text-primary" />
+                                    )}
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/ev:opacity-100 flex items-center justify-center transition-all">
+                                      <span className="material-symbols-outlined text-white text-[14px]">open_in_new</span>
+                                    </div>
+                                  </button>
+                                );
+                              });
+                            })()}
                           </div>
                         </div>
                       )}

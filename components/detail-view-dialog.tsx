@@ -3,6 +3,7 @@
 import React from "react";
 import { X, Calendar, Clock, ClipboardList, ExternalLink, Tag, AlertCircle, FileText } from "lucide-react";
 import { getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
+import { useImageViewer } from "@/utils/image-viewer-store";
 
 interface DetailViewDialogProps {
   isOpen: boolean;
@@ -159,23 +160,47 @@ export function DetailViewDialog({
                 <div className="space-y-2">
                   <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Evidence Files</span>
                   <div className="grid grid-cols-2 gap-3">
-                    {selectedLog.evidence.map((ev: any, idx: number) => (
-                      <div
-                        key={idx}
-                        className="group relative border border-outline-variant rounded-lg overflow-hidden aspect-video shadow-md cursor-pointer bg-black"
-                        onClick={() => window.open(ev.file_url, "_blank")}
-                      >
-                        <img
-                          src={ev.file_url}
-                          alt={ev.file_name}
-                          className="h-full w-full object-cover opacity-85 group-hover:opacity-100 transition-opacity"
-                        />
-                        <div className="absolute bottom-0 inset-x-0 p-1.5 bg-black/70 border-t border-outline-variant/35 backdrop-blur-sm flex items-center justify-between text-[10px] text-outline select-none">
-                          <span className="truncate max-w-[120px] font-mono-timer text-on-surface font-semibold">{ev.file_name}</span>
-                          <ExternalLink className="h-3 w-3 text-primary shrink-0" />
-                        </div>
-                      </div>
-                    ))}
+                    {(() => {
+                      const imageList = selectedLog.evidence
+                        .filter((e: any) => e.mime_type?.startsWith("image/"))
+                        .map((e: any) => e.file_url);
+
+                      return selectedLog.evidence.map((ev: any, idx: number) => {
+                        const isImage = ev.mime_type?.startsWith("image/");
+                        return (
+                          <div
+                            key={idx}
+                            className="group relative border border-outline-variant rounded-lg overflow-hidden aspect-video shadow-md cursor-pointer bg-zinc-950 flex flex-col justify-center items-center"
+                            onClick={() => {
+                              if (isImage) {
+                                const imgIdx = imageList.indexOf(ev.file_url);
+                                useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
+                              } else {
+                                window.open(ev.file_url, "_blank");
+                              }
+                            }}
+                          >
+                            {isImage ? (
+                              <img
+                                src={ev.file_url}
+                                alt={ev.file_name}
+                                className="h-full w-full object-cover opacity-85 group-hover:opacity-100 transition-opacity"
+                              />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center p-4 text-center text-on-surface">
+                                <FileText className="h-7 w-7 text-primary mb-1" />
+                                <span className="text-[10px] font-bold truncate max-w-[140px] px-1 block">{ev.file_name}</span>
+                                <span className="text-[8px] text-outline mt-0.5">{(ev.file_size / 1024).toFixed(0)} KB</span>
+                              </div>
+                            )}
+                            <div className="absolute bottom-0 inset-x-0 p-1.5 bg-black/70 border-t border-outline-variant/35 backdrop-blur-sm flex items-center justify-between text-[10px] text-outline select-none">
+                              <span className="truncate max-w-[120px] font-mono-timer text-on-surface font-semibold">{ev.file_name}</span>
+                              <ExternalLink className="h-3 w-3 text-primary shrink-0" />
+                            </div>
+                          </div>
+                        );
+                      });
+                    })()}
                   </div>
                 </div>
               )}

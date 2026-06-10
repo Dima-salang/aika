@@ -13,6 +13,8 @@ import {
 } from "@/db/schema";
 import { eq, and, lt, gt, isNull, ne, inArray, lte, gte } from "drizzle-orm";
 import { AuditService } from "./AuditService";
+import { isSupportedMimeType } from "@/utils/file";
+import { StorageService } from "./StorageService";
 import { NotificationService } from "./NotificationService";
 import { TaskService } from "./TaskService";
 import { UserService } from "./UserService";
@@ -41,20 +43,17 @@ const stopTimerSchema = z.object({
 
 export class LogService {
   private auditService: AuditService;
-  private notificationService: NotificationService;
   private taskService: TaskService;
-  private userService: UserService;
-
+  private storageService: StorageService;
+  
   constructor(
     auditService: AuditService,
-    notificationService: NotificationService,
     taskService: TaskService,
-    userService: UserService
+    storageService: StorageService
   ) {
     this.auditService = auditService;
-    this.notificationService = notificationService;
     this.taskService = taskService;
-    this.userService = userService;
+    this.storageService = storageService;
   }
 
   /**
@@ -121,8 +120,8 @@ export class LogService {
           throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
         }
         const mime = file.mimeType.toLowerCase();
-        if (!mime.startsWith("image/")) {
-          throw new Error(`Validation Error: File ${file.fileName} has unsupported type. Images only.`);
+        if (!isSupportedMimeType(mime)) {
+          throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
         }
       }
 
@@ -246,8 +245,8 @@ export class LogService {
             throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
           }
           const mime = file.mimeType.toLowerCase();
-          if (!mime.startsWith("image/")) {
-            throw new Error(`Validation Error: File ${file.fileName} has unsupported type. Images only.`);
+          if (!isSupportedMimeType(mime)) {
+            throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
           }
         }
       }
@@ -309,6 +308,21 @@ export class LogService {
 
       // Synchronize Document Evidence entries
       if (parsedInput.evidence !== undefined) {
+        // Fetch existing active evidence to identify deleted ones
+        const existingEvidence = await tx
+          .select()
+          .from(tables.documentEvidences)
+          .where(
+            and(
+              eq(tables.documentEvidences.time_log_id, logId),
+              isNull(tables.documentEvidences.deleted_at)
+            )
+          );
+
+        const incomingUrls = new Set(parsedInput.evidence.map((f) => f.fileUrl));
+        const deletedFiles = existingEvidence.filter((f) => !incomingUrls.has(f.file_url));
+
+        // Soft-delete all existing evidence linked to the log
         await tx
           .update(tables.documentEvidences)
           .set({ deleted_at: new Date() })
@@ -329,6 +343,11 @@ export class LogService {
           deleted_at: null,
         }));
         await tx.insert(tables.documentEvidences).values(evidenceEntries);
+
+        // Delete deleted files from physical storage provider(s)
+        for (const file of deletedFiles) {
+          await this.storageService.delete(file.file_url);
+        }
       }
 
       // Record Audit Log

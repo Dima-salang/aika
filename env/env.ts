@@ -10,6 +10,7 @@ export const env = createEnv({
         DEBUG_MODE: z.coerce.boolean().default(false),
         SUPABASE_URL: z.url(),
         SUPABASE_ANON_KEY: z.string(),
+        SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
         // Better Auth variables
         BETTER_AUTH_SECRET: z.string().default("secret-phrase-for-local-development-must-be-min-32-chars"),
         BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
@@ -24,6 +25,7 @@ export const env = createEnv({
         DEBUG_MODE: process.env.DEBUG_MODE,
         SUPABASE_URL: process.env.SUPABASE_URL,
         SUPABASE_ANON_KEY: process.env.SUPABASE_ANON_KEY,
+        SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
         BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET,
         BETTER_AUTH_URL: process.env.BETTER_AUTH_URL,
         GITHUB_CLIENT_ID: process.env.GITHUB_CLIENT_ID,

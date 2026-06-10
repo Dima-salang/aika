@@ -5,7 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2 } from "lucide-react";
+import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText } from "lucide-react";
+import { isSupportedMimeType, formatErrorMessage } from "@/utils/file";
+import { useImageViewer } from "@/utils/image-viewer-store";
 
 interface FileEvidence {
   fileUrl: string;
@@ -33,9 +35,10 @@ interface TimeLogDialogProps {
   initialLog?: any;
   isTimerStop?: boolean;
   onDiscard?: () => void;
+  organizationId?: string;
 }
 
-export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects = [], initialLog, isTimerStop, onDiscard }: TimeLogDialogProps) {
+export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects = [], initialLog, isTimerStop, onDiscard, organizationId }: TimeLogDialogProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [startTime, setStartTime] = useState("");
@@ -44,6 +47,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [evidenceList, setEvidenceList] = useState<FileEvidence[]>([]);
   const [loading, setLoading] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -130,17 +134,19 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
 
   if (!isOpen) return null;
 
-  const handleFileUpload = (files: FileList | null) => {
-    if (!files) return;
+  const handleFileUpload = async (files: FileList | null) => {
+    if (!files || files.length === 0) return;
     setError(null);
+    setIsUploading(true);
 
-    const newEvidence: FileEvidence[] = [];
+    const uploadedEvidence: FileEvidence[] = [];
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      
-      if (!file.type.startsWith("image/")) {
-        setError(`Please select an image file. Images only.`);
+      const isImage = file.type.startsWith("image/");
+
+      if (!isSupportedMimeType(file.type)) {
+        setError(`File ${file.name} has unsupported type.`);
         continue;
       }
 
@@ -149,18 +155,37 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         continue;
       }
 
-      const localUrl = URL.createObjectURL(file);
-      newEvidence.push({
-        fileUrl: `https://example.com/uploads/${crypto.randomUUID()}-${file.name}`,
-        fileKey: crypto.randomUUID(),
-        fileName: file.name,
-        fileSize: file.size,
-        mimeType: file.type,
-        previewUrl: localUrl,
-      });
+      try {
+        const formData = new FormData();
+        formData.append("file", file);
+        formData.append("organizationId", organizationId || "org-default");
+
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || "Upload failed");
+        }
+
+        const data = await res.json();
+        uploadedEvidence.push({
+          fileUrl: data.fileUrl,
+          fileKey: data.fileKey,
+          fileName: data.fileName,
+          fileSize: data.fileSize,
+          mimeType: data.mimeType,
+          previewUrl: isImage ? URL.createObjectURL(file) : undefined,
+        });
+      } catch (err: any) {
+        setError(`Failed to upload ${file.name}. Please try again.`);
+      }
     }
 
-    setEvidenceList((prev) => [...prev, ...newEvidence]);
+    setEvidenceList((prev) => [...prev, ...uploadedEvidence]);
+    setIsUploading(false);
   };
 
   const removeEvidence = (index: number) => {
@@ -180,6 +205,11 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
 
     if (!title.trim()) {
       setError("Please write a title for what you did.");
+      return;
+    }
+
+    if (isUploading) {
+      setError("Please wait for all file uploads to complete.");
       return;
     }
 
@@ -214,7 +244,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || "An unexpected error occurred.");
+      setError(formatErrorMessage(err));
     } finally {
       setLoading(false);
     }
@@ -427,28 +457,39 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   </Label>
                   
                   <div
-                    onClick={() => fileInputRef.current?.click()}
+                    onClick={() => !isUploading && fileInputRef.current?.click()}
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
-                      handleFileUpload(e.dataTransfer.files);
+                      if (!isUploading) handleFileUpload(e.dataTransfer.files);
                     }}
-                    className="group cursor-pointer border border-dashed border-outline-variant hover:border-primary rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 bg-surface-container-low hover:bg-primary/[1%] transition-all duration-300 select-none"
+                    className={`group cursor-pointer border border-dashed border-outline-variant hover:border-primary rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 bg-surface-container-low hover:bg-primary/[1%] transition-all duration-300 select-none ${isUploading ? "opacity-60 cursor-not-allowed" : ""}`}
                   >
                     <input
                       ref={fileInputRef}
                       type="file"
                       multiple
-                      accept="image/*"
+                      accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.md,.zip"
                       className="hidden"
                       onChange={(e) => handleFileUpload(e.target.files)}
+                      disabled={isUploading}
                     />
                     <div className="h-8 w-8 rounded-full bg-surface-container-high flex items-center justify-center shadow-sm group-hover:scale-105 transition-all duration-300">
-                      <UploadCloud className="h-4 w-4 text-outline" />
+                      {isUploading ? (
+                        <Loader2 className="h-4 w-4 text-primary animate-spin" />
+                      ) : (
+                        <UploadCloud className="h-4 w-4 text-outline" />
+                      )}
                     </div>
                     <div className="text-center text-[11px]">
-                      <span className="font-bold text-on-surface">Click to select screenshots</span>{" "}
-                      <span className="text-outline font-medium">or drag here</span>
+                      {isUploading ? (
+                        <span className="font-bold text-primary">Uploading files...</span>
+                      ) : (
+                        <>
+                          <span className="font-bold text-on-surface">Click to select files</span>{" "}
+                          <span className="text-outline font-medium">or drag here</span>
+                        </>
+                      )}
                     </div>
                   </div>
       
@@ -457,18 +498,39 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                       {evidenceList.map((ev, idx) => (
                         <div
                           key={idx}
-                          className="relative aspect-square border border-outline-variant rounded-lg overflow-hidden group/item shadow"
+                          className="relative aspect-square border border-outline-variant rounded-lg overflow-hidden group/item shadow bg-zinc-950 flex flex-col justify-center items-center"
                         >
-                          <img
-                            src={ev.previewUrl}
-                            alt={ev.fileName}
-                            className="h-full w-full object-cover"
-                          />
-                          <div className="absolute inset-0 bg-black/50 opacity-0 group-hover/item:opacity-100 transition-opacity flex items-center justify-center">
+                          {ev.mimeType.startsWith("image/") ? (
+                            <img
+                              src={ev.previewUrl || ev.fileUrl}
+                              alt={ev.fileName}
+                              className="h-full w-full object-cover cursor-pointer hover:scale-105 transition-transform"
+                              onClick={() => {
+                                const imageList = evidenceList
+                                  .filter((e) => e.mimeType.startsWith("image/"))
+                                  .map((e) => e.previewUrl || e.fileUrl);
+                                const imgIdx = imageList.indexOf(ev.previewUrl || ev.fileUrl);
+                                useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
+                              }}
+                            />
+                          ) : (
+                            <div 
+                              className="h-full w-full flex flex-col items-center justify-center bg-surface-container-high/40 p-2 text-center text-on-surface select-none cursor-pointer"
+                              onClick={() => {
+                                if (ev.fileUrl) window.open(ev.fileUrl, "_blank");
+                              }}
+                            >
+                              <FileText className="h-6 w-6 text-primary mb-1" />
+                              <span className="text-[9px] font-bold truncate w-full px-1">{ev.fileName}</span>
+                              <span className="text-[7.5px] text-outline mt-0.5">{(ev.fileSize / 1024).toFixed(0)} KB</span>
+                            </div>
+                          )}
+                          <div className="absolute top-1 right-1 opacity-0 group-hover/item:opacity-100 transition-opacity z-10">
                             <button
                               type="button"
                               onClick={() => removeEvidence(idx)}
-                              className="p-1 rounded bg-white text-black hover:bg-zinc-100 shadow transition-all cursor-pointer"
+                              className="p-1 rounded-full bg-black/60 hover:bg-black/80 text-white shadow transition-all cursor-pointer"
+                              title="Remove File"
                             >
                               <X className="h-3 w-3" />
                             </button>

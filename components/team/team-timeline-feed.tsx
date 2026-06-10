@@ -16,6 +16,7 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react";
+import { useImageViewer } from "@/utils/image-viewer-store";
 
 interface TimelineTask {
   id: string;
@@ -396,20 +397,41 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
                           <div className="space-y-1.5 pt-2 border-t border-outline-variant/20">
                             <span className="text-[9px] font-bold uppercase text-outline tracking-wider block">Attached Proofs ({log.evidence.length})</span>
                             <div className="flex flex-wrap gap-2">
-                              {log.evidence.map((ev) => (
-                                <a
-                                  key={ev.id}
-                                  href={ev.file_url}
-                                  target="_blank"
-                                  rel="noreferrer"
-                                  className="relative h-12 w-20 border border-outline-variant rounded overflow-hidden hover:scale-105 active:scale-95 transition-all block shadow-sm group/ev"
-                                >
-                                  <img src={ev.file_url} alt={ev.file_name} className="h-full w-full object-cover" />
-                                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/ev:opacity-100 flex items-center justify-center transition-all">
-                                    <ExternalLink className="h-4.5 w-4.5 text-white" />
-                                  </div>
-                                </a>
-                              ))}
+                              {(() => {
+                                const imageList = log.evidence
+                                  .filter((e: any) => e.mime_type?.startsWith("image/"))
+                                  .map((e: any) => e.file_url);
+
+                                return log.evidence.map((ev) => {
+                                  const isImage = ev.mime_type?.startsWith("image/");
+                                  return (
+                                    <button
+                                      key={ev.id}
+                                      onClick={() => {
+                                        if (isImage) {
+                                          const imgIdx = imageList.indexOf(ev.file_url);
+                                          useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
+                                        } else {
+                                          window.open(ev.file_url, "_blank");
+                                        }
+                                      }}
+                                      className="relative h-12 w-20 border border-outline-variant rounded overflow-hidden hover:scale-105 active:scale-95 transition-all block shadow-sm group/ev cursor-pointer text-left focus:outline-none"
+                                    >
+                                      {isImage ? (
+                                        <img src={ev.file_url} alt={ev.file_name} className="h-full w-full object-cover" />
+                                      ) : (
+                                        <div className="h-full w-full flex flex-col items-center justify-center bg-surface-container-high/40 text-[7px] text-center p-1 text-on-surface">
+                                          <FileText className="h-3.5 w-3.5 text-primary mb-0.5" />
+                                          <span className="truncate w-full font-bold px-0.5">{ev.file_name}</span>
+                                        </div>
+                                      )}
+                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/ev:opacity-100 flex items-center justify-center transition-all">
+                                        <ExternalLink className="h-4.5 w-4.5 text-white" />
+                                      </div>
+                                    </button>
+                                  );
+                                });
+                              })()}
                             </div>
                           </div>
                         )}

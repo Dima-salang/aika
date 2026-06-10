@@ -5,6 +5,8 @@ import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, Pla
 import { TimeLogCard, getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
 import { toast } from "sonner";
 import { useConfirmStore } from "@/lib/store";
+import { useImageViewer } from "@/utils/image-viewer-store";
+import { isImageUrl } from "@/utils/file";
 
 interface TimeLogsListProps {
   logsByDay: { [key: string]: any[] };
@@ -205,17 +207,34 @@ export function TimeLogsList({
                           {/* Evidence proof url thumbnail inline if present */}
                           {log.evidence && log.evidence.length > 0 && (
                             <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                              {log.evidence.map((ev: any, idx: number) => (
-                                <div
-                                  key={idx}
-                                  className="h-6 flex items-center gap-1.5 px-2 bg-surface-container-lowest/80 border border-outline-variant rounded hover:border-primary transition-colors cursor-pointer text-[10px] text-outline hover:text-on-surface"
-                                  onClick={() => window.open(ev.file_url, "_blank")}
-                                  title={`View Proof: ${ev.file_name}`}
-                                >
-                                  <Clock className="h-3 w-3 text-primary shrink-0" />
-                                  <span className="truncate max-w-[120px] font-mono-timer">{ev.file_name}</span>
-                                </div>
-                              ))}
+                              {(() => {
+                                const imageList = log.evidence
+                                  .filter((e: any) => e.mime_type ? e.mime_type.startsWith("image/") : isImageUrl(e.file_url))
+                                  .map((e: any) => e.file_url);
+
+                                return log.evidence.map((ev: any, idx: number) => {
+                                  const isImg = ev.mime_type ? ev.mime_type.startsWith("image/") : isImageUrl(ev.file_url);
+                                  return (
+                                    <div
+                                      key={idx}
+                                      className="h-6 flex items-center gap-1.5 px-2 bg-surface-container-lowest/80 border border-outline-variant rounded hover:border-primary transition-colors cursor-pointer text-[10px] text-outline hover:text-on-surface"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (isImg) {
+                                          const imgIdx = imageList.indexOf(ev.file_url);
+                                          useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
+                                        } else {
+                                          window.open(ev.file_url, "_blank");
+                                        }
+                                      }}
+                                      title={`View Proof: ${ev.file_name}`}
+                                    >
+                                      <Clock className="h-3 w-3 text-primary shrink-0" />
+                                      <span className="truncate max-w-[120px] font-mono-timer">{ev.file_name}</span>
+                                    </div>
+                                  );
+                                });
+                              })()}
                             </div>
                           )}
                         </div>

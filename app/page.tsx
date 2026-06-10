@@ -712,6 +712,7 @@ export default function Home() {
         } : null)}
         isTimerStop={!!runningTimer && !editingLog}
         onDiscard={handleDiscardTimer}
+        organizationId={activeOrgId}
       />
 
       {/* Dynamic Detail inspector dialog for tasks & logs */}
