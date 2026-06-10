@@ -23,5 +23,8 @@ jobs:
       - name: Install Dependencies
         run: bun install --frozen-lockfile
 
+      - name: Push DB Schema
+        run: DATABASE_URL="file:aika-test.db" bun x drizzle-kit push
+
       - name: Run Tests
         run: bun test
