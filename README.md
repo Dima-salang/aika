@@ -1,36 +1,129 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⏳ Aika — Time & Task Orchestration
 
-## Getting Started
+Aika is a modern, high-performance **Time & Task Orchestration Platform** built with **Next.js 16**, **tRPC**, **Drizzle ORM**, and **Better Auth**. It enables teams and individuals to seamlessly manage workspaces, organize tasks, log hours, and generate comprehensive, data-driven productivity reports.
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🗺️ Domain Model & Concepts
+
+Aika is designed around a multi-tenant workspace architecture with a clear hierarchical structure:
+
+*   **🏢 Organization**: The top-level tenant boundary. All users, teams, projects, and tasks exist within the scope of a specific Organization.
+*   **👥 Team**: Nested sub-units within an Organization (e.g., *Engineering*, *Design*). Teams have designated leaders and members.
+*   **💼 Workspace**: The active session context for a user, dynamically determined by their selected active Organization and active Team.
+*   **👤 Personal View**: A teamless fallback context. Users without an active team log time and manage tasks individually in their Personal View.
+*   **👑 Global Admin**: A system-wide role with full read and write access across all organizations, teams, and user profiles.
+*   **📊 Reports**:
+    *   **Personal Report**: A user-scoped view compiling personal time logs and task metrics.
+    *   **Team Report**: An aggregated team-scoped view showing workload distribution and team time logs (accessible to Team Leaders & Admins).
+
+---
+
+## 🛠️ Tech Stack
+
+Aika uses a modern, type-safe stack optimized for developer experience and performance:
+
+*   **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
+*   **Language**: [TypeScript](https://www.typescriptlang.org/)
+*   **API & State**: [tRPC (v11)](https://trpc.io/) & [TanStack React Query (v5)](https://tanstack.com/query)
+*   **Authentication**: [Better Auth](https://www.better-auth.com/)
+*   **Database**: [Drizzle ORM](https://orm.drizzle.team/) with SQLite / PostgreSQL support
+*   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & [Base UI](https://base-ui.com/)
+*   **Observability**: [Sentry Next.js SDK](https://sentry.io/)
+*   **Package Manager & Runner**: [Bun](https://bun.sh/)
+
+---
+
+## 📁 Project Structure
+
+```text
+├── app/                  # Next.js App Router (pages, layouts, api/trpc, auth routes)
+├── components/           # Reusable UI component library (shadcn, auth, dashboards)
+├── db/                   # Database client configurations, schemas, and seeding
+├── docs/                 # Documentation (ADRs, system design guides)
+├── drizzle/              # Generated migrations and schemas
+├── env/                  # Schema-validated environment variable setups
+├── lib/                  # Auth clients, helper utility libraries, wrappers
+├── server/               # tRPC routers, context initialization, and controllers
+├── services/             # Core business logic / services layer
+└── utils/                # General utility helper functions
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Development Setup
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 1. Prerequisites
+Make sure you have [Bun](https://bun.sh/) installed:
+```bash
+curl -fsSL https://bun.sh/install | bash
+```
 
-## Learn More
+### 2. Environment Variables
+Clone the `.env.example` file (or update your local `.env`) and provide the required keys:
 
-To learn more about Next.js, take a look at the following resources:
+```ini
+# Database configuration
+DATABASE_URL="file:aika.db"
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+# Supabase configuration
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+# Better Auth setup
+BETTER_AUTH_SECRET="your-32-byte-secret"
+BETTER_AUTH_URL="http://localhost:3020"
 
-## Deploy on Vercel
+# Sentry Token (Optional)
+SENTRY_AUTH_TOKEN="your-sentry-token"
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 3. Installation
+Install project dependencies using Bun:
+```bash
+bun install
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### 4. Database Setup & Migrations
+Generate and push database changes:
+```bash
+# Push schema updates directly to database
+bun x drizzle-kit push
+```
+
+### 5. Running the Application
+Start the Next.js development server:
+```bash
+bun dev
+```
+Open [http://localhost:3000](http://localhost:3000) to view Aika.
+
+---
+
+## 🧪 Testing
+
+Aika uses `bun test` for unit and integration testing.
+
+Run the test suite:
+```bash
+bun test
+```
+
+Run tests in watch mode:
+```bash
+bun test --watch
+```
+
+---
+
+## 🚀 Production Build & Deploy
+
+Compile the production application:
+```bash
+bun run build
+```
+
+Start the compiled server:
+```bash
+bun start
+```
