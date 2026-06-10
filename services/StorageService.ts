@@ -38,7 +38,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
     const fileKey = pathParts.pop()?.split(".")[0] || "file";
     const folder = pathParts.join("/");
 
-    const uploadResult = await new Promise<any>((resolve, reject) => {
+    const uploadResult = await new Promise<{ secure_url: string }>((resolve, reject) => {
       cloudinary.uploader.upload_stream(
         {
           folder: folder || "images",
@@ -46,6 +46,7 @@ export class CloudinaryStorageProvider implements StorageProvider {
         },
         (error, result) => {
           if (error) reject(error);
+          else if (!result) reject(new Error("Cloudinary upload failed: no result returned"));
           else resolve(result);
         }
       ).end(fileBuffer);

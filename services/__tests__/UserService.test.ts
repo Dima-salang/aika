@@ -4,10 +4,12 @@ import { clearDatabase, db } from "./db-helper";
 import { userSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { DBInstance } from "@/db";
+import { OrganizationService } from "../OrganizationService";
+import { TeamService } from "../TeamService";
 
 describe("UserService", () => {
-  let mockOrganizationService: any;
-  let mockTeamService: any;
+  let mockOrganizationService: { getMembers: ReturnType<typeof mock> };
+  let mockTeamService: { getTeamMembers: ReturnType<typeof mock> };
   let userService: UserService;
 
   beforeEach(async () => {
@@ -21,7 +23,10 @@ describe("UserService", () => {
       getTeamMembers: mock(() => Promise.resolve([])),
     };
 
-    userService = new UserService(mockOrganizationService, mockTeamService);
+    userService = new UserService(
+      mockOrganizationService as unknown as OrganizationService,
+      mockTeamService as unknown as TeamService
+    );
   });
 
   test("getUserById should return null if user does not exist", async () => {

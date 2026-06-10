@@ -2,6 +2,7 @@ import { db, DBInstance } from "@/db";
 import { tables } from "./tables";
 import { eq, and, isNull, inArray, gte, lte } from "drizzle-orm";
 import { z } from "zod";
+import { TimeLog, TimeLogSqlite } from "@/db/schema";
 
 export interface ReportSummaryKPIs {
   totalHours: number;
@@ -136,7 +137,7 @@ export class ReportService {
   /**
    * Helper: Calculates basic KPIs from a set of hydrated time logs.
    */
-  computeSummaryKPIs(logs: any[]): ReportSummaryKPIs {
+  computeSummaryKPIs(logs: DetailedReportLog[]): ReportSummaryKPIs {
     let totalMs = 0;
     const uniqueDates = new Set<string>();
     let totalEvidence = 0;
@@ -169,7 +170,7 @@ export class ReportService {
   /**
    * Helper: Aggregates hours spent on each Project.
    */
-  aggregateProjectDistribution(logs: any[]): ProjectTimeBreakdown[] {
+  aggregateProjectDistribution(logs: DetailedReportLog[]): ProjectTimeBreakdown[] {
     const projectMap = new Map<string | null, { name: string; ms: number }>();
     let totalMs = 0;
 
@@ -220,7 +221,7 @@ export class ReportService {
   /**
    * Helper: Builds daily buckets for chart displays.
    */
-  buildDailyChartData(logs: any[], startDateStr?: string, endDateStr?: string): DailyChartItem[] {
+  buildDailyChartData(logs: DetailedReportLog[], startDateStr?: string, endDateStr?: string): DailyChartItem[] {
     const dayMap = new Map<string, number>();
 
     // Pre-populate date range if provided to prevent empty gaps
@@ -255,7 +256,10 @@ export class ReportService {
   /**
    * Hydrates raw database time logs with user, project, linked tasks, and evidence files.
    */
-  private async hydrateLogs(rawLogs: any[], tx: DBInstance): Promise<{ logs: DetailedReportLog[]; tasks: any[] }> {
+  private async hydrateLogs(
+    rawLogs: Array<TimeLog | TimeLogSqlite>,
+    tx: DBInstance
+  ): Promise<{ logs: DetailedReportLog[]; tasks: Array<{ id: string; status: string }> }> {
     if (rawLogs.length === 0) {
       return { logs: [], tasks: [] };
     }
@@ -273,7 +277,7 @@ export class ReportService {
 
     // Fetch projects
     const projectTable = tables.projects;
-    const projectIds = Array.from(new Set(rawLogs.map((l) => l.project_id).filter(Boolean)));
+    const projectIds = Array.from(new Set(rawLogs.map((l) => l.project_id).filter((id): id is string => !!id)));
     let projectMap = new Map<string, string>();
     if (projectIds.length > 0) {
       const projects = await tx

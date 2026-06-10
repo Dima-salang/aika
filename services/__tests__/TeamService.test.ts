@@ -3,7 +3,7 @@ import { TeamService } from "../TeamService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { teamsSqlite, teamMembersSqlite, userSqlite, organizationSqlite } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 describe("TeamService", () => {
   const teamService = new TeamService();
@@ -76,7 +76,6 @@ describe("TeamService", () => {
 
   test("addTeamMember should throw error if user does not exist or is inactive", async () => {
     // Enable database constraint checks for this test case
-    const { sql } = require("drizzle-orm");
     await db.run(sql`PRAGMA foreign_keys = ON`);
 
     // Attempt with non-existent user

@@ -8,7 +8,7 @@ import {
   createTeamInputZodSchema,
   updateTeamInputZodSchema,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, inArray } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, inArray, SQL } from "drizzle-orm";
 import { tables } from "./tables";
 import { z } from "zod";
 
@@ -19,6 +19,34 @@ const addTeamMemberSchema = z.object({
 });
 
 const listTeamsFilterSchema = teamFilterZodSchema.optional();
+
+export interface TeamMembership {
+  id: string;
+  team_id: string;
+  user_id: string;
+  role: string;
+  created_at: Date;
+  updated_at: Date;
+  deleted_at: Date | null;
+  teamName: string;
+}
+
+export interface TeamMemberDetails {
+  id: string;
+  userId: string;
+  role: string;
+  userName: string;
+  userEmail: string;
+  userImage: string | null;
+}
+
+export interface UserOrgTeam {
+  id: string;
+  name: string;
+  organization_id: string;
+  created_at: Date;
+  updated_at: Date;
+}
 
 export class TeamService {
   async getTeamMembers(teamId: string, tx: DBInstance = db): Promise<Array<TeamMember | TeamMemberSqlite>> {
@@ -202,7 +230,7 @@ export class TeamService {
     const table = tables.teams;
     let query = tx.select().from(table).$dynamic();
 
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
     if (parsedFilter) {
       if (parsedFilter.id) {
         conditions.push(eq(table.id, parsedFilter.id));
@@ -261,7 +289,7 @@ export class TeamService {
     return res || null;
   }
 
-  async getUserMemberships(userId: string, tx: DBInstance = db): Promise<any[]> {
+  async getUserMemberships(userId: string, tx: DBInstance = db): Promise<TeamMembership[]> {
     z.string().parse(userId);
     const teamMembersTable = tables.teamMembers;
     const teamsTable = tables.teams;
@@ -281,7 +309,7 @@ export class TeamService {
       .where(eq(teamMembersTable.user_id, userId));
   }
 
-  async getTeamMembersWithDetails(teamId: string, tx: DBInstance = db): Promise<any[]> {
+  async getTeamMembersWithDetails(teamId: string, tx: DBInstance = db): Promise<TeamMemberDetails[]> {
     z.string().parse(teamId);
     const membersTable = tables.teamMembers;
     const usersTable = tables.user;
@@ -300,7 +328,7 @@ export class TeamService {
       .where(eq(membersTable.team_id, teamId));
   }
 
-  async getUserTeamsInOrg(userId: string, organizationId: string, tx: DBInstance = db): Promise<any[]> {
+  async getUserTeamsInOrg(userId: string, organizationId: string, tx: DBInstance = db): Promise<UserOrgTeam[]> {
     z.string().parse(userId);
     z.string().parse(organizationId);
     const teamsTable = tables.teams;

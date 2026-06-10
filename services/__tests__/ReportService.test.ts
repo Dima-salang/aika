@@ -40,7 +40,7 @@ describe("ReportService", () => {
         },
       ];
 
-      const kpis = reportService.computeSummaryKPIs(logs);
+      const kpis = reportService.computeSummaryKPIs(logs as any);
       expect(kpis.totalHours).toBe(9);
       expect(kpis.activeDays).toBe(2);
       expect(kpis.averageDailyHours).toBe(4.5);
@@ -66,7 +66,7 @@ describe("ReportService", () => {
         },
       ];
 
-      const dist = reportService.aggregateProjectDistribution(logs);
+      const dist = reportService.aggregateProjectDistribution(logs as any);
       expect(dist.length).toBe(2);
       
       const alpha = dist.find((p) => p.projectName === "Project Alpha");
@@ -113,7 +113,7 @@ describe("ReportService", () => {
         },
       ];
 
-      const chart = reportService.buildDailyChartData(logs, "2026-06-01", "2026-06-03");
+      const chart = reportService.buildDailyChartData(logs as any, "2026-06-01", "2026-06-03");
       expect(chart.length).toBe(3); // 2026-06-01, 2026-06-02, 2026-06-03
 
       expect(chart[0].date).toBe("2026-06-01");

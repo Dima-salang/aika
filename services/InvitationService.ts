@@ -308,7 +308,7 @@ export class InvitationService {
 
     // Let's query users with owner/admin roles to notify
     const orgMembers = await this.organizationService.getMembers(token.organizationId, tx);
-    const adminsToNotify = orgMembers.filter((m: any) => m.role === "admin" || m.role === "owner" || m.role === "Admin");
+    const adminsToNotify = orgMembers.filter((m) => m.role === "admin" || m.role === "owner" || m.role === "Admin");
 
     for (const adminUser of adminsToNotify) {
       await this.notificationService.createNotification({

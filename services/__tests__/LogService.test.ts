@@ -8,8 +8,8 @@ import { OrganizationService } from "../OrganizationService";
 import { TeamService } from "../TeamService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
-import { userSqlite, tasksSqlite, timeLogsSqlite, timersSqlite, documentEvidencesSqlite, organizationSqlite, projectsSqlite } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { userSqlite, tasksSqlite, timeLogsSqlite, timersSqlite, documentEvidencesSqlite, organizationSqlite, projectsSqlite, teamsSqlite, teamMembersSqlite } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { StorageService } from "@/services/StorageService";
 import { MockProvider } from "./StorageService.test";
 
@@ -120,10 +120,8 @@ describe("LogService", () => {
       })
     ).rejects.toThrow("Validation Error: End time cannot be in the future");
   });
-
   test("createLog should throw error if user does not exist", async () => {
     // Enable database constraint checks for this test case
-    const { sql } = require("drizzle-orm");
     await db.run(sql`PRAGMA foreign_keys = ON`);
 
     const startTime = new Date(Date.now() - 7200000);
@@ -260,10 +258,10 @@ describe("LogService", () => {
     // Fetch and check relations
     const detailed = await logService.getLogById(log.id);
     expect(detailed).toBeDefined();
-    expect(detailed.tasks.length).toBe(1);
-    expect(detailed.tasks[0]).toBe(testTaskId);
-    expect(detailed.evidence.length).toBe(1);
-    expect(detailed.evidence[0].file_name).toBe("a.png");
+    expect(detailed!.tasks.length).toBe(1);
+    expect(detailed!.tasks[0]).toBe(testTaskId);
+    expect(detailed!.evidence.length).toBe(1);
+    expect((detailed!.evidence[0] as any).file_name).toBe("a.png");
   });
 
   // --- 2. TIMER TESTS ---
@@ -423,6 +421,8 @@ describe("LogService", () => {
     const startTime2 = new Date(now.getTime() - 14400000);
     const endTime2 = new Date(now.getTime() - 10800000);
 
+    const teamId = "team-123";
+
     // Create logs for two members
     const user2Id = "user-456";
     await db.insert(userSqlite).values({
@@ -434,14 +434,8 @@ describe("LogService", () => {
       updatedAt: now,
     });
 
-    // Add both to a team
-    const teamId = "team-abc";
-    const schema = require("@/db/schema");
-    const teamsSqliteTable = schema.teamsSqlite;
-    const teamMembersSqliteTable = schema.teamMembersSqlite;
-    
     // Seed team
-    await db.insert(teamsSqliteTable).values({
+    await db.insert(teamsSqlite).values({
       id: teamId,
       organization_id: testOrgId,
       name: "Team ABC",
@@ -449,7 +443,7 @@ describe("LogService", () => {
       updated_at: now,
     });
 
-    await db.insert(teamMembersSqliteTable).values([
+    await db.insert(teamMembersSqlite).values([
       { id: "team-m-1", team_id: teamId, user_id: testUserId, role: "leader", created_at: now, updated_at: now },
       { id: "team-m-2", team_id: teamId, user_id: user2Id, role: "member", created_at: now, updated_at: now },
     ]);
@@ -482,11 +476,11 @@ describe("LogService", () => {
     expect(timeline.length).toBe(2);
     expect(timeline[0].id).toBe(log1.id);
     expect(timeline[0].userName).toBe("Alice");
-    expect(timeline[0].tasks.map((t: any) => t.id)).toContain(testTaskId);
-    expect(timeline[0].evidence[0].file_name).toBe("a.png");
+    expect(timeline[0].tasks.map((t) => t.id)).toContain(testTaskId);
+    expect((timeline[0].evidence[0] as any).file_name).toBe("a.png");
 
     expect(timeline[1].id).toBe(log2.id);
     expect(timeline[1].userName).toBe("Bob");
-    expect(timeline[1].evidence[0].file_name).toBe("b.png");
+    expect((timeline[1].evidence[0] as any).file_name).toBe("b.png");
   });
 });

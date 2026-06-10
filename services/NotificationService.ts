@@ -1,5 +1,5 @@
 import { db, DBInstance } from "@/db";
-import { eq, and, isNull, isNotNull, desc } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, SQL } from "drizzle-orm";
 import { tables } from "./tables";
 import { Notification, NotificationSqlite, notificationZodSchema } from "@/db/schema";
 import { z } from "zod";
@@ -55,7 +55,7 @@ export class NotificationService {
 
     const table = tables.notifications;
     let query = tx.select().from(table).$dynamic();
-    const conditions: any[] = [];
+    const conditions: SQL[] = [];
 
     if (parsedFilter) {
       if (parsedFilter.userId) {
