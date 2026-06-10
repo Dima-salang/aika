@@ -13,11 +13,12 @@ export const env = createEnv({
         SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
         // Better Auth variables
         BETTER_AUTH_SECRET: z.string().default("secret-phrase-for-local-development-must-be-min-32-chars"),
-        BETTER_AUTH_URL: z.url().default("http://localhost:3000"),
+        BETTER_AUTH_URL: z.url().default("http://localhost:3020"),
         GITHUB_CLIENT_ID: z.string().optional(),
         GITHUB_CLIENT_SECRET: z.string().optional(),
         GOOGLE_CLIENT_ID: z.string().optional(),
         GOOGLE_CLIENT_SECRET: z.string().optional(),
+        SENTRY_AUTH_TOKEN: z.string().optional(),
     },
     runtimeEnv: {
         DATABASE_URL: process.env.DATABASE_URL,
@@ -32,5 +33,6 @@ export const env = createEnv({
         GITHUB_CLIENT_SECRET: process.env.GITHUB_CLIENT_SECRET,
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
+        SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
     },
 });
