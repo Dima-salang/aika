@@ -561,6 +561,8 @@ export default function Home() {
                     setDetailTask(null);
                     setIsDetailOpen(true);
                   }}
+                  startPending={startTimerMutation.isPending}
+                  stopPending={stopTimerMutation.isPending}
                 />
               ) : (
                 /* Scrollable Main Area */
@@ -680,6 +682,9 @@ export default function Home() {
               formatDuration={formatDuration}
               handleStartTimer={handleStartTimer}
               onDiscardTimer={handleDiscardTimer}
+              startPending={startTimerMutation.isPending}
+              stopPending={stopTimerMutation.isPending}
+              discardPending={discardTimerMutation.isPending}
             />
           </div>
         </>
