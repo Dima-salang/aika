@@ -21,7 +21,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
-import { Analytics } from "@vercel/analytics/react";
+import { Analytics } from "@vercel/analytics/next";
 
 export default function RootLayout({
   children,
