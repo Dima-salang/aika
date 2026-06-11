@@ -110,6 +110,9 @@ export default function Home() {
 
   // Switch organizations/teams logic: auto-activate first team in new org
   useEffect(() => {
+    // Wait until activeOrg resolves to avoid initial mount race conditions
+    if (activeOrg === undefined) return;
+
     if (userId && activeOrgId !== "org-default" && userTeams !== undefined) {
       const orgChanged = prevOrgIdRef.current !== null && prevOrgIdRef.current !== activeOrgId;
       prevOrgIdRef.current = activeOrgId;
@@ -129,7 +132,7 @@ export default function Home() {
     } else if (userId) {
       prevOrgIdRef.current = activeOrgId;
     }
-  }, [userTeams, activeTeamId, activeOrgId, userId]);
+  }, [userTeams, activeTeamId, activeOrgId, userId, activeOrg]);
 
   const { data: runningTimer, refetch: refetchTimer } = trpc.getRunningTimer.useQuery(
     { userId },
