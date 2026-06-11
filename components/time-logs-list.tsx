@@ -18,6 +18,7 @@ interface TimeLogsListProps {
   onManualLog?: () => void;
   onSelect?: (log: any) => void;
   isMutating?: boolean;
+  isLoading?: boolean;
 }
 
 export function TimeLogsList({
@@ -30,6 +31,7 @@ export function TimeLogsList({
   onManualLog,
   onSelect,
   isMutating = false,
+  isLoading = false,
 }: TimeLogsListProps) {
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
   const { showConfirm } = useConfirmStore();
@@ -63,6 +65,28 @@ export function TimeLogsList({
       toast.error(err.message || "Failed to delete log.");
     }
   };
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4 py-4 animate-pulse">
+        <div className="h-6 w-32 bg-zinc-200 dark:bg-zinc-800 rounded mb-4"></div>
+        {[1, 2, 3].map((i) => (
+          <div key={i} className="flex items-center justify-between p-unit-4 bg-surface-container-low border border-outline-variant rounded-lg">
+            <div className="flex items-center gap-unit-6 flex-1">
+              <div className="space-y-1.5 min-w-[110px]">
+                <div className="h-3.5 w-20 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                <div className="h-4 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+              </div>
+              <div className="flex-1 space-y-2">
+                <div className="h-4 w-1/3 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                <div className="h-3.5 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   if (Object.keys(logsByDay).length === 0) {
     return (

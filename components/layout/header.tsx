@@ -123,20 +123,6 @@ export function Header({
             <span className="text-[10px]">⌘</span>K
           </kbd>
         </div>
-        <div className="hidden md:flex gap-unit-4">
-          <a
-            className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
-            href="#"
-          >
-            Docs
-          </a>
-          <a
-            className="font-label-md text-label-md text-on-surface-variant hover:text-on-surface transition-colors"
-            href="#"
-          >
-            Updates
-          </a>
-        </div>
       </div>
       <div className="flex items-center gap-unit-4">
         <div className="flex items-center gap-unit-2">

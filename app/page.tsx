@@ -66,7 +66,7 @@ export default function Home() {
   const activeOrgId = activeOrg?.id || "org-default";
   const activeTeamId = (session?.session as any)?.activeTeamId || (session?.user as any)?.last_active_team_id || null;
 
-  const { data: rawLogs, refetch: refetchLogs } = trpc.getUserLogs.useQuery(
+  const { data: rawLogs, refetch: refetchLogs, isLoading: loadingLogs } = trpc.getUserLogs.useQuery(
     { userId, organizationId: activeOrgId },
     { enabled: !!userId }
   );
@@ -230,9 +230,10 @@ export default function Home() {
 
       // Global shortcuts (Work even inside input fields)
 
-      // CMD/CTRL + K: Focus Search
+      // CMD/CTRL + K: Focus Search & navigate to tracker tab
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        handleSetActiveTab("logs");
         const searchInput = document.getElementById("global-search-input");
         if (searchInput) {
           searchInput.focus();
@@ -266,9 +267,10 @@ export default function Home() {
       // If user is focused on an input, do not trigger single-key or Alt navigation shortcuts
       if (isInput) return;
 
-      // /: Focus Search (when not in input)
+      // /: Focus Search & navigate to tracker tab (when not in input)
       if (e.key === "/") {
         e.preventDefault();
+        handleSetActiveTab("logs");
         const searchInput = document.getElementById("global-search-input");
         if (searchInput) {
           searchInput.focus();
@@ -597,6 +599,7 @@ export default function Home() {
                             setIsDetailOpen(true);
                           }}
                           isMutating={createLogMutation.isPending || stopTimerMutation.isPending}
+                          isLoading={loadingLogs}
                         />
                       </div>
                     </div>
