@@ -39,7 +39,7 @@ import {
 export default function Home() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
-  
+
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
@@ -50,12 +50,12 @@ export default function Home() {
   const [detailLog, setDetailLog] = useState<any>(null);
   const [detailTask, setDetailTask] = useState<any>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
-  
+
   // Timer States
   const [timerDesc, setTimerDesc] = useState("");
   const [timerProjId, setTimerProjId] = useState("");
   const [timerSeconds, setTimerSeconds] = useState(0);
-  
+
   // Theme State
   const [isDark, setIsDark] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
@@ -70,12 +70,12 @@ export default function Home() {
     { userId, organizationId: activeOrgId },
     { enabled: !!userId }
   );
-  
+
   const { data: tasks } = trpc.getTasks.useQuery(
     { userId },
     { enabled: !!userId }
   );
-  
+
   const { data: projects } = trpc.getProjects.useQuery(
     { organizationId: activeOrgId, teamId: activeTeamId },
     { enabled: !!userId }
@@ -113,14 +113,12 @@ export default function Home() {
         if (userTeams.length > 0) {
           // Store team tab state and activate the first team
           localStorage.setItem("aika-active-tab", "team");
+          setActiveTab("team");
           setActiveTeamMutation.mutate({ userId, teamId: userTeams[0].id });
         } else {
           // If no teams in the new organization, redirect back to dashboard view
-          const currentSavedTab = localStorage.getItem("aika-active-tab");
-          if (currentSavedTab === "team") {
-            localStorage.setItem("aika-active-tab", "dashboard");
-            setActiveTab("dashboard");
-          }
+          localStorage.setItem("aika-active-tab", "dashboard");
+          setActiveTab("dashboard");
         }
       }
     }
@@ -231,7 +229,7 @@ export default function Home() {
         (e.target as HTMLElement).isContentEditable;
 
       // Global shortcuts (Work even inside input fields)
-      
+
       // CMD/CTRL + K: Focus Search
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
@@ -494,7 +492,7 @@ export default function Home() {
 
   return (
     <div className="relative min-h-screen w-full flex bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
-      
+
       {session ? (
         <>
           <Sidebar
@@ -596,76 +594,77 @@ export default function Home() {
                             setDetailTask(null);
                             setIsDetailOpen(true);
                           }}
+                          isMutating={createLogMutation.isPending || stopTimerMutation.isPending}
                         />
                       </div>
                     </div>
                   )}
 
-                {/* Profile Panel */}
-                {activeTab === "profile" && (
-                  <div className="glass-card rounded-xl p-unit-6 bg-surface-container-low text-on-surface border border-outline-variant">
-                    <div className="mb-unit-4 border-b border-outline-variant pb-unit-2">
-                      <h3 className="text-headline-sm font-headline-sm font-bold flex items-center gap-2 text-on-surface">
-                        <span className="material-symbols-outlined">person</span> My Profile
-                      </h3>
-                      <p className="text-body-sm text-outline mt-1">Your account particulars synced through Better Auth.</p>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant">
-                        {session.user.image ? (
-                          <img src={session.user.image} alt={session.user.name} className="h-14 w-14 rounded-full" />
-                        ) : (
-                          <div className="h-14 w-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg uppercase">
-                            {session.user.name.charAt(0)}
+                  {/* Profile Panel */}
+                  {activeTab === "profile" && (
+                    <div className="glass-card rounded-xl p-unit-6 bg-surface-container-low text-on-surface border border-outline-variant">
+                      <div className="mb-unit-4 border-b border-outline-variant pb-unit-2">
+                        <h3 className="text-headline-sm font-headline-sm font-bold flex items-center gap-2 text-on-surface">
+                          <span className="material-symbols-outlined">person</span> My Profile
+                        </h3>
+                        <p className="text-body-sm text-outline mt-1">Your account particulars synced through Better Auth.</p>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant">
+                          {session.user.image ? (
+                            <img src={session.user.image} alt={session.user.name} className="h-14 w-14 rounded-full" />
+                          ) : (
+                            <div className="h-14 w-14 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg uppercase">
+                              {session.user.name.charAt(0)}
+                            </div>
+                          )}
+                          <div>
+                            <h4 className="text-body-md font-extrabold">{session.user.name}</h4>
+                            <p className="text-body-sm text-outline">{session.user.email}</p>
                           </div>
-                        )}
-                        <div>
-                          <h4 className="text-body-md font-extrabold">{session.user.name}</h4>
-                          <p className="text-body-sm text-outline">{session.user.email}</p>
                         </div>
-                      </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-body-sm">
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] text-outline font-bold uppercase block">User ID</span>
-                          <p className="font-mono-timer bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant truncate">
-                            {session.user.id}
-                          </p>
-                        </div>
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] text-outline font-bold uppercase block">Created At</span>
-                          <p className="bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant">
-                            {new Date(session.user.createdAt).toLocaleDateString()}
-                          </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-body-sm">
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] text-outline font-bold uppercase block">User ID</span>
+                            <p className="font-mono-timer bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant truncate">
+                              {session.user.id}
+                            </p>
+                          </div>
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] text-outline font-bold uppercase block">Created At</span>
+                            <p className="bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant">
+                              {new Date(session.user.createdAt).toLocaleDateString()}
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                {/* Org Panel */}
-                {activeTab === "org" && (
-                  <div className="glass-card rounded-xl p-unit-6 bg-surface-container-low text-on-surface border border-outline-variant">
-                    <div className="mb-unit-4 border-b border-outline-variant pb-unit-2">
-                      <h3 className="text-headline-sm font-headline-sm font-bold flex items-center gap-2 text-on-surface">
-                        <span className="material-symbols-outlined">work</span> My Organization
-                      </h3>
-                      <p className="text-body-sm text-outline mt-1">Your active organization domain workspace.</p>
-                    </div>
-                    <div className="space-y-4">
-                      <div className="text-center p-8 border border-dashed border-outline-variant rounded-xl">
-                        <p className="text-outline text-body-sm mb-4 max-w-sm mx-auto font-medium">
-                          Access team directories and scale organizational control with Better Auth Tenant modules.
-                        </p>
-                        <button className="rounded-lg text-body-sm px-unit-4 py-2 font-bold border border-outline-variant hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-2 mx-auto">
-                          Manage Workspace <span className="material-symbols-outlined text-[14px]">open_in_new</span>
-                        </button>
+                  {/* Org Panel */}
+                  {activeTab === "org" && (
+                    <div className="glass-card rounded-xl p-unit-6 bg-surface-container-low text-on-surface border border-outline-variant">
+                      <div className="mb-unit-4 border-b border-outline-variant pb-unit-2">
+                        <h3 className="text-headline-sm font-headline-sm font-bold flex items-center gap-2 text-on-surface">
+                          <span className="material-symbols-outlined">work</span> My Organization
+                        </h3>
+                        <p className="text-body-sm text-outline mt-1">Your active organization domain workspace.</p>
+                      </div>
+                      <div className="space-y-4">
+                        <div className="text-center p-8 border border-dashed border-outline-variant rounded-xl">
+                          <p className="text-outline text-body-sm mb-4 max-w-sm mx-auto font-medium">
+                            Access team directories and scale organizational control with Better Auth Tenant modules.
+                          </p>
+                          <button className="rounded-lg text-body-sm px-unit-4 py-2 font-bold border border-outline-variant hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-2 mx-auto">
+                            Manage Workspace <span className="material-symbols-outlined text-[14px]">open_in_new</span>
+                          </button>
+                        </div>
                       </div>
                     </div>
-                  </div>
-                )}
-              </section>
-            )}
+                  )}
+                </section>
+              )}
             </main>
 
             <TimerSidebar
@@ -731,13 +730,13 @@ export default function Home() {
 
       {/* Keyboard Shortcuts Helper Modal */}
       {isShortcutsOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
-          role="dialog" 
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
           aria-modal="true"
           onClick={() => setIsShortcutsOpen(false)}
         >
-          <div 
+          <div
             className="bg-surface dark:bg-[#121214] border border-outline-variant rounded-2xl w-full max-w-lg p-6 shadow-2xl space-y-5 animate-in zoom-in-95 duration-200"
             onClick={(e) => e.stopPropagation()}
           >
@@ -746,7 +745,7 @@ export default function Home() {
                 <span className="material-symbols-outlined text-primary text-2xl">keyboard</span>
                 <h3 className="text-headline-sm font-extrabold text-on-surface">Power User Keyboard Shortcuts</h3>
               </div>
-              <button 
+              <button
                 onClick={() => setIsShortcutsOpen(false)}
                 className="text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
                 aria-label="Close"
@@ -757,7 +756,7 @@ export default function Home() {
 
             <div className="space-y-4 text-xs">
               <p className="text-outline font-medium">Use these premium hotkeys to navigate Aika instantly like a pro developer.</p>
-              
+
               <div className="grid grid-cols-1 gap-3">
                 {/* Actions category */}
                 <div className="space-y-2">

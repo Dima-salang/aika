@@ -17,6 +17,9 @@ interface TimerSidebarProps {
   formatDuration: (seconds: number) => string;
   handleStartTimer: () => void;
   onDiscardTimer?: () => void;
+  startPending?: boolean;
+  stopPending?: boolean;
+  discardPending?: boolean;
 }
 
 export function TimerSidebar({
@@ -32,6 +35,9 @@ export function TimerSidebar({
   formatDuration,
   handleStartTimer,
   onDiscardTimer,
+  startPending = false,
+  stopPending = false,
+  discardPending = false,
 }: TimerSidebarProps) {
   const [mounted, setMounted] = React.useState(false);
   const { rightSidebarCollapsed, toggleRightSidebar } = useLayoutStore();
@@ -92,25 +98,39 @@ export function TimerSidebar({
                 handleStartTimer();
               }
             }}
-            className={`h-10 w-10 rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-95 ${runningTimer ? "bg-error text-on-error animate-pulse" : "bg-primary text-on-primary"
+            disabled={startPending || stopPending || discardPending}
+            className={`h-10 w-10 rounded-full flex items-center justify-center transition-all hover:brightness-110 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed ${runningTimer ? "bg-error text-on-error animate-pulse" : "bg-primary text-on-primary"
               }`}
             aria-label={runningTimer ? "Clock Out" : "Clock In"}
           >
-            <span className="material-symbols-outlined text-[20px]">
-              {runningTimer ? "stop" : "play_arrow"}
-            </span>
+            {startPending || stopPending ? (
+              <span className="material-symbols-outlined text-[20px] animate-spin">
+                progress_activity
+              </span>
+            ) : (
+              <span className="material-symbols-outlined text-[20px]">
+                {runningTimer ? "stop" : "play_arrow"}
+              </span>
+            )}
           </button>
 
           {runningTimer && onDiscardTimer && (
             <button
               onClick={onDiscardTimer}
-              className="h-10 w-10 rounded-full bg-surface-container-high text-error border border-outline-variant flex items-center justify-center transition-all hover:bg-error/10 active:scale-95"
+              disabled={startPending || stopPending || discardPending}
+              className="h-10 w-10 rounded-full bg-surface-container-high text-error border border-outline-variant flex items-center justify-center transition-all hover:bg-error/10 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
               aria-label="Discard Clock In"
               title="Discard Clock In"
             >
-              <span className="material-symbols-outlined text-[20px]">
-                delete
-              </span>
+              {discardPending ? (
+                <span className="material-symbols-outlined text-[20px] animate-spin">
+                  progress_activity
+                </span>
+              ) : (
+                <span className="material-symbols-outlined text-[20px]">
+                  delete
+                </span>
+              )}
             </button>
           )}
 
@@ -120,7 +140,8 @@ export function TimerSidebar({
                 setEditingLog(null);
                 setIsDialogOpen(true);
               }}
-              className="h-10 w-10 rounded-full bg-surface-container-high text-on-surface border border-outline-variant flex items-center justify-center transition-all hover:bg-primary/10 hover:text-primary active:scale-95"
+              disabled={startPending || stopPending || discardPending}
+              className="h-10 w-10 rounded-full bg-surface-container-high text-on-surface border border-outline-variant flex items-center justify-center transition-all hover:bg-primary/10 hover:text-primary active:scale-95 disabled:opacity-50"
               aria-label="Log Time Manually"
               title="Log Time Manually"
             >
@@ -164,28 +185,42 @@ export function TimerSidebar({
                       handleStartTimer();
                     }
                   }}
-                  className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer ${runningTimer
+                  disabled={startPending || stopPending || discardPending}
+                  className={`w-full py-2.5 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 transition-all shadow-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed ${runningTimer
                       ? "bg-error text-on-error hover:opacity-90 active:scale-[0.98]"
                       : "bg-primary text-on-primary hover:opacity-95 active:scale-[0.98]"
                     }`}
                   id="main-timer-btn"
                 >
-                  <span className="material-symbols-outlined text-[16px]">
-                    {runningTimer ? "stop" : "play_arrow"}
-                  </span>
-                  {runningTimer ? "Clock Out & Log" : "Clock In Now"}
+                  {startPending || stopPending ? (
+                    <span className="material-symbols-outlined text-[16px] animate-spin">
+                      progress_activity
+                    </span>
+                  ) : (
+                    <span className="material-symbols-outlined text-[16px]">
+                      {runningTimer ? "stop" : "play_arrow"}
+                    </span>
+                  )}
+                  {startPending ? "Clocking In..." : stopPending ? "Clocking Out..." : runningTimer ? "Clock Out & Log" : "Clock In Now"}
                 </button>
 
                 {runningTimer && onDiscardTimer && (
                   <button
                     type="button"
                     onClick={onDiscardTimer}
-                    className="w-full py-1.5 hover:bg-error/10 hover:text-error text-on-surface-variant rounded-lg font-semibold text-[10.5px] transition-all active:scale-[0.98] flex items-center justify-center gap-1"
+                    disabled={startPending || stopPending || discardPending}
+                    className="w-full py-1.5 hover:bg-error/10 hover:text-error text-on-surface-variant rounded-lg font-semibold text-[10.5px] transition-all active:scale-[0.98] flex items-center justify-center gap-1 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <span className="material-symbols-outlined text-[14px]">
-                      delete
-                    </span>
-                    Discard Session
+                    {discardPending ? (
+                      <span className="material-symbols-outlined text-[14px] animate-spin">
+                        progress_activity
+                      </span>
+                    ) : (
+                      <span className="material-symbols-outlined text-[14px]">
+                        delete
+                      </span>
+                    )}
+                    {discardPending ? "Discarding..." : "Discard Session"}
                   </button>
                 )}
               </div>

@@ -237,6 +237,64 @@ describe("LogService", () => {
     ).rejects.toThrow("Validation Error: Time log overlaps with an existing active log");
   });
 
+  test("createLog should succeed if overlapping only with a soft-deleted log", async () => {
+    const baseStart = new Date(Date.now() - 7200000);
+    const baseEnd = new Date(Date.now() - 3600000);
+
+    const baseLog = await logService.createLog({
+      userId: testUserId,
+      organizationId: testOrgId,
+      startTime: baseStart,
+      endTime: baseEnd,
+      description: "Base session",
+      evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
+    });
+    expect(baseLog).toBeDefined();
+
+    await logService.deleteLog(baseLog.id, testUserId);
+
+    const newLog = await logService.createLog({
+      userId: testUserId,
+      organizationId: testOrgId,
+      startTime: baseStart,
+      endTime: baseEnd,
+      description: "Overlapping session with deleted log",
+      evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
+    });
+    expect(newLog).toBeDefined();
+  });
+
+  test("updateLog should succeed if overlapping only with a soft-deleted log", async () => {
+    const baseStart = new Date(Date.now() - 7200000);
+    const baseEnd = new Date(Date.now() - 3600000);
+
+    const baseLog = await logService.createLog({
+      userId: testUserId,
+      organizationId: testOrgId,
+      startTime: baseStart,
+      endTime: baseEnd,
+      description: "Base session",
+      evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
+    });
+
+    const otherLog = await logService.createLog({
+      userId: testUserId,
+      organizationId: testOrgId,
+      startTime: new Date(baseStart.getTime() - 7200000),
+      endTime: new Date(baseStart.getTime() - 3600000),
+      description: "Other session",
+      evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
+    });
+
+    await logService.deleteLog(baseLog.id, testUserId);
+
+    const updated = await logService.updateLog(otherLog.id, testUserId, {
+      startTime: baseStart,
+      endTime: baseEnd,
+    });
+    expect(updated).toBeDefined();
+  });
+
   test("createLog should succeed with valid parameters", async () => {
     const startTime = new Date(Date.now() - 7200000);
     const endTime = new Date(Date.now() - 3600000);

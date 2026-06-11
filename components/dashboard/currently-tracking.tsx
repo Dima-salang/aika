@@ -9,6 +9,8 @@ interface CurrentlyTrackingProps {
   formatDuration: (seconds: number) => string;
   handleStartTimer: () => void;
   setIsDialogOpen: (isOpen: boolean) => void;
+  startPending?: boolean;
+  stopPending?: boolean;
 }
 
 export function CurrentlyTracking({
@@ -18,6 +20,8 @@ export function CurrentlyTracking({
   formatDuration,
   handleStartTimer,
   setIsDialogOpen,
+  startPending = false,
+  stopPending = false,
 }: CurrentlyTrackingProps) {
   return (
     <div className="col-span-12 lg:col-span-4 bg-surface-container-low border border-outline-variant p-unit-4 rounded-lg flex flex-col justify-between relative overflow-hidden group">
@@ -46,22 +50,36 @@ export function CurrentlyTracking({
         {runningTimer ? (
           <button
             onClick={() => setIsDialogOpen(true)}
-            className="bg-error-container text-on-error-container p-2 rounded-md hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer active:scale-95"
+            disabled={startPending || stopPending}
+            className="bg-error-container text-on-error-container p-2 rounded-md hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Stop Timer & Log Time"
           >
-            <span className="material-symbols-outlined font-bold text-[20px]" data-icon="stop">
-              stop
-            </span>
+            {stopPending ? (
+              <span className="material-symbols-outlined font-bold text-[20px] animate-spin">
+                progress_activity
+              </span>
+            ) : (
+              <span className="material-symbols-outlined font-bold text-[20px]" data-icon="stop">
+                stop
+              </span>
+            )}
           </button>
         ) : (
           <button
             onClick={handleStartTimer}
-            className="bg-primary text-on-primary p-2 rounded-md hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer active:scale-95"
+            disabled={startPending || stopPending}
+            className="bg-primary text-on-primary p-2 rounded-md hover:opacity-90 transition-opacity flex items-center justify-center cursor-pointer active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed"
             title="Start New Timer"
           >
-            <span className="material-symbols-outlined font-bold text-[20px]" data-icon="play_arrow">
-              play_arrow
-            </span>
+            {startPending ? (
+              <span className="material-symbols-outlined font-bold text-[20px] animate-spin">
+                progress_activity
+              </span>
+            ) : (
+              <span className="material-symbols-outlined font-bold text-[20px]" data-icon="play_arrow">
+                play_arrow
+              </span>
+            )}
           </button>
         )}
       </div>
