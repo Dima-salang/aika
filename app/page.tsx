@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
@@ -106,10 +106,15 @@ export default function Home() {
     setActiveTab(tab);
   };
 
+  const prevOrgIdRef = useRef<string | null>(null);
+
   // Switch organizations/teams logic: auto-activate first team in new org
   useEffect(() => {
     if (userId && activeOrgId !== "org-default" && userTeams !== undefined) {
-      if (activeTeamId === null) {
+      const orgChanged = prevOrgIdRef.current !== null && prevOrgIdRef.current !== activeOrgId;
+      prevOrgIdRef.current = activeOrgId;
+
+      if (orgChanged && activeTeamId === null) {
         if (userTeams.length > 0) {
           // Store team tab state and activate the first team
           localStorage.setItem("aika-active-tab", "team");
@@ -121,6 +126,8 @@ export default function Home() {
           setActiveTab("dashboard");
         }
       }
+    } else if (userId) {
+      prevOrgIdRef.current = activeOrgId;
     }
   }, [userTeams, activeTeamId, activeOrgId, userId]);
 
