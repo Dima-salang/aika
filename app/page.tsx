@@ -597,6 +597,7 @@ export default function Home() {
                             setIsDetailOpen(true);
                           }}
                           isMutating={createLogMutation.isPending || stopTimerMutation.isPending}
+                          isLoading={loadingLogs}
                         />
                       </div>
                     </div>
