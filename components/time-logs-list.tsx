@@ -66,44 +66,10 @@ export function TimeLogsList({
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4 py-4 animate-pulse">
-        <div className="h-6 w-32 bg-zinc-200 dark:bg-zinc-800 rounded mb-4"></div>
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center justify-between p-unit-4 bg-surface-container-low border border-outline-variant rounded-lg">
-            <div className="flex items-center gap-unit-6 flex-1">
-              <div className="space-y-1.5 min-w-[110px]">
-                <div className="h-3.5 w-20 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                <div className="h-4 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="h-4 w-1/3 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                <div className="h-3.5 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (Object.keys(logsByDay).length === 0) {
-    return (
-      <div className="py-12 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded bg-white dark:bg-zinc-950/20">
-        <Clock className="h-7 w-7 mx-auto text-zinc-350 dark:text-zinc-650 mb-2" />
-        <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">No hours logged yet</h4>
-        <p className="text-[11px] text-zinc-405 max-w-xs mx-auto mt-0.5 font-medium">
-          Start the timer on the right or add a manual log entry.
-        </p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-6">
       {/* Visual Mode Selector */}
-      <div className="flex items-center justify-between pb-2 border-b border-outline-variant">
+      <div className="flex items-center justify-between py-4 border-b border-outline-variant">
         <h2 className="font-headline-sm text-headline-sm flex items-center gap-2">
           Logs Feed <span className="text-outline font-normal text-body-md">Activity Journal</span>
         </h2>
@@ -145,6 +111,34 @@ export function TimeLogsList({
           </div>
         </div>
       </div>
+
+      {isLoading ? (
+        <div className="space-y-4 py-4 animate-pulse">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="flex items-center justify-between p-unit-4 bg-surface-container-low border border-outline-variant rounded-lg">
+              <div className="flex items-center gap-unit-6 flex-1">
+                <div className="space-y-1.5 min-w-[110px]">
+                  <div className="h-3.5 w-20 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                  <div className="h-4 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                </div>
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 w-1/3 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                  <div className="h-3.5 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : Object.keys(logsByDay).length === 0 ? (
+        <div className="py-12 text-center border border-dashed border-zinc-200 dark:border-zinc-800 rounded bg-white dark:bg-zinc-950/20 animate-in fade-in duration-200">
+          <Clock className="h-7 w-7 mx-auto text-zinc-350 dark:text-zinc-650 mb-2" />
+          <h4 className="text-xs font-bold text-zinc-700 dark:text-zinc-300">No hours logged yet</h4>
+          <p className="text-[11px] text-zinc-405 max-w-xs mx-auto mt-0.5 font-medium">
+            Start the timer on the right or add a manual log entry.
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-6">
 
       {Object.keys(logsByDay).map((dayStr) => {
         const dayLogs = logsByDay[dayStr];
@@ -350,10 +344,11 @@ export function TimeLogsList({
                 })}
               </div>
             )}
-
           </div>
         );
       })}
+        </div>
+      )}
     </div>
   );
 }

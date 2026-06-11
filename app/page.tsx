@@ -234,12 +234,13 @@ export default function Home() {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
         handleSetActiveTab("logs");
-        const searchInput = document.getElementById("global-search-input");
-        if (searchInput) {
-          searchInput.focus();
-          // Select search text for quick overwrite
-          (searchInput as HTMLInputElement).select();
-        }
+        setTimeout(() => {
+          const searchInput = document.getElementById("global-search-input");
+          if (searchInput) {
+            searchInput.focus();
+            (searchInput as HTMLInputElement).select();
+          }
+        }, 80);
         return;
       }
 
@@ -271,10 +272,13 @@ export default function Home() {
       if (e.key === "/") {
         e.preventDefault();
         handleSetActiveTab("logs");
-        const searchInput = document.getElementById("global-search-input");
-        if (searchInput) {
-          searchInput.focus();
-        }
+        setTimeout(() => {
+          const searchInput = document.getElementById("global-search-input");
+          if (searchInput) {
+            searchInput.focus();
+            (searchInput as HTMLInputElement).select();
+          }
+        }, 80);
         return;
       }
 

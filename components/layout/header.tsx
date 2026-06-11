@@ -20,8 +20,6 @@ interface HeaderProps {
 export function Header({
   searchQuery,
   setSearchQuery,
-  isDark,
-  toggleTheme,
   runningTimer,
   handleStartTimer,
   setIsDialogOpen,
@@ -30,7 +28,7 @@ export function Header({
 }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const userId = session?.user?.id || "";
 
   // Fetch notifications
@@ -105,7 +103,7 @@ export function Header({
   };
 
   return (
-    <header className="h-12 w-full sticky top-0 z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center px-unit-6 shrink-0">
+    <header className="h-16 w-full sticky top-0 z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center px-unit-6 shrink-0">
       <div className="flex items-center gap-unit-4">
         <div className="flex items-center gap-unit-2 px-unit-3 py-1 bg-surface-container border border-outline-variant rounded-md min-w-[280px]">
           <span className="material-symbols-outlined text-outline" data-icon="search">
@@ -126,15 +124,6 @@ export function Header({
       </div>
       <div className="flex items-center gap-unit-4">
         <div className="flex items-center gap-unit-2">
-          <button
-            onClick={toggleTheme}
-            className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-md transition-colors"
-          >
-            <span className="material-symbols-outlined" data-icon={isDark ? "light_mode" : "dark_mode"}>
-              {isDark ? "light_mode" : "dark_mode"}
-            </span>
-          </button>
-          
           {/* Notifications Dropdown Anchor */}
           <div className="relative" ref={dropdownRef}>
             <button
@@ -176,9 +165,8 @@ export function Header({
                       <div
                         key={n.id}
                         onClick={() => !n.is_read && markAsRead.mutate({ id: n.id })}
-                        className={`p-3 text-xs flex gap-2.5 items-start hover:bg-surface-container-highest/30 transition-colors cursor-pointer group ${
-                          !n.is_read ? "bg-primary/5" : ""
-                        }`}
+                        className={`p-3 text-xs flex gap-2.5 items-start hover:bg-surface-container-highest/30 transition-colors cursor-pointer group ${!n.is_read ? "bg-primary/5" : ""
+                          }`}
                       >
                         <div className="mt-0.5 shrink-0">
                           {getNotificationIcon(n.type)}
