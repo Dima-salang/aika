@@ -2,12 +2,22 @@ import { initTRPC } from "@trpc/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
 
-// Define the tRPC request context
-export const createContext = async () => {
+import { cache } from "react";
+
+// Memoize session resolution per-request to deduplicate DB queries
+const getCachedSession = cache(async () => {
   const reqHeaders = await headers();
+  console.time("[tRPC Session Cache] DB Lookup");
   const session = await auth.api.getSession({
     headers: reqHeaders,
   });
+  console.timeEnd("[tRPC Session Cache] DB Lookup");
+  return session;
+});
+
+// Define the tRPC request context
+export const createContext = async () => {
+  const session = await getCachedSession();
   return {
     session,
   };
