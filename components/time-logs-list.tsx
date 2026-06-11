@@ -17,6 +17,7 @@ interface TimeLogsListProps {
   searchQuery: string;
   onManualLog?: () => void;
   onSelect?: (log: any) => void;
+  isMutating?: boolean;
 }
 
 export function TimeLogsList({
@@ -28,6 +29,7 @@ export function TimeLogsList({
   searchQuery,
   onManualLog,
   onSelect,
+  isMutating = false,
 }: TimeLogsListProps) {
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
   const { showConfirm } = useConfirmStore();
@@ -138,6 +140,20 @@ export function TimeLogsList({
             {viewMode === "list" ? (
               /* Precision high-density list feed modeled after the HTML mockup */
               <div className="space-y-2">
+                {isMutating && (
+                  <div className="flex items-center justify-between p-unit-4 bg-surface-container-low border border-outline-variant rounded-lg animate-pulse">
+                    <div className="flex items-center gap-unit-6 flex-1">
+                      <div className="space-y-1.5 min-w-[110px]">
+                        <div className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                        <div className="h-4 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                      </div>
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-1/3 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                        <div className="h-3 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 {dayLogs.map((log) => {
                   const projectObj = projects?.find((p: any) => p.id === log.project_id);
                   const formattedTimeRange = `${new Date(log.start_time).toLocaleTimeString(undefined, {
@@ -273,6 +289,21 @@ export function TimeLogsList({
             ) : (
               /* Premium bento-style card grid for log items using TimeLogCard component */
               <div className="grid grid-cols-1 md:grid-cols-2 gap-unit-4">
+                {isMutating && (
+                  <div className="bg-surface-container-low border border-outline-variant p-unit-4 rounded-xl space-y-4 animate-pulse">
+                    <div className="flex justify-between">
+                      <div className="space-y-2 flex-1">
+                        <div className="h-4 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                        <div className="h-3 w-1/4 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                      </div>
+                      <div className="h-5 w-16 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
+                    </div>
+                    <div className="space-y-1">
+                      <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                      <div className="h-3 w-5/6 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                    </div>
+                  </div>
+                )}
                 {dayLogs.map((log) => {
                   const projectObj = projects?.find((p: any) => p.id === log.project_id);
                   return (
