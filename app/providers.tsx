@@ -8,6 +8,7 @@ import { trpc } from "@/utils/trpc";
 import { formatErrorMessage } from "@/utils/file";
 import { toast } from "sonner";
 import { ImageViewer } from "@/components/image-viewer";
+import { AuthProvider } from "@/components/providers/auth-provider";
 
 // Monkey patch toast.error on the client side to format all error messages automatically
 if (typeof window !== "undefined") {
@@ -65,8 +66,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <trpc.Provider client={trpcClient} queryClient={queryClient}>
       <QueryClientProvider client={queryClient}>
-        {children}
-        <ImageViewer />
+        <AuthProvider>
+          {children}
+          <ImageViewer />
+        </AuthProvider>
       </QueryClientProvider>
     </trpc.Provider>
   );

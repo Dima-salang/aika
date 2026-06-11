@@ -4,6 +4,7 @@ import React, { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { trpc } from "@/utils/trpc";
 import { authClient } from "@/lib/auth-client";
+import { useAuth } from "@/components/providers/auth-provider";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
@@ -15,7 +16,7 @@ function JoinContent() {
   const searchParams = useSearchParams();
   const token = searchParams.get("token") || "";
 
-  const { data: session, isPending: sessionLoading } = authClient.useSession();
+  const { session, isLoading: sessionLoading } = useAuth();
   const { data: tokenInfo, isLoading: tokenLoading, error: tokenError } = trpc.validateJoinToken.useQuery(
     { token },
     { enabled: !!token }

@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useSession, signOut, authClient } from "@/lib/auth-client";
+import { useAuth } from "@/components/providers/auth-provider";
+import { signOut, authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { TimeLogDialog } from "@/components/time-log-dialog";
 import { TimeLogsList } from "@/components/time-logs-list";
@@ -38,7 +39,7 @@ import {
 
 export default function Home() {
   const router = useRouter();
-  const { data: session, isPending } = useSession();
+  const { session, activeOrg, isLoading: isPending } = useAuth();
 
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -62,7 +63,6 @@ export default function Home() {
 
   // tRPC Queries & Mutations
   const userId = session?.user?.id || "";
-  const { data: activeOrg } = authClient.useActiveOrganization();
   const activeOrgId = activeOrg?.id || "org-default";
   const activeTeamId = (session?.session as any)?.activeTeamId || (session?.user as any)?.last_active_team_id || null;
 
