@@ -230,9 +230,10 @@ export default function Home() {
 
       // Global shortcuts (Work even inside input fields)
 
-      // CMD/CTRL + K: Focus Search
+      // CMD/CTRL + K: Focus Search & navigate to tracker tab
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        handleSetActiveTab("logs");
         const searchInput = document.getElementById("global-search-input");
         if (searchInput) {
           searchInput.focus();
@@ -266,9 +267,10 @@ export default function Home() {
       // If user is focused on an input, do not trigger single-key or Alt navigation shortcuts
       if (isInput) return;
 
-      // /: Focus Search (when not in input)
+      // /: Focus Search & navigate to tracker tab (when not in input)
       if (e.key === "/") {
         e.preventDefault();
+        handleSetActiveTab("logs");
         const searchInput = document.getElementById("global-search-input");
         if (searchInput) {
           searchInput.focus();
