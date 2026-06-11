@@ -70,13 +70,19 @@ export function Sidebar({
 
   const handleSelectOrg = async (orgId: string) => {
     setDropdownOpen(false);
+    
     if (orgId === "org-default") {
+      localStorage.setItem("aika-active-tab", "dashboard");
       await authClient.organization.setActive({ organizationId: null as any });
+      await setActiveTeamMutation.mutateAsync({ userId: session.user.id, teamId: null });
     } else {
       await authClient.organization.setActive({ organizationId: orgId });
+      // Set tab to team optimistically if the org has teams, otherwise dashboard.
+      // We will let the main Page component resolve the actual team redirection,
+      // but we pre-set the tab to 'team' if we are switching to a non-default org to avoid flashing.
+      localStorage.setItem("aika-active-tab", "team");
+      await setActiveTeamMutation.mutateAsync({ userId: session.user.id, teamId: null });
     }
-    // Reset team to null initially when organization is changed
-    await setActiveTeamMutation.mutateAsync({ userId: session.user.id, teamId: null });
   };
 
   const handleSelectTeam = async (teamId: string | null) => {
@@ -123,7 +129,8 @@ export function Sidebar({
           <div className="flex-1 flex flex-col mr-2 min-w-0">
             <button
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              className="w-full min-w-0 flex items-center justify-between gap-2 px-unit-3 py-1.5 rounded-lg border border-outline-variant bg-surface hover:bg-surface-container transition-all text-left shadow-sm active:scale-[0.99]"
+              disabled={setActiveTeamMutation.isPending}
+              className="w-full min-w-0 flex items-center justify-between gap-2 px-unit-3 py-1.5 rounded-lg border border-outline-variant bg-surface hover:bg-surface-container transition-all text-left shadow-sm active:scale-[0.99] disabled:opacity-70"
             >
               <div className="flex flex-col min-w-0">
                 <span className="text-body-sm font-extrabold text-on-surface truncate">
@@ -136,9 +143,15 @@ export function Sidebar({
                   {activeTeam?.name || "Personal View"}
                 </span>
               </div>
-              <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
-                unfold_more
-              </span>
+              {setActiveTeamMutation.isPending ? (
+                <span className="animate-spin text-primary inline-flex h-4 w-4 shrink-0 items-center justify-center">
+                  <span className="material-symbols-outlined text-[18px]">progress_activity</span>
+                </span>
+              ) : (
+                <span className="material-symbols-outlined text-on-surface-variant text-[18px]">
+                  unfold_more
+                </span>
+              )}
             </button>
           </div>
 
