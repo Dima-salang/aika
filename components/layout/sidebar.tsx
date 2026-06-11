@@ -5,6 +5,7 @@ import { useLayoutStore } from "@/lib/store";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { authClient } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
+import { useAuth } from "@/components/providers/auth-provider";
 
 interface SidebarProps {
   activeTab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports";
@@ -47,9 +48,8 @@ export function Sidebar({
 
   const collapsed = mounted ? leftSidebarCollapsed : false;
 
-  // Better Auth Hooks
-  const { data: activeOrg } = authClient.useActiveOrganization();
-  const { data: orgList } = authClient.useListOrganizations();
+  // Better Auth Hooks from global provider
+  const { activeOrg, orgList } = useAuth();
 
   // Active Team state (fallback to user setting)
   const activeTeamId = session?.session?.activeTeamId || session?.user?.last_active_team_id || null;
