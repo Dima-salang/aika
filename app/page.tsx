@@ -66,7 +66,7 @@ export default function Home() {
   const activeOrgId = activeOrg?.id || "org-default";
   const activeTeamId = (session?.session as any)?.activeTeamId || (session?.user as any)?.last_active_team_id || null;
 
-  const { data: rawLogs, refetch: refetchLogs } = trpc.getUserLogs.useQuery(
+  const { data: rawLogs, refetch: refetchLogs, isLoading: loadingLogs } = trpc.getUserLogs.useQuery(
     { userId, organizationId: activeOrgId },
     { enabled: !!userId }
   );
