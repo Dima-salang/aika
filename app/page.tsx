@@ -39,7 +39,8 @@ import {
 
 export default function Home() {
   const router = useRouter();
-  const { session, activeOrg, isLoading: isPending } = useAuth();
+  const { session, activeOrg, isLoading: isPending, refetchSession } = useAuth();
+  const utils = trpc.useUtils();
 
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -87,8 +88,9 @@ export default function Home() {
   );
 
   const setActiveTeamMutation = trpc.setActiveTeam.useMutation({
-    onSuccess: () => {
-      window.location.reload();
+    onSuccess: async () => {
+      await refetchSession();
+      await utils.invalidate();
     }
   });
 
