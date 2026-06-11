@@ -49,7 +49,8 @@ export function Sidebar({
   const collapsed = mounted ? leftSidebarCollapsed : false;
 
   // Better Auth Hooks from global provider
-  const { activeOrg, orgList } = useAuth();
+  const { activeOrg, orgList, refetchSession } = useAuth();
+  const utils = trpc.useUtils();
 
   // Active Team state (fallback to user setting)
   const activeTeamId = session?.session?.activeTeamId || session?.user?.last_active_team_id || null;
@@ -63,8 +64,9 @@ export function Sidebar({
   const activeTeam = userTeams?.find((t) => t.id === activeTeamId);
 
   const setActiveTeamMutation = trpc.setActiveTeam.useMutation({
-    onSuccess: () => {
-      window.location.reload();
+    onSuccess: async () => {
+      await refetchSession();
+      await utils.invalidate();
     }
   });
 
