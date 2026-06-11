@@ -18,7 +18,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const { data: activeOrg, isPending: isOrgPending } = authClient.useActiveOrganization();
   const { data: orgList, isPending: isListPending } = authClient.useListOrganizations();
 
-  const isLoading = isSessionPending || isOrgPending || isListPending;
+  const isLoading = isSessionPending;
 
   const value = {
     session: sessionData ?? null,
