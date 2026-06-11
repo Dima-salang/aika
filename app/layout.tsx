@@ -21,6 +21,7 @@ export const metadata: Metadata = {
 
 import { Toaster } from "sonner";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { Analytics } from "@vercel/analytics/react";
 
 export default function RootLayout({
   children,
@@ -54,6 +55,7 @@ export default function RootLayout({
         <Providers>{children}</Providers>
         <Toaster richColors position="top-right" />
         <ConfirmDialog />
+        <Analytics />
       </body>
     </html>
   );
