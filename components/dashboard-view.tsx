@@ -19,6 +19,8 @@ interface DashboardViewProps {
   timerSeconds: number;
   formatDuration: (seconds: number) => string;
   onSelectLog?: (log: any) => void;
+  startPending?: boolean;
+  stopPending?: boolean;
 }
 
 export function DashboardView({
@@ -32,6 +34,8 @@ export function DashboardView({
   timerSeconds,
   formatDuration,
   onSelectLog,
+  startPending = false,
+  stopPending = false,
 }: DashboardViewProps) {
   // 1. Current Date
   const formattedDate = useMemo(() => {
@@ -204,6 +208,8 @@ export function DashboardView({
           formatDuration={formatDuration}
           handleStartTimer={handleStartTimer}
           setIsDialogOpen={setIsDialogOpen}
+          startPending={startPending}
+          stopPending={stopPending}
         />
 
         {/* Weekly Overview Chart */}
