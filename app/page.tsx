@@ -585,6 +585,11 @@ export default function Home() {
                   userId={userId}
                   organizationId={activeOrgId}
                   activeTeamId={activeTeamId}
+                  onSelectLog={(log) => {
+                    setDetailLog(log);
+                    setDetailTask(null);
+                    setIsDetailOpen(true);
+                  }}
                 />
               ) : activeTab === "reports" ? (
                 <ReportsView

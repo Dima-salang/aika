@@ -132,9 +132,11 @@ export function DetailViewDialog({
                 <div className="space-y-2">
                   <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Linked Tasks</span>
                   <div className="flex flex-col gap-2">
-                    {selectedLog.tasks.map((tId: string) => {
+                    {selectedLog.tasks.map((taskItem: any) => {
+                      const tId = typeof taskItem === "string" ? taskItem : taskItem?.id;
+                      if (!tId) return null;
                       const taskObj = tasks.find((t) => t.id === tId);
-                      const taskTitle = taskObj?.title || `Task-${tId.slice(0, 4)}`;
+                      const taskTitle = taskObj?.title || (typeof taskItem === "object" ? taskItem.title : `Task-${tId.slice(0, 4)}`);
                       return (
                         <div
                           key={tId}
