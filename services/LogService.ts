@@ -11,7 +11,8 @@ import {
   Timer,
   TimerSqlite,
 } from "@/db/schema";
-import { eq, and, lt, gt, isNull, ne, inArray, lte, gte } from "drizzle-orm";
+import { eq, and, lt, gt, isNull, ne, inArray, lte, gte, desc, or, like } from "drizzle-orm";
+import { SQL } from "drizzle-orm";
 import { AuditService } from "./AuditService";
 import { isSupportedMimeType } from "@/utils/file";
 import { StorageService } from "./StorageService";
@@ -627,10 +628,12 @@ export class LogService {
       projectId?: string | null;
       startDate?: Date;
       endDate?: Date;
+      search?: string;
     },
     limit?: number,
-    offset?: number
-  ): Promise<Array<TimeLog | TimeLogSqlite>> {
+    offset?: number,
+    tx: DBInstance = db
+  ): Promise<DetailedTimeLog[]> {
     z.string().parse(userId);
     const table = tables.timeLogs;
     const conditions = [
@@ -662,9 +665,38 @@ export class LogService {
       if (filters.endDate) {
         conditions.push(lte(table.end_time, filters.endDate));
       }
+      if (filters.search && filters.search.trim()) {
+        const searchPattern = `%${filters.search.toLowerCase()}%`;
+        conditions.push(
+          or(
+            like(table.title, searchPattern),
+            like(table.description, searchPattern)
+          ) as SQL
+        );
+      }
     }
 
-    let query = db.select().from(table).where(and(...conditions)).$dynamic();
+    let query = tx
+      .select({
+        id: table.id,
+        user_id: table.user_id,
+        organization_id: table.organization_id,
+        team_id: table.team_id,
+        project_id: table.project_id,
+        start_time: table.start_time,
+        end_time: table.end_time,
+        title: table.title,
+        description: table.description,
+        created_at: table.created_at,
+        updated_at: table.updated_at,
+        deleted_at: table.deleted_at,
+        projectName: tables.projects.name,
+      })
+      .from(table)
+      .leftJoin(tables.projects, eq(table.project_id, tables.projects.id))
+      .where(and(...conditions))
+      .orderBy(desc(table.start_time))
+      .$dynamic();
 
     if (limit) {
       query = query.limit(limit);
@@ -674,7 +706,56 @@ export class LogService {
       query = query.offset(offset);
     }
 
-    return await query;
+    const logs = await query;
+
+    if (logs.length === 0) {
+      return [];
+    }
+
+    const logIds = logs.map((l) => l.id);
+
+    // Fetch evidence in a single query
+    const evidenceTable = tables.documentEvidences;
+    const evidenceList = await tx
+      .select()
+      .from(evidenceTable)
+      .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
+
+    // Fetch tasks in a single query
+    const tasksJoinTable = tables.timeLogTasks;
+    const tasksTable = tables.tasks;
+    const tasksList = await tx
+      .select({
+        time_log_id: tasksJoinTable.time_log_id,
+        task_id: tasksJoinTable.task_id,
+        taskTitle: tasksTable.title,
+      })
+      .from(tasksJoinTable)
+      .innerJoin(tasksTable, eq(tasksJoinTable.task_id, tasksTable.id))
+      .where(inArray(tasksJoinTable.time_log_id, logIds));
+
+    // Map evidence and tasks in memory
+    const evidenceMap: Record<string, any[]> = {};
+    evidenceList.forEach((ev) => {
+      if (!evidenceMap[ev.time_log_id]) {
+        evidenceMap[ev.time_log_id] = [];
+      }
+      evidenceMap[ev.time_log_id].push(ev);
+    });
+
+    const tasksMap: Record<string, string[]> = {};
+    tasksList.forEach((t) => {
+      if (!tasksMap[t.time_log_id]) {
+        tasksMap[t.time_log_id] = [];
+      }
+      tasksMap[t.time_log_id].push(t.task_id);
+    });
+
+    return logs.map((log) => ({
+      ...log,
+      tasks: tasksMap[log.id] || [],
+      evidence: evidenceMap[log.id] || [],
+    })) as DetailedTimeLog[];
   }
 
   /**
