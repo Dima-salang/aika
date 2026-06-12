@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, PlayCircle, Folder, Tag } from "lucide-react";
+import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, PlayCircle, Folder, Tag, Loader2, Filter } from "lucide-react";
 import { TimeLogCard } from "./time-log-card";
 import { ActivityLogItem } from "@/components/team/activity-log-item";
 import { toast } from "sonner";
@@ -20,6 +20,16 @@ interface TimeLogsListProps {
   onSelect?: (log: any) => void;
   isMutating?: boolean;
   isLoading?: boolean;
+  fetchNextPage?: () => void;
+  hasNextPage?: boolean;
+  isFetchingNextPage?: boolean;
+  selectedProjectId?: string;
+  setSelectedProjectId?: (id: string) => void;
+  startDateFilter?: string;
+  setStartDateFilter?: (date: string) => void;
+  endDateFilter?: string;
+  setEndDateFilter?: (date: string) => void;
+  onClearFilters?: () => void;
 }
 
 export function TimeLogsList({
@@ -33,9 +43,40 @@ export function TimeLogsList({
   onSelect,
   isMutating = false,
   isLoading = false,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage,
+  selectedProjectId = "all",
+  setSelectedProjectId,
+  startDateFilter = "",
+  setStartDateFilter,
+  endDateFilter = "",
+  setEndDateFilter,
+  onClearFilters,
 }: TimeLogsListProps) {
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
   const { showConfirm } = useConfirmStore();
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage || !fetchNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
+        }
+      },
+      { threshold: 0.1 }
+    );
+
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
+
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const getFriendlyDuration = (start: Date, end: Date) => {
     const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -108,6 +149,67 @@ export function TimeLogsList({
               <span className="text-[10px] font-bold px-0.5">Card</span>
             </button>
           </div>
+        </div>
+      </div>
+
+      {/* Advanced Filter Toolbar */}
+      <div className="bg-surface-container border border-outline-variant rounded-xl p-4 mb-6 space-y-3">
+        <div className="flex items-center justify-between border-b border-outline-variant pb-2">
+          <span className="text-xs font-bold text-on-surface flex items-center gap-1.5 uppercase tracking-wider">
+            <Filter className="h-3.5 w-3.5 text-primary" /> Filter Logs
+          </span>
+          {(searchQuery || (selectedProjectId !== "all") || startDateFilter || endDateFilter) && onClearFilters && (
+            <button
+              onClick={onClearFilters}
+              className="text-[10px] font-bold text-primary hover:underline"
+            >
+              Clear Filters
+            </button>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {/* Project dropdown */}
+          {setSelectedProjectId && (
+            <div>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value)}
+                className="w-full bg-surface-container-low border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+              >
+                <option value="all">All Projects</option>
+                {projects.map((proj) => (
+                  <option key={proj.id} value={proj.id}>
+                    {proj.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Start Date */}
+          {setStartDateFilter && (
+            <div className="relative">
+              <input
+                type="date"
+                value={startDateFilter}
+                onChange={(e) => setStartDateFilter(e.target.value)}
+                className="w-full bg-surface-container-low border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+              />
+            </div>
+          )}
+
+          {/* End Date */}
+          {setEndDateFilter && (
+            <div className="relative">
+              <input
+                type="date"
+                value={endDateFilter}
+                onChange={(e) => setEndDateFilter(e.target.value)}
+                className="w-full bg-surface-container-low border border-outline-variant rounded-lg px-2.5 py-1.5 text-xs text-on-surface focus:outline-none focus:border-primary cursor-pointer"
+              />
+            </div>
+          )}
         </div>
       </div>
 
@@ -269,6 +371,14 @@ export function TimeLogsList({
           })}
         </div>
       )}
+
+      {/* Infinite scrolling sentinel and loader */}
+      {isFetchingNextPage && (
+        <div className="flex justify-center items-center py-6">
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
+        </div>
+      )}
+      <div ref={sentinelRef} className="h-2 w-full" />
     </div>
   );
 }

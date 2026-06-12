@@ -1,10 +1,9 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
-import Link from "next/link";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
-import { signOut, authClient } from "@/lib/auth-client";
+import { signOut } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
 import { TimeLogDialog } from "@/components/time-log-dialog";
 import { TimeLogsList } from "@/components/time-logs-list";
@@ -16,26 +15,11 @@ import { WeeklyChart } from "@/components/weekly-chart";
 import { ProjectsTasksTab } from "@/components/projects-tasks-tab";
 import { DashboardView } from "@/components/dashboard-view";
 import { DetailViewDialog } from "@/components/detail-view-dialog";
-import { DashboardManageControls } from "@/components/admin/dashboard-manage-controls";
 import { TeamSpaceView } from "@/components/team/team-space-view";
 import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LandingPage } from "@/components/landing-page";
 
-import {
-  Loader2,
-  User,
-  Building2,
-  Play,
-  Square,
-  Plus,
-  Search,
-  ExternalLink,
-  Sparkles,
-  BarChart3,
-  CalendarDays,
-  FolderDot,
-} from "lucide-react";
 
 export default function Home() {
   const router = useRouter();
@@ -47,6 +31,9 @@ export default function Home() {
   const [editingLog, setEditingLog] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports">("dashboard");
   const [searchQuery, setSearchQuery] = useState("");
+  const [logFilterProjectId, setLogFilterProjectId] = useState<string>("all");
+  const [logFilterStartDate, setLogFilterStartDate] = useState<string>("");
+  const [logFilterEndDate, setLogFilterEndDate] = useState<string>("");
 
   // Detailed view / dynamically inspect task or log
   const [detailLog, setDetailLog] = useState<any>(null);
@@ -70,6 +57,29 @@ export default function Home() {
   const { data: rawLogs, refetch: refetchLogs, isLoading: loadingLogs } = trpc.getUserLogs.useQuery(
     { userId, organizationId: activeOrgId },
     { enabled: !!userId }
+  );
+
+  const {
+    data: paginatedLogsData,
+    fetchNextPage: fetchNextLogsPage,
+    hasNextPage: hasNextLogsPage,
+    isFetchingNextPage: isFetchingNextLogsPage,
+    isLoading: loadingPaginatedLogs,
+    refetch: refetchPaginatedLogs,
+  } = trpc.getUserLogsInfinite.useInfiniteQuery(
+    {
+      userId: userId || "",
+      organizationId: activeOrgId,
+      search: searchQuery,
+      projectId: logFilterProjectId !== "all" ? logFilterProjectId : undefined,
+      startDate: logFilterStartDate ? new Date(logFilterStartDate) : undefined,
+      endDate: logFilterEndDate ? new Date(logFilterEndDate) : undefined,
+      limit: 10,
+    },
+    {
+      enabled: !!userId,
+      getNextPageParam: (lastPage) => lastPage?.nextCursor,
+    }
   );
 
   const { data: tasks } = trpc.getTasks.useQuery(
@@ -152,24 +162,28 @@ export default function Home() {
     onSuccess: () => {
       refetchTimer();
       refetchLogs();
+      refetchPaginatedLogs();
     },
   });
 
   const createLogMutation = trpc.createLog.useMutation({
     onSuccess: () => {
       refetchLogs();
+      refetchPaginatedLogs();
     },
   });
 
   const updateLogMutation = trpc.updateLog.useMutation({
     onSuccess: () => {
       refetchLogs();
+      refetchPaginatedLogs();
     },
   });
 
   const deleteLogMutation = trpc.deleteLog.useMutation({
     onSuccess: () => {
       refetchLogs();
+      refetchPaginatedLogs();
     },
   });
 
@@ -508,6 +522,20 @@ export default function Home() {
     logsByDay[dateStr].push(log);
   });
 
+  // Group paginated logs by Day for the infinite-scroll list view
+  const paginatedLogs = paginatedLogsData?.pages.flatMap((page) => page?.items || []) || [];
+  const paginatedLogsByDay: { [key: string]: any[] } = {};
+  paginatedLogs.forEach((log: any) => {
+    const dateStr = new Date(log.start_time).toLocaleDateString(undefined, {
+      weekday: "long",
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    });
+    if (!paginatedLogsByDay[dateStr]) paginatedLogsByDay[dateStr] = [];
+    paginatedLogsByDay[dateStr].push(log);
+  });
+
   return (
     <div className="relative min-h-screen w-full flex bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
 
@@ -596,7 +624,7 @@ export default function Home() {
                       {/* Timeline logs */}
                       <div>
                         <TimeLogsList
-                          logsByDay={logsByDay}
+                          logsByDay={paginatedLogsByDay}
                           projects={projects || []}
                           tasks={tasks || []}
                           onEdit={(log) => {
@@ -615,7 +643,22 @@ export default function Home() {
                             setIsDetailOpen(true);
                           }}
                           isMutating={createLogMutation.isPending || stopTimerMutation.isPending}
-                          isLoading={loadingLogs}
+                          isLoading={loadingPaginatedLogs}
+                          fetchNextPage={fetchNextLogsPage}
+                          hasNextPage={hasNextLogsPage}
+                          isFetchingNextPage={isFetchingNextLogsPage}
+                          selectedProjectId={logFilterProjectId}
+                          setSelectedProjectId={setLogFilterProjectId}
+                          startDateFilter={logFilterStartDate}
+                          setStartDateFilter={setLogFilterStartDate}
+                          endDateFilter={logFilterEndDate}
+                          setEndDateFilter={setLogFilterEndDate}
+                          onClearFilters={() => {
+                            setSearchQuery("");
+                            setLogFilterProjectId("all");
+                            setLogFilterStartDate("");
+                            setLogFilterEndDate("");
+                          }}
                         />
                       </div>
                     </div>
