@@ -39,7 +39,56 @@ export const teamsRouter = router({
             message: "You must be a team member to view this timeline.",
           });
         }
-        return await logService.getTeamTimeline(input.teamId, input.startDate, input.endDate);
+        return await logService.getTeamTimeline(
+          input.teamId,
+          input.startDate,
+          input.endDate,
+          input.search,
+          input.role,
+          input.selectedUser,
+          input.limit,
+          input.offset
+        );
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
+  getTeamTimelineInfinite: publicProcedure
+    .input(
+      getTeamTimelineInputZodSchema.extend({
+        cursor: z.number().nullish(),
+      })
+    )
+    .query(async ({ input }) => {
+      try {
+        if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
+          throw new TRPCError({
+            code: "FORBIDDEN",
+            message: "You must be a team member to view this timeline.",
+          });
+        }
+        const limit = input.limit ?? 10;
+        const offset = input.cursor ?? 0;
+        const logs = await logService.getTeamTimeline(
+          input.teamId,
+          input.startDate,
+          input.endDate,
+          input.search,
+          input.role,
+          input.selectedUser,
+          limit + 1,
+          offset
+        );
+
+        const hasNextPage = logs.length > limit;
+        const items = hasNextPage ? logs.slice(0, limit) : logs;
+        const nextCursor = hasNextPage ? offset + limit : null;
+
+        return {
+          items,
+          nextCursor,
+        };
       } catch (error) {
         handleDbError(error);
       }
