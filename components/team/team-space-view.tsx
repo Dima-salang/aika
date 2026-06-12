@@ -56,10 +56,37 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
     { enabled: !!activeTeamId }
   );
 
-  const { data: teamTimeline, isLoading: timelineLoading } = trpc.getTeamTimeline.useQuery(
-    { userId, teamId: activeTeamId },
-    { enabled: !!activeTeamId }
+  // Filter States for Team Timeline Feed (Lifted for DB-level filtering and pagination)
+  const [search, setSearch] = useState("");
+  const [role, setRole] = useState("all");
+  const [selectedUser, setSelectedUser] = useState("all");
+  const [startDate, setStartDate] = useState("");
+  const [endDate, setEndDate] = useState("");
+
+  const {
+    data: teamTimelineInfiniteData,
+    fetchNextPage: fetchNextTimelinePage,
+    hasNextPage: hasNextTimelinePage,
+    isFetchingNextPage: isFetchingNextTimelinePage,
+    isLoading: timelineLoading,
+  } = trpc.getTeamTimelineInfinite.useInfiniteQuery(
+    {
+      userId,
+      teamId: activeTeamId,
+      search: search || undefined,
+      role: role || undefined,
+      selectedUser: selectedUser || undefined,
+      startDate: startDate ? new Date(startDate) : undefined,
+      endDate: endDate ? new Date(endDate) : undefined,
+      limit: 10,
+    },
+    {
+      enabled: !!activeTeamId,
+      getNextPageParam: (lastPage) => lastPage?.nextCursor,
+    }
   );
+
+  const teamTimeline = teamTimelineInfiniteData?.pages.flatMap((page) => page?.items || []) || [];
 
   // Determine user leadership status
   const currentUserMember = members?.find((m) => m.userId === userId);
@@ -281,6 +308,19 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
             timeline={(teamTimeline || []) as any}
             timelineLoading={timelineLoading}
             members={members || []}
+            search={search}
+            setSearch={setSearch}
+            role={role}
+            setRole={setRole}
+            selectedUser={selectedUser}
+            setSelectedUser={setSelectedUser}
+            startDate={startDate}
+            setStartDate={setStartDate}
+            endDate={endDate}
+            setEndDate={setEndDate}
+            fetchNextPage={fetchNextTimelinePage}
+            hasNextPage={!!hasNextTimelinePage}
+            isFetchingNextPage={isFetchingNextTimelinePage}
           />
         )}
         {activeSubTab === "members" && (

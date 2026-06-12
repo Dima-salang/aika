@@ -890,6 +890,11 @@ export const getUserLogsInputZodSchema = z.object({
   organizationId: z.string().optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
+  search: z.string().optional(),
+  projectId: z.string().nullable().optional(),
+  limit: z.number().int().positive().optional(),
+  offset: z.number().int().nonnegative().optional(),
+  cursor: z.number().nullish(),
 });
 
 export const startTimerInputZodSchema = z.object({
@@ -938,6 +943,12 @@ export const getTeamTimelineInputZodSchema = z.object({
   teamId: z.string(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
+  search: z.string().optional(),
+  role: z.string().optional(),
+  selectedUser: z.string().optional(),
+  limit: z.number().int().positive().optional(),
+  offset: z.number().int().nonnegative().optional(),
+  cursor: z.number().nullish(),
 });
 
 export const getTeamMembersInputZodSchema = z.object({

@@ -62,6 +62,19 @@ interface TeamTimelineFeedProps {
   timeline: TimelineLog[];
   timelineLoading: boolean;
   members: TeamMember[];
+  search: string;
+  setSearch: (s: string) => void;
+  role: string;
+  setRole: (r: string) => void;
+  selectedUser: string;
+  setSelectedUser: (u: string) => void;
+  startDate: string;
+  setStartDate: (d: string) => void;
+  endDate: string;
+  setEndDate: (d: string) => void;
+  fetchNextPage: () => void;
+  hasNextPage: boolean;
+  isFetchingNextPage: boolean;
 }
 
 // Color coding helpers matching tracker page, optimized for light and dark high-contrast
@@ -98,64 +111,50 @@ const getTaskColorBadge = (taskTitle: string) => {
   return colors[idx];
 };
 
-export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTimelineFeedProps) {
-  // Filter States
-  const [search, setSearch] = useState("");
-  const [role, setRole] = useState("all");
-  const [selectedUser, setSelectedUser] = useState("all");
-  const [startDate, setStartDate] = useState("");
-  const [endDate, setEndDate] = useState("");
+export function TeamTimelineFeed({
+  timeline,
+  timelineLoading,
+  members,
+  search,
+  setSearch,
+  role,
+  setRole,
+  selectedUser,
+  setSelectedUser,
+  startDate,
+  setStartDate,
+  endDate,
+  setEndDate,
+  fetchNextPage,
+  hasNextPage,
+  isFetchingNextPage
+}: TeamTimelineFeedProps) {
+  const sentinelRef = React.useRef<HTMLDivElement>(null);
 
-  // Filter Logs
-  const filteredTimeline = useMemo(() => {
-    return timeline.filter((log) => {
-      // 1. Search Query
-      if (search.trim()) {
-        const query = search.toLowerCase();
-        const titleMatch = log.title?.toLowerCase().includes(query);
-        const descMatch = log.description?.toLowerCase().includes(query);
-        const nameMatch = log.userName?.toLowerCase().includes(query);
-        const emailMatch = log.userEmail?.toLowerCase().includes(query);
-        const projectMatch = log.projectName?.toLowerCase().includes(query);
-        const taskMatch = log.tasks?.some(t => t.title.toLowerCase().includes(query));
-        if (!titleMatch && !descMatch && !nameMatch && !emailMatch && !projectMatch && !taskMatch) {
-          return false;
+  React.useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          fetchNextPage();
         }
-      }
+      },
+      { threshold: 0.1 }
+    );
 
-      // 2. Role Filter
-      if (role !== "all" && log.userRole !== role) {
-        return false;
-      }
+    const el = sentinelRef.current;
+    if (el) observer.observe(el);
 
-      // 3. User Filter
-      if (selectedUser !== "all" && log.user_id !== selectedUser) {
-        return false;
-      }
-
-      // 4. Start Date
-      if (startDate) {
-        const logStart = new Date(log.start_time).getTime();
-        const filterStart = new Date(startDate).getTime();
-        if (logStart < filterStart) return false;
-      }
-
-      // 5. End Date
-      if (endDate) {
-        const filterEnd = new Date(endDate);
-        filterEnd.setHours(23, 59, 59, 999);
-        const logEnd = new Date(log.end_time).getTime();
-        if (logEnd > filterEnd.getTime()) return false;
-      }
-
-      return true;
-    });
-  }, [timeline, search, role, selectedUser, startDate, endDate]);
+    return () => {
+      if (el) observer.unobserve(el);
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   // Group Logs by Day (for logical timeline representation)
   const groupedTimeline = useMemo(() => {
     const groups: Record<string, TimelineLog[]> = {};
-    filteredTimeline.forEach((log) => {
+    timeline.forEach((log) => {
       const dateKey = new Date(log.start_time).toLocaleDateString(undefined, {
         weekday: "short",
         year: "numeric",
@@ -168,7 +167,7 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
       groups[dateKey].push(log);
     });
     return Object.entries(groups);
-  }, [filteredTimeline]);
+  }, [timeline]);
 
   return (
     <div className="w-full h-full max-w-4xl mx-auto">
@@ -301,6 +300,14 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
             <p className="text-outline text-xs font-semibold">No activity logs recorded matching the criteria.</p>
           </div>
         )}
+
+        {/* Infinite scrolling sentinel and loader */}
+        {isFetchingNextPage && (
+          <div className="flex justify-center items-center py-6">
+            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+          </div>
+        )}
+        <div ref={sentinelRef} className="h-2 w-full" />
       </div>
     </div>
   );
