@@ -2,7 +2,8 @@
 
 import React, { useState } from "react";
 import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, PlayCircle, Folder, Tag } from "lucide-react";
-import { TimeLogCard, getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
+import { TimeLogCard } from "./time-log-card";
+import { ActivityLogItem } from "@/components/team/activity-log-item";
 import { toast } from "sonner";
 import { useConfirmStore } from "@/lib/store";
 import { useImageViewer } from "@/utils/image-viewer-store";
@@ -86,11 +87,10 @@ export function TimeLogsList({
           <div className="flex items-center gap-2 bg-surface-container-low dark:bg-surface-dim p-0.5 rounded-lg border border-outline-variant">
             <button
               onClick={() => setViewMode("list")}
-              className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${
-                viewMode === "list"
+              className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${viewMode === "list"
                   ? "bg-primary text-on-primary shadow-sm"
                   : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
-              }`}
+                }`}
               title="List View"
             >
               <List className="h-3.5 w-3.5" />
@@ -98,11 +98,10 @@ export function TimeLogsList({
             </button>
             <button
               onClick={() => setViewMode("card")}
-              className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${
-                viewMode === "card"
+              className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${viewMode === "card"
                   ? "bg-primary text-on-primary shadow-sm"
                   : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
-              }`}
+                }`}
               title="Card View"
             >
               <LayoutGrid className="h-3.5 w-3.5" />
@@ -140,213 +139,134 @@ export function TimeLogsList({
       ) : (
         <div className="space-y-6">
 
-      {Object.keys(logsByDay).map((dayStr) => {
-        const dayLogs = logsByDay[dayStr];
-        return (
-          <div key={dayStr} className="space-y-3">
-            
-            {/* Header with date info and total hours */}
-            <div className="flex items-center justify-between px-2 py-1">
-              <span className="text-[10px] font-bold text-outline uppercase tracking-widest">
-                {dayStr}
-              </span>
-              <span className="text-[10px] text-on-surface-variant font-extrabold uppercase bg-surface-container/60 px-2.5 py-0.5 rounded border border-outline-variant">
-                Total: {getDayTotalHours(dayLogs)}
-              </span>
-            </div>
+          {Object.keys(logsByDay).map((dayStr) => {
+            const dayLogs = logsByDay[dayStr];
+            return (
+              <div key={dayStr} className="space-y-3">
 
-            {viewMode === "list" ? (
-              /* Precision high-density list feed modeled after the HTML mockup */
-              <div className="space-y-2">
-                {isMutating && (
-                  <div className="flex items-center justify-between p-unit-4 bg-surface-container-low border border-outline-variant rounded-lg animate-pulse">
-                    <div className="flex items-center gap-unit-6 flex-1">
-                      <div className="space-y-1.5 min-w-[110px]">
-                        <div className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                        <div className="h-4 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                      </div>
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-1/3 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                        <div className="h-3 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                      </div>
-                    </div>
+                {viewMode === "card" && (
+                  /* Header with date info and total hours for card grid */
+                  <div className="flex items-center justify-between px-2 py-1">
+                    <span className="text-[10px] font-bold text-outline uppercase tracking-widest">
+                      {dayStr}
+                    </span>
+                    <span className="text-[10px] text-on-surface-variant font-extrabold uppercase bg-surface-container/60 px-2.5 py-0.5 rounded border border-outline-variant">
+                      Total: {getDayTotalHours(dayLogs)}
+                    </span>
                   </div>
                 )}
-                {dayLogs.map((log) => {
-                  const projectObj = projects?.find((p: any) => p.id === log.project_id);
-                  const formattedTimeRange = `${new Date(log.start_time).toLocaleTimeString(undefined, {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })} - ${new Date(log.end_time).toLocaleTimeString(undefined, {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                    hour12: false,
-                  })}`;
 
-                  return (
-                    <div
-                      key={log.id}
-                      onClick={() => onSelect?.(log)}
-                      className="group flex items-center justify-between p-unit-4 bg-surface-container-low hover:bg-surface-container border border-outline-variant rounded-lg transition-all cursor-pointer hover:shadow-md"
-                    >
-                      <div className="flex items-center gap-unit-6 flex-1 min-w-0">
-                        {/* Time & Duration columns */}
-                        <div className="flex flex-col gap-0.5 min-w-[110px] shrink-0 text-left">
-                          <span className="font-mono-timer text-body-sm text-outline tracking-tight">
-                            {formattedTimeRange}
-                          </span>
-                          <span className="font-label-md text-on-surface-variant font-semibold">
-                            {getFriendlyDuration(log.start_time, log.end_time)}
-                          </span>
-                        </div>
+                {viewMode === "list" ? (
+                  /* Precision high-density timeline stream layout consistent with feed but compact */
+                  <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant pb-2">
+                    {/* Timeline-style Day Header */}
+                    <div className="relative pl-12 flex items-center justify-between gap-4">
+                      <div className="absolute left-[11px] top-1.5 h-4 w-4 rounded-full border-2 border-outline-variant bg-surface flex items-center justify-center">
+                        <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                      </div>
+                      <span className="text-[11px] font-extrabold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded uppercase tracking-wider">
+                        {dayStr}
+                      </span>
+                      <span className="text-[10px] text-on-surface-variant font-extrabold uppercase bg-surface-container/60 px-2.5 py-0.5 rounded border border-outline-variant mr-2">
+                        Total: {getDayTotalHours(dayLogs)}
+                      </span>
+                    </div>
 
-                        {/* Title, tags, description */}
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-unit-2 mb-1 flex-wrap">
-                            <span className="font-body-md text-on-surface font-bold group-hover:text-primary transition-colors truncate max-w-[280px]">
-                              {log.title}
-                            </span>
-                            {projectObj && (
-                              <span className={`px-1.5 py-0.5 text-[10px] rounded border font-bold uppercase tracking-wider ${getProjectColorBadge(projectObj.name)}`}>
-                                {projectObj.name}
-                              </span>
-                            )}
-                            
-                            {/* Associated tasks */}
-                            {log.tasks && log.tasks.length > 0 && (
-                              <div className="flex items-center gap-1.5 flex-wrap">
-                                {log.tasks.map((tId: string) => {
-                                  const taskObj = tasks?.find((t: any) => t.id === tId);
-                                  const taskTitle = taskObj?.title || `Task-${tId.slice(0, 4)}`;
-                                  return (
-                                    <span
-                                      key={tId}
-                                      className={`px-1.5 py-0.2 text-[10px] rounded border font-medium tracking-tight ${getTaskColorBadge(taskTitle)}`}
-                                    >
-                                      #{taskTitle}
-                                    </span>
-                                  );
-                                })}
-                              </div>
-                            )}
-                          </div>
-                          {log.description && (
-                            <p className="text-body-sm text-outline group-hover:text-on-surface-variant transition-colors mb-1">
-                              {log.description}
-                            </p>
-                          )}
-                        </div>
-                          
-                          {/* Evidence proof url thumbnail inline if present */}
-                          {log.evidence && log.evidence.length > 0 && (
-                            <div className="flex gap-1.5 mt-1.5 flex-wrap">
-                              {(() => {
-                                const imageList = log.evidence
-                                  .filter((e: any) => e.mime_type ? e.mime_type.startsWith("image/") : isImageUrl(e.file_url))
-                                  .map((e: any) => e.file_url);
-
-                                return log.evidence.map((ev: any, idx: number) => {
-                                  const isImg = ev.mime_type ? ev.mime_type.startsWith("image/") : isImageUrl(ev.file_url);
-                                  return (
-                                    <div
-                                      key={idx}
-                                      className="h-6 flex items-center gap-1.5 px-2 bg-surface-container-lowest/80 border border-outline-variant rounded hover:border-primary transition-colors cursor-pointer text-[10px] text-outline hover:text-on-surface"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (isImg) {
-                                          const imgIdx = imageList.indexOf(ev.file_url);
-                                          useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
-                                        } else {
-                                          window.open(ev.file_url, "_blank");
-                                        }
-                                      }}
-                                      title={`View Proof: ${ev.file_name}`}
-                                    >
-                                      <Clock className="h-3 w-3 text-primary shrink-0" />
-                                      <span className="truncate max-w-[120px] font-mono-timer">{ev.file_name}</span>
-                                    </div>
-                                  );
-                                });
-                              })()}
+                    {isMutating && (
+                      <div className="relative pl-12">
+                        <div className="absolute left-[13px] top-4 h-3.5 w-3.5 rounded-full border-2 border-outline-variant bg-surface animate-pulse" />
+                        <div className="flex items-center justify-between p-unit-4 bg-surface-container-low border border-outline-variant rounded-lg animate-pulse">
+                          <div className="flex items-center gap-unit-6 flex-1">
+                            <div className="space-y-1.5 min-w-[110px]">
+                              <div className="h-3 w-16 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                              <div className="h-4 w-12 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
                             </div>
-                          )}
+                            <div className="flex-1 space-y-2">
+                              <div className="h-4 w-1/3 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                              <div className="h-3 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                            </div>
+                          </div>
                         </div>
+                      </div>
+                    )}
 
-                      {/* Right hover action buttons */}
-                      <div className="flex items-center gap-unit-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onEdit(log);
+                    {dayLogs.map((log) => {
+                      const projectObj = projects?.find((p: any) => p.id === log.project_id);
+                      const logTasks = (log.tasks || []).map((tId: string) => {
+                        const taskObj = tasks?.find((t: any) => t.id === tId);
+                        return {
+                          id: tId,
+                          title: taskObj?.title || `Task-${tId.slice(0, 4)}`
+                        };
+                      });
+
+                      return (
+                        <ActivityLogItem
+                          key={log.id}
+                          log={{
+                            ...log,
+                            projectName: projectObj?.name || null,
+                            tasks: logTasks
                           }}
-                          className="material-symbols-outlined text-outline hover:text-primary transition-colors p-1 hover:bg-surface-container-high rounded"
-                          title="Edit Log"
-                        >
-                          edit
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
+                          showUser={false}
+                          showActions={true}
+                          compact={true}
+                          onEdit={onEdit}
+                          onDelete={(id) => {
                             showConfirm({
                               title: "Delete time log entry?",
                               description: `Are you sure you want to delete the time log "${log.title}"? This action cannot be undone.`,
-                              onConfirm: () => handleDelete(log.id)
+                              onConfirm: () => handleDelete(id)
                             });
                           }}
-                          className="material-symbols-outlined text-outline hover:text-error transition-colors p-1 hover:bg-surface-container-high rounded"
-                          title="Delete Log"
-                        >
-                          delete
-                        </button>
+                          onSelect={onSelect}
+                        />
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* Premium bento-style card grid for log items using TimeLogCard component */
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-unit-4">
+                    {isMutating && (
+                      <div className="bg-surface-container-low border border-outline-variant p-unit-4 rounded-xl space-y-4 animate-pulse">
+                        <div className="flex justify-between">
+                          <div className="space-y-2 flex-1">
+                            <div className="h-4 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                            <div className="h-3 w-1/4 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                          </div>
+                          <div className="h-5 w-16 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                          <div className="h-3 w-5/6 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              /* Premium bento-style card grid for log items using TimeLogCard component */
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-unit-4">
-                {isMutating && (
-                  <div className="bg-surface-container-low border border-outline-variant p-unit-4 rounded-xl space-y-4 animate-pulse">
-                    <div className="flex justify-between">
-                      <div className="space-y-2 flex-1">
-                        <div className="h-4 w-1/2 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                        <div className="h-3 w-1/4 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                      </div>
-                      <div className="h-5 w-16 bg-zinc-200 dark:bg-zinc-800 rounded-full"></div>
-                    </div>
-                    <div className="space-y-1">
-                      <div className="h-3 w-full bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                      <div className="h-3 w-5/6 bg-zinc-200 dark:bg-zinc-800 rounded"></div>
-                    </div>
+                    )}
+                    {dayLogs.map((log) => {
+                      const projectObj = projects?.find((p: any) => p.id === log.project_id);
+                      return (
+                        <TimeLogCard
+                          key={log.id}
+                          log={log}
+                          project={projectObj}
+                          tasks={tasks}
+                          onEdit={onEdit}
+                          onDelete={(id) => {
+                            showConfirm({
+                              title: "Delete time log entry?",
+                              description: `Are you sure you want to delete the time log "${log.title}"? This action cannot be undone.`,
+                              onConfirm: () => handleDelete(id)
+                            });
+                          }}
+                          onSelect={onSelect}
+                        />
+                      );
+                    })}
                   </div>
                 )}
-                {dayLogs.map((log) => {
-                  const projectObj = projects?.find((p: any) => p.id === log.project_id);
-                  return (
-                    <TimeLogCard
-                      key={log.id}
-                      log={log}
-                      project={projectObj}
-                      tasks={tasks}
-                      onEdit={onEdit}
-                      onDelete={(id) => {
-                        showConfirm({
-                          title: "Delete time log entry?",
-                          description: `Are you sure you want to delete the time log "${log.title}"? This action cannot be undone.`,
-                          onConfirm: () => handleDelete(id)
-                        });
-                      }}
-                      onSelect={onSelect}
-                    />
-                  );
-                })}
               </div>
-            )}
-          </div>
-        );
-      })}
+            );
+          })}
         </div>
       )}
     </div>
