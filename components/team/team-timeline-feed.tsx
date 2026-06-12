@@ -1,13 +1,13 @@
 "use client";
 
 import React, { useState, useMemo } from "react";
-import { 
-  Clock, 
-  Loader2, 
-  Search, 
-  User as UserIcon, 
-  Calendar, 
-  Filter, 
+import {
+  Clock,
+  Loader2,
+  Search,
+  User as UserIcon,
+  Calendar,
+  Filter,
   CheckCircle,
   AlertCircle,
   FileText,
@@ -16,6 +16,7 @@ import {
   Sparkles,
   ArrowRight
 } from "lucide-react";
+import { ActivityLogItem } from "@/components/team/activity-log-item";
 import { useImageViewer } from "@/utils/image-viewer-store";
 
 interface TimelineTask {
@@ -173,7 +174,7 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
     <div className="w-full h-full max-w-4xl mx-auto">
       {/* Feed & Controls Panel */}
       <div className="flex flex-col min-w-0 w-full">
-        
+
         {/* Advanced Filter Toolbar */}
         <div className="bg-surface-container border border-outline-variant rounded-xl p-4 mb-6 space-y-3">
           <div className="flex items-center justify-between border-b border-outline-variant pb-2">
@@ -181,7 +182,7 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
               <Filter className="h-3.5 w-3.5 text-primary" /> Filter Feed Activity
             </span>
             {(search || role !== "all" || selectedUser !== "all" || startDate || endDate) && (
-              <button 
+              <button
                 onClick={() => {
                   setSearch("");
                   setRole("all");
@@ -272,7 +273,7 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
           <div className="space-y-8 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant">
             {groupedTimeline.map(([dayLabel, logs]) => (
               <div key={dayLabel} className="space-y-4">
-                
+
                 {/* Day Header Badge */}
                 <div className="relative pl-12">
                   <div className="absolute left-[11px] top-1.5 h-4 w-4 rounded-full border-2 border-outline-variant bg-surface flex items-center justify-center">
@@ -283,163 +284,14 @@ export function TeamTimelineFeed({ timeline, timelineLoading, members }: TeamTim
                   </span>
                 </div>
 
-                {logs.map((log) => {
-                  const durationMs = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-                  const minutes = Math.floor(durationMs / 60000);
-                  const hrs = Math.floor(minutes / 60);
-                  const mins = minutes % 60;
-                  const durationFormatted = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
-                  
-                  return (
-                    <div key={log.id} className="relative pl-12 group animate-in fade-in duration-300">
-                      
-                      {/* Timeline dot */}
-                      <div className="absolute left-[13px] top-4 h-3.5 w-3.5 rounded-full border-2 border-outline-variant bg-surface group-hover:border-primary transition-colors flex items-center justify-center">
-                        <div className="h-1 w-1 rounded-full bg-outline group-hover:bg-primary transition-colors" />
-                      </div>
- 
-                      <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:border-outline transition-all space-y-4 cursor-default">
-                        
-                        {/* Header details */}
-                        <div className="flex items-center justify-between gap-4 flex-wrap">
-                          <div className="flex items-center gap-2.5">
-                            {log.userImage ? (
-                              <img src={log.userImage} alt={log.userName} className="h-8 w-8 rounded-full border border-outline-variant" />
-                            ) : (
-                              <div className="h-8 w-8 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs uppercase border border-outline-variant">
-                                {log.userName.charAt(0)}
-                              </div>
-                            )}
-                            <div>
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-xs font-bold text-on-surface">{log.userName}</span>
-                                <span className={`text-[9px] uppercase px-1.5 py-0.5 rounded font-black ${
-                                  log.userRole === "leader" ? "bg-tertiary-container text-on-tertiary-container" : "bg-secondary-container text-on-secondary-container"
-                                }`}>
-                                  {log.userRole}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-outline block">{log.userEmail}</span>
-                            </div>
-                          </div>
- 
-                          <div className="flex items-center gap-1.5 bg-surface-container-highest border border-outline-variant/60 px-2 py-0.5 rounded text-[10px] font-bold text-primary">
-                            <Clock className="h-3 w-3" />
-                            <span className="font-mono-timer">{durationFormatted}</span>
-                          </div>
-                        </div>
-
-                        {/* Title and descriptions */}
-                        <div className="space-y-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <h4 className="text-sm font-bold text-on-surface leading-snug group-hover:text-primary transition-colors">
-                              {log.title || "Untitled Activity"}
-                            </h4>
-                            {log.projectName ? (
-                              <span className={`px-2.5 py-0.5 text-[10px] rounded border font-bold uppercase tracking-wider ${getProjectColorBadge(log.projectName)}`}>
-                                {log.projectName}
-                              </span>
-                            ) : (
-                              <span className="px-2.5 py-0.5 bg-zinc-500/10 text-zinc-700 dark:text-zinc-400 border border-zinc-500/20 text-[10px] rounded font-bold uppercase tracking-wider">
-                                Internal Tasks
-                              </span>
-                            )}
-                          </div>
-                          {log.description && (
-                            <p className="text-xs text-on-surface-variant whitespace-pre-wrap leading-relaxed">
-                              {log.description}
-                            </p>
-                          )}
-                        </div>
-
-                        {/* Associated Tasks */}
-                        {log.tasks && log.tasks.length > 0 && (
-                          <div className="space-y-1.5 pt-1">
-                            <span className="text-[9px] font-extrabold uppercase text-outline tracking-wider block">Linked Tasks</span>
-                            <div className="flex flex-wrap gap-1.5">
-                              {log.tasks.map((task) => (
-                                <span 
-                                  key={task.id}
-                                  className={`px-2.5 py-0.5 text-[10px] rounded border font-semibold ${getTaskColorBadge(task.title)}`}
-                                >
-                                  #{task.title}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Larger Clock In / Out Displays */}
-                        <div className="flex items-center gap-6 pt-3 border-t border-outline-variant/20">
-                          <div className="flex-1 bg-surface-container-lowest/50 border border-outline-variant/40 rounded-lg p-3">
-                            <span className="uppercase block text-[8px] tracking-wider mb-1 text-outline font-bold">Clock In</span>
-                            <span className="font-mono-timer text-lg font-extrabold text-on-surface tracking-tight block">
-                              {new Date(log.start_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </span>
-                            <span className="text-[10px] text-outline block mt-0.5">
-                              {new Date(log.start_time).toLocaleDateString()}
-                            </span>
-                          </div>
-
-                          <div className="flex-1 bg-surface-container-lowest/50 border border-outline-variant/40 rounded-lg p-3">
-                            <span className="uppercase block text-[8px] tracking-wider mb-1 text-outline font-bold">Clock Out</span>
-                            <span className="font-mono-timer text-lg font-extrabold text-on-surface tracking-tight block">
-                              {new Date(log.end_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                            </span>
-                            <span className="text-[10px] text-outline block mt-0.5">
-                              {new Date(log.end_time).toLocaleDateString()}
-                            </span>
-                          </div>
-                        </div>
-
-                        {/* Evidence Capture proofs */}
-                        {log.evidence && log.evidence.length > 0 && (
-                          <div className="space-y-1.5 pt-2 border-t border-outline-variant/20">
-                            <span className="text-[9px] font-bold uppercase text-outline tracking-wider block">Attached Proofs ({log.evidence.length})</span>
-                            <div className="flex flex-wrap gap-2">
-                              {(() => {
-                                const imageList = log.evidence
-                                  .filter((e: any) => e.mime_type?.startsWith("image/"))
-                                  .map((e: any) => e.file_url);
-
-                                return log.evidence.map((ev) => {
-                                  const isImage = ev.mime_type?.startsWith("image/");
-                                  return (
-                                    <button
-                                      key={ev.id}
-                                      onClick={() => {
-                                        if (isImage) {
-                                          const imgIdx = imageList.indexOf(ev.file_url);
-                                          useImageViewer.getState().open(imageList, imgIdx >= 0 ? imgIdx : 0);
-                                        } else {
-                                          window.open(ev.file_url, "_blank");
-                                        }
-                                      }}
-                                      className="relative h-12 w-20 border border-outline-variant rounded overflow-hidden hover:scale-105 active:scale-95 transition-all block shadow-sm group/ev cursor-pointer text-left focus:outline-none"
-                                    >
-                                      {isImage ? (
-                                        <img src={ev.file_url} alt={ev.file_name} className="h-full w-full object-cover" />
-                                      ) : (
-                                        <div className="h-full w-full flex flex-col items-center justify-center bg-surface-container-high/40 text-[7px] text-center p-1 text-on-surface">
-                                          <FileText className="h-3.5 w-3.5 text-primary mb-0.5" />
-                                          <span className="truncate w-full font-bold px-0.5">{ev.file_name}</span>
-                                        </div>
-                                      )}
-                                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/ev:opacity-100 flex items-center justify-center transition-all">
-                                        <ExternalLink className="h-4.5 w-4.5 text-white" />
-                                      </div>
-                                    </button>
-                                  );
-                                });
-                              })()}
-                            </div>
-                          </div>
-                        )}
-
-                      </div>
-                    </div>
-                  );
-                })}
+                {logs.map((log) => (
+                  <ActivityLogItem
+                    key={log.id}
+                    log={log}
+                    showUser={true}
+                    compact={false}
+                  />
+                ))}
               </div>
             ))}
           </div>
