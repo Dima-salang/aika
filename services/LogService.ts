@@ -861,7 +861,17 @@ export class LogService {
     return res;
   }
 
-  async getTeamTimeline(teamId: string, startDate?: Date, endDate?: Date, tx: DBInstance = db): Promise<TimelineLog[]> {
+  async getTeamTimeline(
+    teamId: string,
+    startDate?: Date,
+    endDate?: Date,
+    search?: string,
+    role?: string,
+    selectedUser?: string,
+    limit?: number,
+    offset?: number,
+    tx: DBInstance = db
+  ): Promise<TimelineLog[]> {
     z.string().parse(teamId);
     const members = await tx
       .select()
@@ -876,19 +886,38 @@ export class LogService {
     const timeLogsTable = tables.timeLogs;
     const userTable = tables.user;
     const projectsTable = tables.projects;
+    const teamMembersTable = tables.teamMembers;
+
     const conditions = [
       inArray(timeLogsTable.user_id, memberUserIds),
       isNull(timeLogsTable.deleted_at),
     ];
     if (startDate) {
-      conditions.push(gt(timeLogsTable.start_time, startDate));
+      conditions.push(gte(timeLogsTable.start_time, startDate));
     }
     if (endDate) {
-      conditions.push(lt(timeLogsTable.end_time, endDate));
+      conditions.push(lte(timeLogsTable.end_time, endDate));
+    }
+    if (selectedUser && selectedUser !== "all") {
+      conditions.push(eq(timeLogsTable.user_id, selectedUser));
+    }
+    if (role && role !== "all") {
+      conditions.push(eq(teamMembersTable.role, role));
+    }
+    if (search && search.trim()) {
+      const searchPattern = `%${search.toLowerCase()}%`;
+      conditions.push(
+        or(
+          like(timeLogsTable.title, searchPattern),
+          like(timeLogsTable.description, searchPattern),
+          like(userTable.name, searchPattern),
+          like(userTable.email, searchPattern),
+          like(projectsTable.name, searchPattern)
+        ) as SQL
+      );
     }
 
-    // 1. Fetch logs joined with user details & project details in a single query
-    const logs = await tx
+    let query = tx
       .select({
         id: timeLogsTable.id,
         user_id: timeLogsTable.user_id,
@@ -905,11 +934,30 @@ export class LogService {
         userEmail: userTable.email,
         userImage: userTable.image,
         projectName: projectsTable.name,
+        userRole: teamMembersTable.role,
       })
       .from(timeLogsTable)
       .innerJoin(userTable, eq(timeLogsTable.user_id, userTable.id))
+      .innerJoin(
+        teamMembersTable,
+        and(
+          eq(timeLogsTable.user_id, teamMembersTable.user_id),
+          eq(teamMembersTable.team_id, teamId)
+        )
+      )
       .leftJoin(projectsTable, eq(timeLogsTable.project_id, projectsTable.id))
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .orderBy(desc(timeLogsTable.start_time))
+      .$dynamic();
+
+    if (limit) {
+      query = query.limit(limit);
+    }
+    if (offset) {
+      query = query.offset(offset);
+    }
+
+    const logs = await query;
 
     if (logs.length === 0) {
       return [];
@@ -957,23 +1005,13 @@ export class LogService {
       });
     });
 
-    const memberRoleMap: Record<string, string> = {};
-    members.forEach((m) => {
-      memberRoleMap[m.user_id] = m.role;
-    });
-
     // Hydrate logs in memory
-    const hydrated = logs.map((log) => {
+    return logs.map((log) => {
       return {
         ...log,
-        userRole: memberRoleMap[log.user_id] || "member",
         tasks: tasksMap[log.id] || [],
         evidence: evidenceMap[log.id] || [],
       };
-    });
-
-    return hydrated.sort(
-      (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
-    );
+    }) as TimelineLog[];
   }
 }
