@@ -55,10 +55,37 @@ export const logsRouter = router({
       }
     }),
 
-        // Sort logs by start_time descending
-        return (hydrated.filter(Boolean) as DetailedTimeLog[]).sort(
-          (a, b) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+  getUserLogsInfinite: publicProcedure
+    .input(
+      getUserLogsInputZodSchema.extend({
+        cursor: z.number().nullish(),
+      })
+    )
+    .query(async ({ input }) => {
+      try {
+        const limit = input.limit ?? 10;
+        const offset = input.cursor ?? 0;
+        const logs = await logService.getUserLogs(
+          input.userId,
+          {
+            organizationId: input.organizationId,
+            startDate: input.startDate,
+            endDate: input.endDate,
+            search: input.search,
+            projectId: input.projectId,
+          },
+          limit + 1,
+          offset
         );
+
+        const hasNextPage = logs.length > limit;
+        const items = hasNextPage ? logs.slice(0, limit) : logs;
+        const nextCursor = hasNextPage ? offset + limit : null;
+
+        return {
+          items,
+          nextCursor,
+        };
       } catch (error) {
         handleDbError(error);
       }
