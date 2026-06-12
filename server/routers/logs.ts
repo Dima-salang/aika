@@ -1,4 +1,5 @@
 import { router, publicProcedure } from "../trpc";
+import { z } from "zod";
 import {
   createLogInputZodSchema,
   getLogInputZodSchema,
@@ -37,18 +38,22 @@ export const logsRouter = router({
     .input(getUserLogsInputZodSchema)
     .query(async ({ input }) => {
       try {
-        const logs = await logService.getUserLogs(input.userId, {
-          organizationId: input.organizationId,
-          startDate: input.startDate,
-          endDate: input.endDate,
-        });
-
-        // Hydrate with tasks and evidence for frontend ease-of-use
-        const hydrated = await Promise.all(
-          logs.map(async (log) => {
-            return await logService.getLogById(log.id);
-          })
+        return await logService.getUserLogs(
+          input.userId,
+          {
+            organizationId: input.organizationId,
+            startDate: input.startDate,
+            endDate: input.endDate,
+            search: input.search,
+            projectId: input.projectId,
+          },
+          input.limit,
+          input.offset
         );
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
 
         // Sort logs by start_time descending
         return (hydrated.filter(Boolean) as DetailedTimeLog[]).sort(
