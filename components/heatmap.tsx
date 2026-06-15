@@ -4,11 +4,11 @@ import React, { useMemo } from "react";
 
 interface HeatmapProps {
   logs: any[];
+  className?: string;
+  weeksToShow?: number;
 }
 
-export function Heatmap({ logs }: HeatmapProps) {
-  const weeksToShow = 12;
-
+export function Heatmap({ logs, className = "max-w-xl", weeksToShow = 12 }: HeatmapProps) {
   // Compute the full calendar layout alignment
   const { grid, monthLabels } = useMemo(() => {
     const today = new Date();
@@ -31,7 +31,7 @@ export function Heatmap({ logs }: HeatmapProps) {
       daysList.push(d);
     }
 
-    // Chunk into 12 weeks of 7 items each
+    // Chunk into weeks of 7 items each
     const structuredWeeks: Date[][] = [];
     for (let w = 0; w < weeksToShow; w++) {
       structuredWeeks.push(daysList.slice(w * 7, (w + 1) * 7));
@@ -69,9 +69,11 @@ export function Heatmap({ logs }: HeatmapProps) {
     const map: Record<string, number> = {};
 
     logs.forEach((log) => {
-      if (!log.start_time || !log.end_time) return;
-      const dateStr = new Date(log.start_time).toDateString();
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
+      const startTime = log.start_time || log.startTime;
+      const endTime = log.end_time || log.endTime;
+      if (!startTime || !endTime) return;
+      const dateStr = new Date(startTime).toDateString();
+      const diff = new Date(endTime).getTime() - new Date(startTime).getTime();
       const hours = diff > 0 ? diff / 3600000 : 0;
 
       map[dateStr] = (map[dateStr] || 0) + hours;
@@ -91,7 +93,7 @@ export function Heatmap({ logs }: HeatmapProps) {
   const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
   return (
-    <div className="glass-card rounded-xl p-unit-4 flex flex-col justify-between min-h-[190px] w-full max-w-xl">
+    <div className={`glass-card rounded-xl p-unit-4 flex flex-col justify-between min-h-[190px] w-full ${className}`}>
       {/* Top Header Controls */}
       <div className="flex items-center justify-between mb-4">
         <span className="font-label-md text-[10px] uppercase text-outline tracking-wider block">
@@ -108,7 +110,7 @@ export function Heatmap({ logs }: HeatmapProps) {
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 justify-center">
+      <div className="flex flex-col flex-1 justify-center w-full">
         {/* Month Headings Row */}
         <div className="flex pl-7 w-full text-[10px] text-outline select-none mb-1">
           {monthLabels.map((label, idx) => (

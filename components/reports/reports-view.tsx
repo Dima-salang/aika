@@ -9,6 +9,7 @@ import { ReportsLogsTable } from "./reports-logs-table";
 import { WorkloadTable } from "./workload-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
+import { Heatmap } from "@/components/heatmap";
 
 interface ReportsViewProps {
   activeOrg: any;
@@ -309,6 +310,10 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
           </button>
         )}
       </div>
+      {/* Activity Heatmap */}
+      <div className="print:hidden w-full">
+        <Heatmap logs={activeReport.logs || []} className="max-w-none" weeksToShow={53} />
+      </div>
 
       {/* Filter panel */}
       <div className="print:hidden">
@@ -358,6 +363,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
               Period: {startDate || "All time"} to {endDate || "Today"}
             </p>
           </div>
+
 
           {/* Metric KPI cards */}
           <MetricCards kpis={activeReport.kpis} />
