@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
+import { renderMarkdown } from "@/utils/markdown";
 
 interface LogTask {
   id: string;
@@ -215,9 +216,9 @@ export function ActivityLogItem({
             )}
           </div>
           {log.description && (
-            <p className="text-xs text-on-surface-variant whitespace-pre-wrap leading-relaxed">
-              {log.description}
-            </p>
+            <div className="text-xs text-on-surface-variant leading-relaxed">
+              {renderMarkdown(log.description)}
+            </div>
           )}
         </div>
 
