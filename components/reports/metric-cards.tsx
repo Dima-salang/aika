@@ -34,7 +34,7 @@ export function MetricCards({ kpis }: MetricCardsProps) {
       label: "Evidence Attached",
       value: kpis.evidenceCount,
       icon: "verified",
-      description: "Accountability files verified",
+      description: "Documents attached",
       color: "text-success bg-green-500/10 dark:bg-green-400/10",
     },
   ];
