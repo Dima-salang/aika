@@ -31,6 +31,7 @@ import {
   Heading1, 
   Heading2, 
   Heading3,
+  Underline,
   Check,
   X
 } from "lucide-react";
@@ -54,10 +55,33 @@ import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode } from "@l
 import { CodeNode } from "@lexical/code";
 import { $setBlocksType } from "@lexical/selection";
 
+// Custom Underline Transformer using TextMatchTransformer to handle <u>...</u>
+const UNDERLINE: TextMatchTransformer = {
+  dependencies: [],
+  export: (node) => {
+    if (node instanceof TextNode && node.hasFormat("underline")) {
+      return `<u>${node.getTextContent()}</u>`;
+    }
+    return null;
+  },
+  importRegExp: /<u>(.*?)<\/u>/,
+  regExp: /<u>(.*?)<\/u>$/,
+  replace: (node, match) => {
+    const [, text] = match;
+    const textNode = $createTextNode(text);
+    textNode.toggleFormat("underline");
+    node.replace(textNode);
+    return textNode;
+  },
+  trigger: ">",
+  type: "text-match",
+};
+
 // Define targeted transformers
 const EDITOR_TRANSFORMERS = [
   ...TEXT_FORMAT_TRANSFORMERS,
   STRIKETHROUGH,
+  UNDERLINE,
   UNORDERED_LIST,
   ORDERED_LIST,
   LINK,
@@ -71,6 +95,7 @@ function ToolbarPlugin() {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
+  const [isUnderline, setIsUnderline] = useState(false);
   const [isStrikethrough, setIsStrikethrough] = useState(false);
   const [isCode, setIsCode] = useState(false);
   const [isBullet, setIsBullet] = useState(false);
@@ -89,6 +114,7 @@ function ToolbarPlugin() {
       if ($isRangeSelection(selection)) {
         setIsBold(selection.hasFormat("bold"));
         setIsItalic(selection.hasFormat("italic"));
+        setIsUnderline(selection.hasFormat("underline"));
         setIsStrikethrough(selection.hasFormat("strikethrough"));
         setIsCode(selection.hasFormat("code"));
 
@@ -226,6 +252,17 @@ function ToolbarPlugin() {
         title="Italic"
       >
         <Italic className="h-3.5 w-3.5" />
+      </button>
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}
+        className={`p-1 rounded transition-colors cursor-pointer ${
+          isUnderline ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+        }`}
+        title="Underline"
+      >
+        <Underline className="h-3.5 w-3.5" />
       </button>
 
       <button
@@ -424,6 +461,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
       text: {
         bold: "font-bold text-on-surface",
         italic: "italic text-on-surface",
+        underline: "underline text-on-surface",
         strikethrough: "line-through text-on-surface",
         code: "px-1 py-0.5 bg-surface-container-high rounded font-mono text-[11px] text-primary",
         link: "text-primary hover:underline",
