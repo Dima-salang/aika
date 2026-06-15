@@ -1,6 +1,6 @@
 # ⏳ Aika — Time & Task Orchestration
 
-Aika is a modern, high-performance **Time & Task Orchestration Platform** built with **Next.js 16**, **tRPC**, **Drizzle ORM**, and **Better Auth**. It enables teams and individuals to seamlessly manage workspaces, organize tasks, log hours, and generate comprehensive, data-driven productivity reports.
+Aika is a modern **Time & Task Orchestration Platform** built with **Next.js 16**, **tRPC**, **Drizzle ORM**, and **Better Auth**. It enables teams and individuals to seamlessly manage workspaces, organize tasks, and log hours for tracking time.
 
 ---
 
