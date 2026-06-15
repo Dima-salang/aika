@@ -312,7 +312,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
       </div>
       {/* Activity Heatmap */}
       <div className="print:hidden w-full">
-        <Heatmap logs={activeReport.logs || []} className="max-w-none" weeksToShow={53} />
+        <Heatmap logs={activeReport?.logs || []} className="max-w-none" weeksToShow={53} />
       </div>
 
       {/* Filter panel */}
