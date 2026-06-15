@@ -8,6 +8,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText } from "lucide-react";
 import { isSupportedMimeType, formatErrorMessage } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
+import { RichTextEditor } from "@/components/rich-text-editor";
 
 interface FileEvidence {
   fileUrl: string;
@@ -51,8 +52,6 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
-  const hasInitializedRef = useRef(false);
-
   // Filter tasks based on selected project
   const projectTasks = useMemo(() => {
     if (!projectId) return [];
@@ -74,63 +73,44 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     ];
   }, [projectTasks]);
 
-  useEffect(() => {
-    if (!isOpen) {
-      hasInitializedRef.current = false;
-      return;
-    }
+  const [lastInitialLogId, setLastInitialLogId] = useState<string | null>(null);
+  const [lastIsOpen, setLastIsOpen] = useState(false);
 
-    if (hasInitializedRef.current) return;
-    hasInitializedRef.current = true;
-
-    if (initialLog) {
-      setTitle(initialLog.title || "");
-      setDescription(initialLog.description || "");
-      
-      const start = new Date(initialLog.start_time);
-      const end = new Date(initialLog.end_time);
-      
-      const offset = start.getTimezoneOffset() * 60000;
-      const localStart = new Date(start.getTime() - offset).toISOString().slice(0, 16);
-      const localEnd = new Date(end.getTime() - offset).toISOString().slice(0, 16);
-      
-      setStartTime(localStart);
-      setEndTime(localEnd);
-      setProjectId(initialLog.project_id || "");
-      setSelectedTasks(initialLog.tasks || []);
-      
-      if (initialLog.evidence) {
-        setEvidenceList(
-          initialLog.evidence.map((ev: any) => ({
-            fileUrl: ev.file_url,
-            fileKey: ev.file_key,
-            fileName: ev.file_name,
-            fileSize: ev.file_size,
-            mimeType: ev.mime_type,
-            previewUrl: ev.file_url,
-          }))
-        );
-      } else {
-        setEvidenceList([]);
-      }
+  const initialId = initialLog?.id || null;
+  if (isOpen && (!lastIsOpen || (initialId !== lastInitialLogId))) {
+    setLastIsOpen(true);
+    setLastInitialLogId(initialId);
+    setTitle(initialLog?.title || "");
+    setDescription(initialLog?.description || "");
+    
+    const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
+    const end = initialLog ? new Date(initialLog.end_time) : new Date();
+    const offset = start.getTimezoneOffset() * 60000;
+    setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
+    setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
+    
+    setProjectId(initialLog?.project_id || "");
+    setSelectedTasks(initialLog?.tasks || []);
+    
+    if (initialLog?.evidence) {
+      setEvidenceList(
+        initialLog.evidence.map((ev: any) => ({
+          fileUrl: ev.file_url,
+          fileKey: ev.file_key,
+          fileName: ev.file_name,
+          fileSize: ev.file_size,
+          mimeType: ev.mime_type,
+          previewUrl: ev.file_url,
+        }))
+      );
     } else {
-      const now = new Date();
-      const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-      
-      const offset = now.getTimezoneOffset() * 60000;
-      const localNow = new Date(now.getTime() - offset).toISOString().slice(0, 16);
-      const localOneHourAgo = new Date(oneHourAgo.getTime() - offset).toISOString().slice(0, 16);
-      
-      setTitle("");
-      setDescription("");
-      setStartTime(localOneHourAgo);
-      setEndTime(localNow);
-      setProjectId("");
-      setSelectedTasks([]);
       setEvidenceList([]);
     }
     setError(null);
-  }, [initialLog, isOpen]);
+  } else if (!isOpen && lastIsOpen) {
+    setLastIsOpen(false);
+    setLastInitialLogId(null);
+  }
 
   if (!isOpen) return null;
 
@@ -351,16 +331,14 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   </div>
     
                   <div className="space-y-1.5">
-                    <Label htmlFor="log-desc" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
-                      Detailed Work Description
+                    <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block font-sans">
+                      Detailed Work Description (Markdown supported)
                     </Label>
-                    <textarea
-                      id="log-desc"
-                      rows={2}
-                      className="w-full px-3 py-2 text-xs rounded-lg border border-outline-variant bg-surface-container-low text-on-surface placeholder:text-outline focus:outline-none focus:ring-1 focus:ring-primary resize-none transition-all"
-                      placeholder="e.g., Implemented smooth micro-animations and color token sync on the main dashboard cards to enhance overall aesthetics..."
+                    <RichTextEditor
+                      key={initialLog?.id || "new"}
                       value={description}
-                      onChange={(e) => setDescription(e.target.value)}
+                      onChange={(val) => setDescription(val)}
+                      placeholder="e.g., Implemented smooth micro-animations and color token sync on the main dashboard cards to enhance overall aesthetics..."
                     />
                   </div>
                 </div>

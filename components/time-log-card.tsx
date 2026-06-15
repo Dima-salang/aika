@@ -4,6 +4,7 @@ import React from "react";
 import { Clock, ExternalLink, Edit2, Trash2 } from "lucide-react";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
+import { renderMarkdown } from "@/utils/markdown";
 
 interface TimeLogCardProps {
   log: any;
@@ -133,9 +134,9 @@ export function TimeLogCard({
         </div>
 
         {log.description && (
-          <p className="text-body-sm text-outline mt-2 line-clamp-2 leading-relaxed">
-            {log.description}
-          </p>
+          <div className="text-body-sm text-outline mt-2 line-clamp-2 leading-relaxed">
+            {renderMarkdown(log.description)}
+          </div>
         )}
 
         {/* Tasks Badges - Colorful */}

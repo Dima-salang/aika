@@ -4,6 +4,7 @@ import React from "react";
 import { X, Calendar, Clock, ClipboardList, ExternalLink, Tag, AlertCircle, FileText } from "lucide-react";
 import { getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
 import { useImageViewer } from "@/utils/image-viewer-store";
+import { renderMarkdown } from "@/utils/markdown";
 
 interface DetailViewDialogProps {
   isOpen: boolean;
@@ -117,12 +118,11 @@ export function DetailViewDialog({
                 </div>
               </div>
 
-              {/* Description */}
               {selectedLog.description && (
                 <div className="space-y-1.5">
                   <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Description Notes</span>
-                  <div className="bg-surface-container-low/25 border border-outline-variant/30 p-3 rounded-lg text-body-sm text-on-surface leading-relaxed whitespace-pre-wrap">
-                    {selectedLog.description}
+                  <div className="bg-surface-container-low/25 border border-outline-variant/30 p-3 rounded-lg text-body-sm text-on-surface leading-relaxed">
+                    {renderMarkdown(selectedLog.description)}
                   </div>
                 </div>
               )}
