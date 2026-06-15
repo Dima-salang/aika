@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useMemo } from "react";
+import { ResponsiveContainer, BarChart, Bar, XAxis, Tooltip } from "recharts";
 
 interface WeeklyChartProps {
   logs: any[];
@@ -23,7 +24,7 @@ export function WeeklyChart({ logs }: WeeklyChartProps) {
   }, []);
 
   // 2. High-performance lookup map + aggregated values calculation
-  const { weeklyHours, totalLoggedHours, maxHours } = useMemo(() => {
+  const { weeklyHours, totalLoggedHours } = useMemo(() => {
     // Generate the exact date strings for this week to quickly filter metrics
     const targetDates = Array.from({ length: 7 }, (_, idx) => {
       const d = new Date(startOfWeek);
@@ -31,23 +32,31 @@ export function WeeklyChart({ logs }: WeeklyChartProps) {
       return d.toDateString();
     });
 
-    // Reduce logs safely in one pass rather than iterative multi-filtering array sweeps
+    // Reduce logs safely in one pass
     const hoursByDate: Record<string, number> = {};
     logs.forEach((log) => {
-      if (!log.start_time || !log.end_time) return;
-      const dateStr = new Date(log.start_time).toDateString();
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
+      const startTime = log.start_time || log.startTime;
+      const endTime = log.end_time || log.endTime;
+      if (!startTime || !endTime) return;
+      const diff = new Date(endTime).getTime() - new Date(startTime).getTime();
       if (diff > 0) {
+        const dateStr = new Date(startTime).toDateString();
         hoursByDate[dateStr] = (hoursByDate[dateStr] || 0) + diff / 3600000;
       }
     });
 
     const hoursArray = targetDates.map((dateString) => hoursByDate[dateString] || 0);
     const total = hoursArray.reduce((acc, hrs) => acc + hrs, 0);
-    const max = Math.max(...hoursArray, 8); // Scaled floor at 8h ceiling minimum
 
-    return { weeklyHours: hoursArray, totalLoggedHours: total, maxHours: max };
+    return { weeklyHours: hoursArray, totalLoggedHours: total };
   }, [logs, startOfWeek]);
+
+  const chartData = useMemo(() => {
+    return daysOfWeek.map((day, idx) => ({
+      name: day,
+      hours: Number(weeklyHours[idx].toFixed(1)),
+    }));
+  }, [weeklyHours, daysOfWeek]);
 
   const goalPercentage = Math.min((totalLoggedHours / weeklyGoal) * 100, 100);
 
@@ -63,39 +72,42 @@ export function WeeklyChart({ logs }: WeeklyChartProps) {
         </span>
       </div>
       
-      {/* Columns Alignment Grid */}
-      <div className="flex items-end gap-2 h-20 w-full justify-between px-0.5 relative">
-        {daysOfWeek.map((day, idx) => {
-          const hours = weeklyHours[idx];
-          const pct = (hours / maxHours) * 100;
-          
-          return (
-            <div key={idx} className="flex-1 flex flex-col items-center gap-1.5 h-full justify-end group/col relative">
-              
-              {/* Sleek Custom Floating Tooltip (CSS Powered, Instant Trigger) */}
-              <div className="absolute bottom-full mb-1.5 opacity-0 pointer-events-none translate-y-1 group-hover/col:opacity-100 group-hover/col:translate-y-0 transition-all duration-150 z-10 bg-surface-container border border-outline-variant px-1.5 py-0.5 rounded shadow-xl text-[10px] text-on-surface whitespace-nowrap font-mono-timer font-medium">
-                {hours.toFixed(1)} hrs
-              </div>
-
-              {/* Bar Wrapper Container */}
-              <div className="w-full bg-surface-container-high/40 hover:bg-surface-container-high/70 rounded-t-sm relative h-full flex items-end overflow-hidden border border-outline-variant/20 transition-colors duration-200 cursor-pointer">
-                <div
-                  style={{ height: `${Math.max(pct, 4)}%` }} // 4% baseline so 0 hours shows a subtle indicators bar line
-                  className={`w-full rounded-t-sm transition-all duration-500 ease-out origin-bottom ${
-                    hours > 0 
-                      ? "bg-primary group-hover/col:brightness-110 shadow-[0_0_12px_rgba(192,193,255,0.15)]" 
-                      : "bg-outline-variant/30" // Clean inactive state styling indicator
-                  }`}
-                />
-              </div>
-
-              {/* Mon / Tue / Wed labels */}
-              <span className="font-mono-timer text-[9px] font-medium text-outline uppercase tracking-wider transition-colors duration-200 group-hover/col:text-on-surface">
-                {day}
-              </span>
-            </div>
-          );
-        })}
+      {/* Recharts Bar Chart Container */}
+      <div className="h-20 w-full select-none">
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart data={chartData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+            <XAxis
+              dataKey="name"
+              stroke="currentColor"
+              className="text-outline/60"
+              fontSize={9}
+              fontWeight="medium"
+              tickLine={false}
+              axisLine={false}
+              dy={8}
+            />
+            <Tooltip
+              cursor={{ fill: "rgba(192, 193, 255, 0.05)" }}
+              content={({ active, payload }) => {
+                if (active && payload && payload.length) {
+                  return (
+                    <div className="bg-surface-container border border-outline-variant px-1.5 py-0.5 rounded shadow-xl text-[10px] text-on-surface font-mono-timer font-medium">
+                      {payload[0].value} hrs
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Bar
+              dataKey="hours"
+              fill="var(--color-primary, #6366f1)"
+              radius={[2, 2, 0, 0]}
+              // ponytail: baseline visual indicator for 0 hour days
+              minPointSize={3}
+            />
+          </BarChart>
+        </ResponsiveContainer>
       </div>
       
       {/* Bottom Status Layout Bar */}
