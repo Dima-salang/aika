@@ -1,5 +1,6 @@
 import { db, DBInstance, runTransaction } from "@/db";
 import { Client } from "@notionhq/client";
+import { calculateDurationSeconds, formatDuration } from "@/utils/time";
 import {
   NewTimeLog,
   newTimeLogZodSchema,
@@ -45,6 +46,7 @@ export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_
   deleted_at: Date | null;
   tasks: string[];
   evidence: unknown[];
+  duration: number;
 }
 
 export interface TimelineLog {
@@ -188,6 +190,7 @@ export class LogService {
         created_at: new Date(),
         updated_at: new Date(),
         deleted_at: null,
+        duration: calculateDurationSeconds(parsedInput.startTime, parsedInput.endTime),
       };
 
       const validatedLog = newTimeLogZodSchema.parse(logData) as NewTimeLog;
@@ -224,7 +227,7 @@ export class LogService {
         "time_log_creation",
         "time_logs",
         logId,
-        `Created time log for duration ${parsedInput.endTime.getTime() - parsedInput.startTime.getTime()}ms`,
+        `Created time log for duration ${calculateDurationSeconds(parsedInput.startTime, parsedInput.endTime)}s`,
         { description: parsedInput.description, taskIds: parsedInput.taskIds },
         ipAddress,
         userAgent,
@@ -320,6 +323,7 @@ export class LogService {
         title: parsedInput.title ?? existing.title,
         description: parsedInput.description ?? existing.description,
         updated_at: new Date(),
+        duration: calculateDurationSeconds(startTime, endTime),
       };
 
       const [updatedLog] = await tx
@@ -704,6 +708,7 @@ export class LogService {
         updated_at: table.updated_at,
         deleted_at: table.deleted_at,
         notion_page_id: table.notion_page_id,
+        duration: table.duration,
         projectName: tables.projects.name,
       })
       .from(table)
@@ -944,6 +949,7 @@ export class LogService {
         description: timeLogsTable.description,
         created_at: timeLogsTable.created_at,
         updated_at: timeLogsTable.updated_at,
+        duration: timeLogsTable.duration,
         userName: userTable.name,
         userEmail: userTable.email,
         userImage: userTable.image,
@@ -1099,10 +1105,7 @@ export class LogService {
         throw new Error("Notion Error: Time log not found");
       }
 
-      const durationMs = detailedLog.end_time.getTime() - detailedLog.start_time.getTime();
-      const hours = Math.floor(durationMs / 3600000);
-      const minutes = Math.floor((durationMs % 3600000) / 60);
-      const durationStr = `${hours}h ${minutes}m`;
+      const durationStr = formatDuration(detailedLog.duration);
 
 
       const notionTitle = detailedLog.title || detailedLog.description || "Time Log";
@@ -1136,6 +1139,9 @@ export class LogService {
                 rich_text: [{ text: { content: projectName } }],
               },
               Duration: {
+                number: detailedLog.duration,
+              },
+              "Readable Duration": {
                 rich_text: [{ text: { content: durationStr } }],
               },
               Organization: {
@@ -1194,6 +1200,9 @@ export class LogService {
                   rich_text: [{ text: { content: projectName } }],
                 },
                 Duration: {
+                  number: detailedLog.duration,
+                },
+                "Readable Duration": {
                   rich_text: [{ text: { content: durationStr } }],
                 },
               },
@@ -1231,6 +1240,9 @@ export class LogService {
                   rich_text: [{ text: { content: projectName } }],
                 },
                 Duration: {
+                  number: detailedLog.duration,
+                },
+                "Readable Duration": {
                   rich_text: [{ text: { content: durationStr } }],
                 },
               },

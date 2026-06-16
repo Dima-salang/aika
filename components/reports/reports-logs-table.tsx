@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { DetailedReportLog } from "@/services/ReportService";
+import { calculateDurationHours } from "@/utils/time";
 
 interface ReportsLogsTableProps {
   logs: DetailedReportLog[];
@@ -42,8 +43,8 @@ export function ReportsLogsTable({ logs }: ReportsLogsTableProps) {
     });
   };
 
-  const getHours = (ms: number) => {
-    return (ms / (1000 * 60 * 60)).toFixed(2);
+  const getHours = (seconds: number) => {
+    return calculateDurationHours(seconds).toFixed(2);
   };
 
   return (
@@ -112,7 +113,7 @@ export function ReportsLogsTable({ logs }: ReportsLogsTableProps) {
                   )}
                 </td>
                 <td className="p-4 text-center font-mono-timer font-bold text-on-surface whitespace-nowrap">
-                  {getHours(log.durationMs)}h
+                  {getHours(log.duration)}h
                 </td>
                 <td className="p-4 whitespace-nowrap">
                   {log.evidenceUrls.length > 0 ? (

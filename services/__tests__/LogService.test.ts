@@ -312,6 +312,7 @@ describe("LogService", () => {
     expect(log).toBeDefined();
     expect(log.id).toBeDefined();
     expect(log.title).toBe("Untitled Task");
+    expect(log.duration).toBe(3600);
 
     // Fetch and check relations
     const detailed = await logService.getLogById(log.id);
@@ -366,6 +367,7 @@ describe("LogService", () => {
     expect(stoppedLog).toBeDefined();
     expect(stoppedLog.title).toBe("Custom stopping description");
     expect(stoppedLog.project_id).toBe("project-1");
+    expect(stoppedLog.duration).toBeGreaterThanOrEqual(7200);
 
     // Verify timer deleted
     const active = await logService.getRunningTimer(testUserId);

@@ -35,9 +35,9 @@ export function WorkloadTable({ workload }: WorkloadTableProps) {
             <tr className="bg-surface-container border-b border-outline-variant/60 text-outline uppercase tracking-wider text-[10px] font-bold">
               <th className="p-3">Member</th>
               <th className="p-3 text-center">Total Hours</th>
-              <th className="p-3 text-center">Active Days</th>
-              <th className="p-3 text-center">Task Titles Logged</th>
-              <th className="p-3 text-center">Evidence Count</th>
+              <th className="p-3 text-center">Total Sessions</th>
+              <th className="p-3 text-center">Unique Tasks</th>
+              <th className="p-3 text-center">Avg Session Duration</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-outline-variant/40 font-semibold">
@@ -51,13 +51,13 @@ export function WorkloadTable({ workload }: WorkloadTableProps) {
                   {member.totalHours.toFixed(1)}h
                 </td>
                 <td className="p-3 text-center font-mono-timer text-on-surface-variant">
-                  {member.activeDays}
+                  {member.totalSessions}
                 </td>
                 <td className="p-3 text-center font-mono-timer text-on-surface-variant">
                   {member.tasksCompleted}
                 </td>
                 <td className="p-3 text-center font-mono-timer text-on-surface-variant">
-                  {member.evidenceCount}
+                  {member.averageSessionHours.toFixed(1)}h
                 </td>
               </tr>
             ))}
