@@ -71,55 +71,82 @@ export async function GET(request: NextRequest) {
         // Initialize Notion Client
         const notion = new Client({ auth: accessToken });
 
-        // 3. Check if Aika Time Logs database already exists
-        const dbSearch = await notion.search({
-            query: "Aika Time Logs",
-        });
-        
-        const existingDb = dbSearch.results.find(
-            (d) => (d.object as string) === "database" && "title" in d && Array.isArray((d as any).title) && (d as any).title[0]?.plain_text === "Aika Time Logs"
-        );
+        // Fetch the user record from the database to see if we already have a database ID stored
+        const [existingUser] = await db
+            .select({
+                notionDatabaseId: tables.user.notion_database_id,
+            })
+            .from(tables.user)
+            .where(eq(tables.user.id, session.user.id));
 
-        let dataSourceId: string | undefined;
+        let dataSourceId: string | undefined = existingUser?.notionDatabaseId || undefined;
 
-        if (existingDb && isFullDatabase(existingDb)) {
-            dataSourceId = (existingDb as any).data_sources?.[0]?.id;
+        // If a database ID exists in the DB, verify if it still exists in Notion
+        if (dataSourceId) {
+            try {
+                await notion.databases.retrieve({ database_id: dataSourceId });
+            } catch (retrieveErr) {
+                // If it fails (e.g. deleted or access lost), clear it so we search/recreate
+                dataSourceId = undefined;
+            }
+        }
+
+        // 3. Check if Aika Workspace page or Aika Time Logs database already exists (Search fallback)
+        let existingWorkspacePage: any = null;
+        if (!dataSourceId) {
+            const dbSearch = await notion.search({
+                query: "Aika",
+            });
+
+            const getPageTitle = (p: any): string | undefined => {
+                const props = p.properties || {};
+                const titleProp = props.title || props.Name;
+                return titleProp?.title?.[0]?.plain_text;
+            };
+            
+            existingWorkspacePage = dbSearch.results.find(
+                (r) => r.object === "page" && getPageTitle(r) === "Aika Workspace"
+            );
+
+            const existingDb = dbSearch.results.find(
+                (d) => (d.object as string) === "database" && "title" in d && Array.isArray((d as any).title) && (d as any).title[0]?.plain_text === "Aika Time Logs"
+            );
+
+            if (existingDb && isFullDatabase(existingDb)) {
+                dataSourceId = (existingDb as any).data_sources?.[0]?.id || (existingDb as any).id;
+            }
         }
 
         // 4. Create database if it does not exist
         if (!dataSourceId) {
-            const searchData = await notion.search({
-                filter: {
-                    property: "object",
-                    value: "page",
-                },
-            });
+            let workspacePageId: string;
 
-            const pages = searchData.results || [];
-            const parentPage = pages.find((p) => {
-                if (p.object !== "page") return false;
-                // Exclude pages that are database items
-                if ("parent" in p && p.parent.type === "database_id") return false;
-                return true;
-            });
-
-            if (!parentPage) {
-                throw new Error("No shared parent pages found. Please select/share at least one page during authentication.");
+            if (existingWorkspacePage) {
+                workspacePageId = existingWorkspacePage.id;
+            } else {
+                const workspacePage = await notion.pages.create({
+                    parent: {
+                        type: "workspace",
+                        workspace: true,
+                    },
+                    properties: {
+                        title: {
+                            title: [{ text: { content: "Aika Workspace" } }],
+                        },
+                    },
+                });
+                workspacePageId = workspacePage.id;
             }
-
-            const parentPageId = parentPage.id;
 
             const createDbData = await notion.databases.create({
                 parent: {
                     type: "page_id",
-                    page_id: parentPageId,
+                    page_id: workspacePageId,
                 },
                 title: [
                     {
                         type: "text",
-                        text: {
-                            content: "Aika Time Logs",
-                        },
+                        text: { content: "Aika Time Logs" },
                     },
                 ],
                 initial_data_source: {
@@ -138,14 +165,13 @@ export async function GET(request: NextRequest) {
             if (!isFullDatabase(createDbData)) {
                 throw new Error("Created database response is incomplete.");
             }
-            dataSourceId = createDbData.data_sources?.[0]?.id;
+            dataSourceId = createDbData.id;
         }
 
         if (!dataSourceId) {
             throw new Error("Failed to retrieve or create the Notion database data source.");
         }
 
-        // 5. Save credentials to the user record
         const userTable = tables.user;
         await db.update(userTable)
             .set({
