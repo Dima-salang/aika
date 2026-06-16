@@ -210,7 +210,7 @@ export function ActivityLogItem({
               </span>
             ) : (
               <span className="px-2 py-0.5 bg-zinc-500/10 text-zinc-750 dark:text-zinc-400 border border-zinc-500/20 text-[9px] rounded font-bold uppercase tracking-wider">
-                Internal Tasks
+                Unassigned
               </span>
             )}
           </div>

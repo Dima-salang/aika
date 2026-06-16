@@ -82,7 +82,7 @@ export function DetailViewDialog({
                     </span>
                   ) : (
                     <span className="px-2 py-0.5 bg-zinc-500/10 text-zinc-400 border border-zinc-500/20 text-[10px] rounded font-bold uppercase tracking-wider">
-                      Internal Tasks
+                      Unassigned
                     </span>
                   )}
                   <span className="text-[10px] text-outline uppercase font-mono-timer tracking-wider">

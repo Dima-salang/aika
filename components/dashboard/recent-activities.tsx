@@ -67,7 +67,7 @@ export function RecentActivities({ recentActivities = [], projects = [], onSelec
                       {log.title || log.description}
                     </span>
                     <span className="text-[11px] text-on-surface-variant font-medium truncate">
-                      Project: {projectObj ? projectObj.name : "Internal Tasks"}
+                      Project: {projectObj ? projectObj.name : "Unassigned"}
                     </span>
                   </div>
                 </div>
