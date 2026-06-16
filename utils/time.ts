@@ -19,3 +19,22 @@ export function formatDuration(durationSeconds: number): string {
     const minutes = Math.floor((durationSeconds % 3600) / 60);
     return `${hours}h ${minutes}m`;
 }
+
+// get duration in seconds, using pre-calculated duration field, falling back to difference of dates if 0/undefined
+export function getLogDurationSeconds(log: {
+    duration?: number | null;
+    start_time?: Date | string | number;
+    end_time?: Date | string | number;
+    startTime?: Date | string | number;
+    endTime?: Date | string | number;
+}): number {
+    if (log.duration) {
+        return log.duration;
+    }
+    const start = log.start_time || log.startTime;
+    const end = log.end_time || log.endTime;
+    if (start && end) {
+        return calculateDurationSeconds(new Date(start), new Date(end));
+    }
+    return 0;
+}
