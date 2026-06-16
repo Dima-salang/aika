@@ -185,7 +185,6 @@ export const logsRouter = router({
           await (db as any).update(userSqlite)
             .set({
               notion_access_token: null,
-              notion_database_id: null,
               notion_workspace_name: null,
             })
             .where(eq(userSqlite.id, input.userId));
@@ -193,8 +192,34 @@ export const logsRouter = router({
           await db.update(user)
             .set({
               notion_access_token: null,
-              notion_database_id: null,
               notion_workspace_name: null,
+            })
+            .where(eq(user.id, input.userId));
+        }
+        return { success: true };
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
+  resetNotionDatabase: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const { db, isSQLite } = await import("@/db");
+        const { user, userSqlite } = await import("@/db/schema");
+        const { eq } = await import("drizzle-orm");
+
+        if (isSQLite) {
+          await (db as any).update(userSqlite)
+            .set({
+              notion_database_id: null,
+            })
+            .where(eq(userSqlite.id, input.userId));
+        } else {
+          await db.update(user)
+            .set({
+              notion_database_id: null,
             })
             .where(eq(user.id, input.userId));
         }
