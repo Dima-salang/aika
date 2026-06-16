@@ -26,25 +26,31 @@ describe("ReportService", () => {
         {
           startTime: new Date("2026-06-01T08:00:00Z"),
           endTime: new Date("2026-06-01T12:00:00Z"), // 4 hrs
+          duration: 4 * 3600,
+          projectName: "Project Alpha",
           evidenceUrls: ["url1", "url2"],
         },
         {
           startTime: new Date("2026-06-01T13:00:00Z"),
           endTime: new Date("2026-06-01T15:00:00Z"), // 2 hrs
+          duration: 2 * 3600,
+          projectName: "Project Alpha",
           evidenceUrls: ["url3"],
         },
         {
           startTime: new Date("2026-06-02T09:00:00Z"),
           endTime: new Date("2026-06-02T12:00:00Z"), // 3 hrs
+          duration: 3 * 3600,
+          projectName: null,
           evidenceUrls: [],
         },
       ];
 
-      const kpis = reportService.computeSummaryKPIs(logs as any);
+      const kpis = reportService.computeSummaryKPIs(logs as any, 9 * 3600);
       expect(kpis.totalHours).toBe(9);
-      expect(kpis.activeDays).toBe(2);
-      expect(kpis.averageDailyHours).toBe(4.5);
-      expect(kpis.evidenceCount).toBe(3);
+      expect(kpis.totalSessions).toBe(3);
+      expect(kpis.averageSessionHours).toBe(3);
+      expect(kpis.activeProjects).toBe(1);
     });
 
     test("aggregateProjectDistribution groups hours correctly and calculates percentages", () => {
@@ -52,16 +58,19 @@ describe("ReportService", () => {
         {
           startTime: new Date("2026-06-01T08:00:00Z"),
           endTime: new Date("2026-06-01T10:00:00Z"), // 2 hrs
+          duration: 2 * 3600,
           projectName: "Project Alpha",
         },
         {
           startTime: new Date("2026-06-01T11:00:00Z"),
           endTime: new Date("2026-06-01T14:00:00Z"), // 3 hrs
+          duration: 3 * 3600,
           projectName: "Project Alpha",
         },
         {
           startTime: new Date("2026-06-01T15:00:00Z"),
           endTime: new Date("2026-06-01T20:00:00Z"), // 5 hrs
+          duration: 5 * 3600,
           projectName: "Project Beta",
         },
       ];
@@ -106,10 +115,12 @@ describe("ReportService", () => {
         {
           startTime: new Date("2026-06-01T08:00:00Z"),
           endTime: new Date("2026-06-01T12:00:00Z"), // 4 hrs
+          duration: 4 * 3600,
         },
         {
           startTime: new Date("2026-06-03T10:00:00Z"),
           endTime: new Date("2026-06-03T15:00:00Z"), // 5 hrs
+          duration: 5 * 3600,
         },
       ];
 
@@ -273,6 +284,7 @@ describe("ReportService", () => {
           project_id: "proj-1",
           start_time: new Date("2026-06-01T09:00:00Z"),
           end_time: new Date("2026-06-01T12:00:00Z"), // 3 hrs
+          duration: 3 * 3600,
           title: "Worked on services",
           description: "Implemented ReportService",
           created_at: new Date(),
@@ -286,6 +298,7 @@ describe("ReportService", () => {
           project_id: "proj-1",
           start_time: new Date("2026-06-01T13:00:00Z"),
           end_time: new Date("2026-06-01T15:00:00Z"),
+          duration: 2 * 3600,
           title: "Soft deleted log",
           description: "This is soft-deleted",
           created_at: new Date(),
@@ -320,8 +333,9 @@ describe("ReportService", () => {
 
       // Verify KPI calculations
       expect(report.kpis.totalHours).toBe(3);
-      expect(report.kpis.activeDays).toBe(1);
-      expect(report.kpis.evidenceCount).toBe(1);
+      expect(report.kpis.totalSessions).toBe(1);
+      expect(report.kpis.averageSessionHours).toBe(3);
+      expect(report.kpis.activeProjects).toBe(1);
 
       // Verify Project Distribution
       expect(report.projectDistribution.length).toBe(1);
