@@ -753,7 +753,29 @@ export default function Home() {
                                 N
                               </div>
                               <div>
-                                <h5 className="text-body-sm font-bold text-on-surface">Notion Sync</h5>
+                                <div className="flex items-center gap-1.5">
+                                  <h5 className="text-body-sm font-bold text-on-surface">Notion Sync</h5>
+                                  <div className="group relative cursor-pointer inline-flex">
+                                    <span className="material-symbols-outlined text-[16px] text-outline hover:text-primary transition-colors">help_outline</span>
+                                    <div className="absolute left-1/2 bottom-full mb-2.5 -translate-x-1/2 w-72 p-4 bg-surface-container-high dark:bg-[#18181b] text-[11px] rounded-2xl shadow-2xl border border-outline-variant text-on-surface opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-30 pointer-events-none">
+                                      <div className="font-extrabold text-primary mb-1 flex items-center gap-1">
+                                        <span className="material-symbols-outlined text-[14px]"></span> About Notion Sync
+                                      </div>
+                                      <p className="text-outline leading-relaxed mb-2.5">
+                                        Automatically mirrors your logged sessions, tasks, durations, and metadata to your Notion workspace.
+                                      </p>
+                                      <div className="font-bold text-on-surface mb-1">Setup Steps:</div>
+                                      <ol className="list-decimal list-inside text-outline space-y-1">
+                                        <li>Click <strong>Connect Notion</strong> to authorize.</li>
+                                        <li>Share/select at least one page.</li>
+                                        <li>An <strong>Aika Time Logs</strong> database will automatically be linked under the page.</li>
+                                        <li>All time logs will be stored in the database.</li>
+                                        <li>You can plug in the database as a data source in your pages.</li>
+                                      </ol>
+                                      <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-1 border-4 border-transparent border-t-surface-container-high dark:border-t-[#18181b]"></div>
+                                    </div>
+                                  </div>
+                                </div>
                                 <p className="text-[11px] text-outline">
                                   {session.user.notion_workspace_name
                                     ? `Connected to: ${session.user.notion_workspace_name}`
