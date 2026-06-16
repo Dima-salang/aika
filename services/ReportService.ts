@@ -1,15 +1,15 @@
 import { db, DBInstance } from "@/db";
 import { tables } from "./tables";
-import { eq, and, isNull, inArray, gte, lte } from "drizzle-orm";
+import { eq, and, isNull, inArray, gte, lte, sum } from "drizzle-orm";
 import { z } from "zod";
 import { TimeLog, TimeLogSqlite } from "@/db/schema";
 import { calculateDurationHours } from "@/utils/time";
 
 export interface ReportSummaryKPIs {
   totalHours: number;
-  activeDays: number;
-  averageDailyHours: number;
-  evidenceCount: number;
+  totalSessions: number;
+  averageSessionHours: number;
+  activeProjects: number;
 }
 
 export interface ProjectTimeBreakdown {
@@ -49,9 +49,9 @@ export interface MemberWorkloadItem {
   userName: string;
   userEmail: string;
   totalHours: number;
-  activeDays: number;
+  totalSessions: number;
+  averageSessionHours: number;
   tasksCompleted: number;
-  evidenceCount: number;
 }
 
 export interface PersonalReport {
@@ -138,33 +138,17 @@ export class ReportService {
   /**
    * Helper: Calculates basic KPIs from a set of hydrated time logs.
    */
-  computeSummaryKPIs(logs: DetailedReportLog[]): ReportSummaryKPIs {
-    let totalMs = 0;
-    const uniqueDates = new Set<string>();
-    let totalEvidence = 0;
-
-    for (const log of logs) {
-      const start = new Date(log.startTime).getTime();
-      const end = new Date(log.endTime).getTime();
-      if (end > start) {
-        totalMs += end - start;
-      }
-      
-      const dateStr = new Date(log.startTime).toISOString().split("T")[0];
-      uniqueDates.add(dateStr);
-
-      totalEvidence += log.evidenceUrls.length;
-    }
-
-    const totalHours = totalMs / (1000 * 60 * 60);
-    const activeDays = uniqueDates.size;
-    const averageDailyHours = activeDays > 0 ? totalHours / activeDays : 0;
+  computeSummaryKPIs(logs: DetailedReportLog[], totalSeconds: number): ReportSummaryKPIs {
+    const totalHours = calculateDurationHours(totalSeconds);
+    const totalSessions = logs.length;
+    const averageSessionHours = totalSessions > 0 ? totalHours / totalSessions : 0;
+    const activeProjects = new Set(logs.map((l) => l.projectName).filter(Boolean)).size;
 
     return {
       totalHours: Number(totalHours.toFixed(2)),
-      activeDays,
-      averageDailyHours: Number(averageDailyHours.toFixed(2)),
-      evidenceCount: totalEvidence,
+      totalSessions,
+      averageSessionHours: Number(averageSessionHours.toFixed(2)),
+      activeProjects,
     };
   }
 
@@ -172,22 +156,22 @@ export class ReportService {
    * Helper: Aggregates hours spent on each Project.
    */
   aggregateProjectDistribution(logs: DetailedReportLog[]): ProjectTimeBreakdown[] {
-    const projectMap = new Map<string | null, { name: string; ms: number }>();
-    let totalMs = 0;
+    const projectMap = new Map<string | null, { name: string; seconds: number }>();
+    let totalSeconds = 0;
 
     for (const log of logs) {
       const duration = log.duration;
       totalSeconds += duration;
 
-      const current = projectMap.get(log.projectName) || { name: log.projectName || "No Project", ms: 0 };
-      current.ms += duration;
+      const current = projectMap.get(log.projectName) || { name: log.projectName || "No Project", seconds: 0 };
+      current.seconds += duration;
       projectMap.set(log.projectName, current);
     }
 
     const distribution: ProjectTimeBreakdown[] = [];
     for (const [projName, data] of projectMap.entries()) {
-      const hours = data.ms / (1000 * 60 * 60);
-      const percentage = totalMs > 0 ? (data.ms / totalMs) * 100 : 0;
+      const hours = calculateDurationHours(data.seconds);
+      const percentage = totalSeconds > 0 ? (data.seconds / totalSeconds) * 100 : 0;
       distribution.push({
         projectId: null, // Scoped by names for simplicity on hydration
         projectName: projName || "No Project",
@@ -324,7 +308,6 @@ export class ReportService {
 
     const hydrated: DetailedReportLog[] = rawLogs.map((log) => {
       const usr = userMap.get(log.user_id) || { name: "Unknown User", email: "" };
-      const durationMs = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
       return {
         id: log.id,
         userId: log.user_id,
@@ -386,10 +369,16 @@ export class ReportService {
       .where(and(...conditions))
       .orderBy(logTable.start_time);
 
+    const [durationResult] = await tx
+      .select({ totalSeconds: sum(logTable.duration) })
+      .from(logTable)
+      .where(and(...conditions));
+    const totalSeconds = Number(durationResult?.totalSeconds || 0);
+
     const { logs, tasks } = await this.hydrateLogs(rawLogs, tx);
 
     return {
-      kpis: this.computeSummaryKPIs(logs),
+      kpis: this.computeSummaryKPIs(logs, totalSeconds),
       projectDistribution: this.aggregateProjectDistribution(logs),
       taskStatuses: this.aggregateTaskStatuses(tasks),
       chartData: this.buildDailyChartData(logs, startDateStr, endDateStr),
@@ -433,46 +422,48 @@ export class ReportService {
       .where(and(...conditions))
       .orderBy(logTable.start_time);
 
+    const [durationResult] = await tx
+      .select({ totalSeconds: sum(logTable.duration) })
+      .from(logTable)
+      .where(and(...conditions));
+    const totalSeconds = Number(durationResult?.totalSeconds || 0);
+
     const { logs, tasks } = await this.hydrateLogs(rawLogs, tx);
 
     // 2. Aggregate workload distribution per team member
-    const workloadMap = new Map<string, { name: string; email: string; ms: number; activeDays: Set<string>; tasks: Set<string>; evidenceCount: number }>();
+    const workloadMap = new Map<string, { name: string; email: string; seconds: number; sessions: number; tasks: Set<string> }>();
 
     for (const log of logs) {
       const current = workloadMap.get(log.userId) || {
         name: log.userName,
         email: log.userEmail,
-        ms: 0,
-        activeDays: new Set<string>(),
+        seconds: 0,
+        sessions: 0,
         tasks: new Set<string>(),
-        evidenceCount: 0,
       };
 
-      current.ms += log.durationMs;
-      current.activeDays.add(new Date(log.startTime).toISOString().split("T")[0]);
-      current.evidenceCount += log.evidenceUrls.length;
-      
-      // We don't have task IDs inside the hydrated log list in detailed form, but we can track titles or just count logs as task proxies
-      // Or we can query the tasks table for tasks owned by this user linked to the log. Let's just track how many logs/titles they logged.
+      current.seconds += log.duration;
+      current.sessions += 1;
       current.tasks.add(log.title);
       workloadMap.set(log.userId, current);
     }
 
     const workloadList: MemberWorkloadItem[] = [];
     for (const [userId, w] of workloadMap.entries()) {
+      const memberHours = calculateDurationHours(w.seconds);
       workloadList.push({
         userId,
         userName: w.name,
         userEmail: w.email,
-        totalHours: Number((w.ms / (1000 * 60 * 60)).toFixed(2)),
-        activeDays: w.activeDays.size,
+        totalHours: Number(memberHours.toFixed(2)),
+        totalSessions: w.sessions,
+        averageSessionHours: w.sessions > 0 ? Number((memberHours / w.sessions).toFixed(2)) : 0,
         tasksCompleted: w.tasks.size,
-        evidenceCount: w.evidenceCount,
       });
     }
 
     return {
-      kpis: this.computeSummaryKPIs(logs),
+      kpis: this.computeSummaryKPIs(logs, totalSeconds),
       projectDistribution: this.aggregateProjectDistribution(logs),
       taskStatuses: this.aggregateTaskStatuses(tasks),
       chartData: this.buildDailyChartData(logs, startDateStr, endDateStr),
