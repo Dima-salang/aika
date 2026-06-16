@@ -4,10 +4,9 @@ import React, { useState } from "react";
 import { Edit2, Trash2, Clock, CalendarDays, ExternalLink, List, LayoutGrid, PlayCircle, Folder, Tag, Loader2, Filter } from "lucide-react";
 import { TimeLogCard } from "./time-log-card";
 import { ActivityLogItem } from "@/components/team/activity-log-item";
+import { getLogDurationSeconds, formatDuration } from "@/utils/time";
 import { toast } from "sonner";
 import { useConfirmStore } from "@/lib/store";
-import { useImageViewer } from "@/utils/image-viewer-store";
-import { isImageUrl } from "@/utils/file";
 
 interface TimeLogsListProps {
   logsByDay: { [key: string]: any[] };
@@ -78,25 +77,15 @@ export function TimeLogsList({
     };
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
-  const getFriendlyDuration = (start: Date, end: Date) => {
-    const ms = new Date(end).getTime() - new Date(start).getTime();
-    const minutes = Math.floor(ms / 60000);
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins}m`;
+  const getFriendlyDuration = (log: any) => {
+    return formatDuration(getLogDurationSeconds(log));
   };
 
   const getDayTotalHours = (logs: any[]) => {
-    const totalMs = logs.reduce((acc, log) => {
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-      return acc + (diff > 0 ? diff : 0);
+    const totalSeconds = logs.reduce((acc, log) => {
+      return acc + getLogDurationSeconds(log);
     }, 0);
-    const minutes = Math.floor(totalMs / 60000);
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins}m`;
+    return formatDuration(totalSeconds);
   };
 
   const handleDelete = async (logId: string) => {
