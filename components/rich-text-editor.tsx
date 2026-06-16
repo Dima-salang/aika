@@ -33,7 +33,9 @@ import {
   Heading3,
   Underline,
   Check,
-  X
+  X,
+  Maximize2,
+  Minimize2
 } from "lucide-react";
 import {
   TEXT_FORMAT_TRANSFORMERS,
@@ -91,7 +93,7 @@ const EDITOR_TRANSFORMERS = [
 ];
 
 // Formatting Toolbar Sub-component
-function ToolbarPlugin() {
+function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boolean; toggleFullscreen: () => void }) {
   const [editor] = useLexicalComposerContext();
   const [isBold, setIsBold] = useState(false);
   const [isItalic, setIsItalic] = useState(false);
@@ -406,6 +408,16 @@ function ToolbarPlugin() {
       >
         <Quote className="h-3.5 w-3.5" />
       </button>
+
+      <button
+        type="button"
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={toggleFullscreen}
+        className="p-1.5 rounded text-outline hover:text-on-surface hover:bg-surface-container-high transition-colors cursor-pointer ml-auto"
+        title={isFullscreen ? "Minimize Description Editor" : "Expand Description Editor"}
+      >
+        {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+      </button>
     </div>
   );
 }
@@ -439,6 +451,9 @@ interface RichTextEditorProps {
 }
 
 export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorProps) {
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const toggleFullscreen = () => setIsFullscreen(!isFullscreen);
+
   const initialConfig = {
     namespace: "AikaEditor",
     theme: {
@@ -486,16 +501,28 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
 
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className="relative border border-outline-variant bg-surface-container-low rounded-lg focus-within:ring-1 focus-within:ring-primary min-h-[140px] p-3 transition-all flex flex-col">
-        <ToolbarPlugin />
+      <div className={
+        isFullscreen 
+          ? "fixed inset-0 z-[100] bg-surface/95 dark:bg-[#0a0a0c]/98 backdrop-blur-md p-6 flex flex-col h-screen w-screen animate-in fade-in duration-200"
+          : "relative border border-outline-variant bg-surface-container-low rounded-lg focus-within:ring-1 focus-within:ring-primary min-h-[140px] p-3 transition-all flex flex-col"
+      }>
+        <ToolbarPlugin isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen} />
         
-        <div className="relative flex-1">
+        <div className={isFullscreen ? "flex-1 flex flex-col mt-4 min-h-0 relative" : "relative flex-1"}>
           <RichTextPlugin
             contentEditable={
-              <ContentEditable className="outline-none text-xs min-h-[70px] resize-none text-on-surface font-sans" />
+              <ContentEditable className={
+                isFullscreen
+                  ? "outline-none text-xs flex-1 resize-none text-on-surface font-sans overflow-y-auto h-full p-4 border border-outline-variant rounded-xl bg-surface-container-low/50"
+                  : "outline-none text-xs min-h-[70px] resize-none text-on-surface font-sans"
+              } />
             }
             placeholder={
-              <div className="absolute top-0 left-0 text-xs text-outline pointer-events-none select-none font-sans">
+              <div className={
+                isFullscreen
+                  ? "absolute top-4 left-4 text-xs text-outline pointer-events-none select-none font-sans"
+                  : "absolute top-0 left-0 text-xs text-outline pointer-events-none select-none font-sans"
+              }>
                 {placeholder || "Enter description..."}
               </div>
             }
