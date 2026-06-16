@@ -10,7 +10,7 @@ export interface NotionSyncOptions {
   tx?: DBInstance;
 }
 
-class NotionService {
+export class NotionService {
   /**
    * Main entry point to coordinate time log syncing with Notion
    */
@@ -90,7 +90,7 @@ class NotionService {
     try {
       console.log("Attempting to create Notion page with full properties...");
       const pageResponse = await notion.pages.create({
-        parent: { data_source_id: databaseId },
+        parent: { database_id: databaseId },
         properties: {
           Name: {
             title: [{ text: { content: notionTitle } }],
@@ -130,7 +130,7 @@ class NotionService {
         throw new Error("Notion Error: Database schema mismatch. Please update your Notion database with the required properties.");
       }
       const pageResponse = await notion.pages.create({
-        parent: { data_source_id: databaseId },
+        parent: { database_id: databaseId },
         properties: {
           Name: {
             title: [{ text: { content: notionTitle } }],

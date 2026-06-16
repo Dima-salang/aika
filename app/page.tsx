@@ -195,6 +195,13 @@ export default function Home() {
     },
   });
 
+  const resetNotionDatabaseMutation = trpc.resetNotionDatabase.useMutation({
+    onSuccess: async () => {
+      await refetchSession();
+      toast.success("Successfully reset Notion database linkage.");
+    },
+  });
+
   const discardTimerMutation = trpc.discardTimer.useMutation({
     onSuccess: () => {
       refetchTimer();
@@ -785,17 +792,30 @@ export default function Home() {
                             </div>
 
                             {session.user.notion_workspace_name ? (
-                              <button
-                                onClick={async () => {
-                                  if (confirm("Are you sure you want to disconnect from Notion? Syncing will stop.")) {
-                                    await disconnectNotionMutation.mutateAsync({ userId: session.user.id });
-                                  }
-                                }}
-                                disabled={disconnectNotionMutation.isPending}
-                                className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-red-500/30 hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50"
-                              >
-                                Disconnect
-                              </button>
+                              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                                <button
+                                  onClick={async () => {
+                                    if (confirm("Are you sure you want to disconnect from Notion? Syncing will stop.")) {
+                                      await disconnectNotionMutation.mutateAsync({ userId: session.user.id });
+                                    }
+                                  }}
+                                  disabled={disconnectNotionMutation.isPending}
+                                  className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-red-500/30 hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50"
+                                >
+                                  Disconnect
+                                </button>
+                                <button
+                                  onClick={async () => {
+                                    if (confirm("Are you sure you want to reset the database linkage? This will clear the linked database ID, forcing a new database creation on next reconnect.")) {
+                                      await resetNotionDatabaseMutation.mutateAsync({ userId: session.user.id });
+                                    }
+                                  }}
+                                  disabled={resetNotionDatabaseMutation.isPending}
+                                  className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-outline-variant hover:bg-surface-container-high text-on-surface transition-colors disabled:opacity-50"
+                                >
+                                  Reset Database Linkage
+                                </button>
+                              </div>
                             ) : (
                               <a
                                 href="/api/integrations/notion/connect"
