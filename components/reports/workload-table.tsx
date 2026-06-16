@@ -48,7 +48,7 @@ export function WorkloadTable({ workload }: WorkloadTableProps) {
                   <div className="text-outline text-[10px] font-medium">{member.userEmail}</div>
                 </td>
                 <td className="p-3 text-center font-mono-timer font-bold text-on-surface">
-                  {member.totalHours.toFixed(1)}h
+                  {member.totalHours.toFixed(2)}h
                 </td>
                 <td className="p-3 text-center font-mono-timer text-on-surface-variant">
                   {member.totalSessions}
@@ -57,7 +57,7 @@ export function WorkloadTable({ workload }: WorkloadTableProps) {
                   {member.tasksCompleted}
                 </td>
                 <td className="p-3 text-center font-mono-timer text-on-surface-variant">
-                  {member.averageSessionHours.toFixed(1)}h
+                  {member.averageSessionHours.toFixed(2)}h
                 </td>
               </tr>
             ))}

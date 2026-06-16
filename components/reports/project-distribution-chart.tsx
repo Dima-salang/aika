@@ -59,7 +59,7 @@ export function ProjectDistributionChart({ distribution }: ProjectDistributionCh
                   return (
                     <div className="bg-surface-container-high border border-outline-variant px-2.5 py-1.5 rounded-xl shadow-xl text-xs font-bold text-on-surface">
                       <p>{data.projectName}</p>
-                      <p className="text-primary mt-0.5">{data.hours.toFixed(1)} hrs ({data.percentage.toFixed(0)}%)</p>
+                      <p className="text-primary mt-0.5">{data.hours.toFixed(2)} hrs ({data.percentage.toFixed(0)}%)</p>
                     </div>
                   );
                 }
@@ -83,7 +83,7 @@ export function ProjectDistributionChart({ distribution }: ProjectDistributionCh
                 </span>
               </div>
               <div className="flex items-center gap-1.5 shrink-0">
-                <span className="font-mono-timer font-bold text-on-surface">{proj.hours.toFixed(1)}h</span>
+                <span className="font-mono-timer font-bold text-on-surface">{proj.hours.toFixed(2)}h</span>
                 <span className="text-outline/60 text-[9px] font-normal font-mono-timer">({proj.percentage.toFixed(0)}%)</span>
               </div>
             </div>
