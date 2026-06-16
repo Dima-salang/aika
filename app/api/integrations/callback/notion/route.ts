@@ -2,10 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import { env } from "@/env/env";
-import { db, isSQLite } from "@/db";
-import { user, userSqlite } from "@/db/schema";
+import { db } from "@/db";
 import { eq } from "drizzle-orm";
-import { Client, CreateDatabaseParameters, CreateDatabaseResponse, isFullDatabase } from "@notionhq/client";
+import { Client, CreateDatabaseParameters, isFullDatabase } from "@notionhq/client";
 import { tables } from "@/services/tables";
 
 export async function GET(request: NextRequest) {
@@ -72,51 +71,79 @@ export async function GET(request: NextRequest) {
         // Initialize Notion Client
         const notion = new Client({ auth: accessToken });
 
-        // 3. Search for shared pages to get a parent page ID
-        const searchData = await notion.search({
-            filter: {
-                property: "object",
-                value: "page",
-            },
+        // 3. Check if Aika Time Logs database already exists
+        const dbSearch = await notion.search({
+            query: "Aika Time Logs",
         });
+        
+        const existingDb = dbSearch.results.find(
+            (d) => (d.object as string) === "database" && "title" in d && Array.isArray((d as any).title) && (d as any).title[0]?.plain_text === "Aika Time Logs"
+        );
 
-        const pages = searchData.results || [];
-        if (pages.length === 0) {
-            throw new Error("No shared parent pages found. Please select/share at least one page during authentication.");
+        let dataSourceId: string | undefined;
+
+        if (existingDb && isFullDatabase(existingDb)) {
+            dataSourceId = (existingDb as any).data_sources?.[0]?.id;
         }
 
-        const parentPageId = pages[0].id;
-
-        // 4. Create the Notion database with properties inside initial_data_source
-        const createDbData = await notion.databases.create({
-            parent: {
-                type: "page_id",
-                page_id: parentPageId,
-            },
-            title: [
-                {
-                    type: "text",
-                    text: {
-                        content: "Aika Time Logs",
-                    },
+        // 4. Create database if it does not exist
+        if (!dataSourceId) {
+            const searchData = await notion.search({
+                filter: {
+                    property: "object",
+                    value: "page",
                 },
-            ],
-            initial_data_source: {
-                properties: {
-                    Name: { title: {} },
-                    Date: { date: {} },
-                    Project: { rich_text: {} },
-                    Duration: { rich_text: {} },
-                }
-            }
-        } as CreateDatabaseParameters);
+            });
 
-        const databaseId = createDbData.id;
-        // get data sources
-        if (!isFullDatabase(createDbData)) {
-            throw new Error("Created database response is incomplete.");
+            const pages = searchData.results || [];
+            const parentPage = pages.find((p) => {
+                if (p.object !== "page") return false;
+                // Exclude pages that are database items
+                if ("parent" in p && p.parent.type === "database_id") return false;
+                return true;
+            });
+
+            if (!parentPage) {
+                throw new Error("No shared parent pages found. Please select/share at least one page during authentication.");
+            }
+
+            const parentPageId = parentPage.id;
+
+            const createDbData = await notion.databases.create({
+                parent: {
+                    type: "page_id",
+                    page_id: parentPageId,
+                },
+                title: [
+                    {
+                        type: "text",
+                        text: {
+                            content: "Aika Time Logs",
+                        },
+                    },
+                ],
+                initial_data_source: {
+                    properties: {
+                        Name: { title: {} },
+                        Date: { date: {} },
+                        Project: { rich_text: {} },
+                        Team: { rich_text: {} },
+                        Organization: { rich_text: {} },
+                        Duration: { number: {} },
+                        "Readable Duration": { rich_text: {} },
+                    }
+                }
+            } as CreateDatabaseParameters);
+
+            if (!isFullDatabase(createDbData)) {
+                throw new Error("Created database response is incomplete.");
+            }
+            dataSourceId = createDbData.data_sources?.[0]?.id;
         }
-        const dataSourceId = createDbData.data_sources[0]?.id;
+
+        if (!dataSourceId) {
+            throw new Error("Failed to retrieve or create the Notion database data source.");
+        }
 
         // 5. Save credentials to the user record
         const userTable = tables.user;
