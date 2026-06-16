@@ -29,7 +29,7 @@ const stopTimerSchema = z.object({
   taskIds: z.array(z.string()),
   evidence: z.array(
     z.object({
-      fileUrl: z.string().url(),
+      fileUrl: z.url(),
       fileKey: z.string(),
       fileName: z.string(),
       fileSize: z.number().int().positive(),
