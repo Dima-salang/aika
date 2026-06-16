@@ -234,9 +234,7 @@ export class ReportService {
 
     for (const log of logs) {
       const dateStr = new Date(log.startTime).toISOString().split("T")[0];
-      const start = new Date(log.startTime).getTime();
-      const end = new Date(log.endTime).getTime();
-      const durationHours = end > start ? (end - start) / (1000 * 60 * 60) : 0;
+      const durationHours = calculateDurationHours(log.duration);
 
       const current = dayMap.get(dateStr) || 0;
       dayMap.set(dateStr, current + durationHours);
