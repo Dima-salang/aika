@@ -19,6 +19,7 @@ import { TeamSpaceView } from "@/components/team/team-space-view";
 import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LandingPage } from "@/components/landing-page";
+import { toast } from "sonner";
 
 
 export default function Home() {
@@ -187,6 +188,13 @@ export default function Home() {
     },
   });
 
+  const disconnectNotionMutation = trpc.disconnectNotion.useMutation({
+    onSuccess: async () => {
+      await refetchSession();
+      toast.success("Successfully disconnected from Notion.");
+    },
+  });
+
   const discardTimerMutation = trpc.discardTimer.useMutation({
     onSuccess: () => {
       refetchTimer();
@@ -215,6 +223,28 @@ export default function Home() {
     const isDarkClass = document.documentElement.classList.contains("dark");
     setIsDark(isDarkClass);
   }, []);
+
+  // Handle Notion OAuth callback redirection parameters
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const urlParams = new URLSearchParams(window.location.search);
+      const integration = urlParams.get("integration");
+      const status = urlParams.get("status");
+      const message = urlParams.get("message");
+
+      if (integration === "notion") {
+        if (status === "success") {
+          toast.success("Successfully integrated with Notion! 'Aika Time Logs' database has been auto-created.");
+          refetchSession();
+        } else if (status === "error") {
+          toast.error(message || "Notion integration failed.");
+        }
+        // Clean URL parameters
+        const cleanUrl = window.location.pathname;
+        window.history.replaceState({}, document.title, cleanUrl);
+      }
+    }
+  }, [refetchSession]);
 
   const toggleTheme = () => {
     if (isDark) {
@@ -705,6 +735,53 @@ export default function Home() {
                             <p className="bg-surface-container-lowest p-2.5 rounded-lg border border-outline-variant">
                               {new Date(session.user.createdAt).toLocaleDateString()}
                             </p>
+                          </div>
+                        </div>
+
+                        {/* Notion Integration Section */}
+                        <div className="mt-6 border-t border-outline-variant pt-6 space-y-4">
+                          <div>
+                            <h4 className="text-body-md font-extrabold flex items-center gap-2 text-on-surface">
+                              <span className="material-symbols-outlined text-[20px]">sync</span> Integrations
+                            </h4>
+                            <p className="text-body-sm text-outline mt-1">Connect third-party apps to streamline your tracking.</p>
+                          </div>
+
+                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-[#E3E2E0] dark:bg-[#37352F] flex items-center justify-center text-xl font-black text-black dark:text-white">
+                                N
+                              </div>
+                              <div>
+                                <h5 className="text-body-sm font-bold text-on-surface">Notion Sync</h5>
+                                <p className="text-[11px] text-outline">
+                                  {session.user.notion_workspace_name
+                                    ? `Connected to: ${session.user.notion_workspace_name}`
+                                    : "Sync logged time to your Notion workspace."}
+                                </p>
+                              </div>
+                            </div>
+
+                            {session.user.notion_workspace_name ? (
+                              <button
+                                onClick={async () => {
+                                  if (confirm("Are you sure you want to disconnect from Notion? Syncing will stop.")) {
+                                    await disconnectNotionMutation.mutateAsync({ userId: session.user.id });
+                                  }
+                                }}
+                                disabled={disconnectNotionMutation.isPending}
+                                className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-red-500/30 hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50"
+                              >
+                                Disconnect
+                              </button>
+                            ) : (
+                              <a
+                                href="/api/integrations/notion/connect"
+                                className="w-full sm:w-auto text-center rounded-lg text-body-sm px-4 py-2 font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors"
+                              >
+                                Connect Notion
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
