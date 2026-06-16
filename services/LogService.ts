@@ -1,4 +1,5 @@
 import { db, DBInstance, runTransaction } from "@/db";
+import { Client } from "@notionhq/client";
 import {
   NewTimeLog,
   newTimeLogZodSchema,
@@ -28,7 +29,7 @@ const stopTimerSchema = z.object({
   taskIds: z.array(z.string()),
   evidence: z.array(
     z.object({
-      fileUrl: z.string().url(),
+      fileUrl: z.url(),
       fileKey: z.string(),
       fileName: z.string(),
       fileSize: z.number().int().positive(),
@@ -71,7 +72,7 @@ export class LogService {
   private auditService: AuditService;
   private taskService: TaskService;
   private storageService: StorageService;
-  
+
   constructor(
     auditService: AuditService,
     taskService: TaskService,
@@ -136,6 +137,8 @@ export class LogService {
     z.string().optional().parse(ipAddress);
     z.string().optional().parse(userAgent);
 
+    let successfulLogId: string | null = null;
+
     const execute = async (tx: DBInstance) => {
       if (!parsedInput.evidence || parsedInput.evidence.length === 0) {
         throw new Error("Validation Error: At least one Document Evidence file is required");
@@ -190,6 +193,7 @@ export class LogService {
       const validatedLog = newTimeLogZodSchema.parse(logData) as NewTimeLog;
 
       const [insertedLog] = await tx.insert(tables.timeLogs).values(validatedLog).returning();
+      successfulLogId = insertedLog.id;
 
       // Insert tasks join entries
       if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
@@ -227,14 +231,18 @@ export class LogService {
         tx
       );
 
+
       return insertedLog;
     };
 
-    if (outerTx) {
-      return await execute(outerTx);
-    } else {
-      return await runTransaction(execute);
-    }
+    const returnedLog = outerTx ?
+      await execute(outerTx) :
+      await runTransaction(execute);
+
+    // sync with notion db
+    await this.syncToNotion("create", successfulLogId!, parsedInput.userId);
+
+    return returnedLog;
   }
 
   /**
@@ -251,7 +259,7 @@ export class LogService {
     z.string().parse(userId);
     const parsedInput = updateLogInputZodSchema.parse(input);
 
-    return await runTransaction(async (tx: DBInstance) => {
+    const execute = async (tx: DBInstance) => {
       const existing = await this.getLogById(logId);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
@@ -332,7 +340,7 @@ export class LogService {
         }
       }
 
-      // Synchronize Document Evidence entries
+      // sync Document Evidence entries
       if (parsedInput.evidence !== undefined) {
         // Fetch existing active evidence to identify deleted ones
         const existingEvidence = await tx
@@ -390,7 +398,11 @@ export class LogService {
       );
 
       return updatedLog;
-    });
+    };
+
+    const updatedLog = await execute(db);
+    await this.syncToNotion("update", updatedLog.id, userId);
+    return updatedLog;
   }
 
   /**
@@ -400,7 +412,7 @@ export class LogService {
     z.string().parse(logId);
     z.string().parse(userId);
 
-    return await runTransaction(async (tx: DBInstance) => {
+    const execute = async (tx: DBInstance) => {
       const existing = await this.getLogById(logId);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
@@ -427,9 +439,10 @@ export class LogService {
         userAgent,
         tx
       );
-
-      return true;
-    });
+    };
+    await execute(db);
+    await this.syncToNotion("delete", logId, userId);
+    return true;
   }
 
   /**
@@ -592,20 +605,20 @@ export class LogService {
   /**
    * Fetch single log by ID
    */
-  async getLogById(logId: string): Promise<DetailedTimeLog | null> {
+  async getLogById(logId: string, tx: DBInstance = db): Promise<DetailedTimeLog | null> {
     z.string().parse(logId);
-    const [log] = await db
+    const [log] = await tx
       .select()
       .from(tables.timeLogs)
       .where(and(eq(tables.timeLogs.id, logId), isNull(tables.timeLogs.deleted_at)));
     if (!log) return null;
 
-    const tasksList = await db
+    const tasksList = await tx
       .select()
       .from(tables.timeLogTasks)
       .where(eq(tables.timeLogTasks.time_log_id, logId));
 
-    const evidenceList = await db
+    const evidenceList = await tx
       .select()
       .from(tables.documentEvidences)
       .where(and(eq(tables.documentEvidences.time_log_id, logId), isNull(tables.documentEvidences.deleted_at)));
@@ -690,6 +703,7 @@ export class LogService {
         created_at: table.created_at,
         updated_at: table.updated_at,
         deleted_at: table.deleted_at,
+        notion_page_id: table.notion_page_id,
         projectName: tables.projects.name,
       })
       .from(table)
@@ -1013,5 +1027,241 @@ export class LogService {
         evidence: evidenceMap[log.id] || [],
       };
     }) as TimelineLog[];
+  }
+
+  /**
+   * Sync a time log to Notion (creates, updates, or deletes)
+   */
+  private async syncToNotion(
+    action: "create" | "update" | "delete",
+    timeLogId: string,
+    userId: string,
+    tx: DBInstance = db
+  ): Promise<void> {
+    try {
+
+      // fetch user
+      const [userRecord] = await tx
+        .select({
+          accessToken: tables.user.notion_access_token,
+          databaseId: tables.user.notion_database_id,
+        })
+        .from(tables.user)
+        .where(eq(tables.user.id, userId));
+
+      if (!userRecord || !userRecord.accessToken || !userRecord.databaseId) {
+        throw new Error("User not integrated with Notion");
+      }
+
+      const accessToken = userRecord.accessToken;
+      const databaseId = userRecord.databaseId;
+
+
+      const notion = new Client({ auth: accessToken });
+
+      // sync to trash if delete
+      if (action === "delete") {
+        const [existingLog] = await tx
+          .select({ notionPageId: tables.timeLogs.notion_page_id })
+          .from(tables.timeLogs)
+          .where(eq(tables.timeLogs.id, timeLogId));
+
+        if (existingLog?.notionPageId) {
+          await notion.pages.update({
+            page_id: existingLog.notionPageId,
+            in_trash: true,
+          });
+        }
+        return;
+      }
+
+      // fetch log data all at once with left joins
+      // get org name, team name, and project name
+      const [combinedLogData] = await tx
+        .select({
+          orgName: tables.organization.name,
+          teamName: tables.teams.name,
+          projectName: tables.projects.name,
+          log: tables.timeLogs,
+        })
+        .from(tables.timeLogs)
+        .leftJoin(tables.projects, eq(tables.timeLogs.project_id, tables.projects.id))
+        .leftJoin(tables.teams, eq(tables.timeLogs.team_id, tables.teams.id))
+        .leftJoin(tables.organization, eq(tables.timeLogs.organization_id, tables.organization.id))
+        .where(eq(tables.timeLogs.id, timeLogId));
+
+      const detailedLog = combinedLogData?.log;
+      const orgName = combinedLogData?.orgName ?? "None";
+      const teamName = combinedLogData?.teamName ?? "None";
+      const projectName = combinedLogData?.projectName ?? "None";
+      
+      if (!detailedLog) {
+        throw new Error("Notion Error: Time log not found");
+      }
+
+      const durationMs = detailedLog.end_time.getTime() - detailedLog.start_time.getTime();
+      const hours = Math.floor(durationMs / 3600000);
+      const minutes = Math.floor((durationMs % 3600000) / 60);
+      const durationStr = `${hours}h ${minutes}m`;
+
+
+      const notionTitle = detailedLog.title || detailedLog.description || "Time Log";
+
+
+      console.log(" Notion Title:", notionTitle);
+
+      console.log(" Project Name:", projectName);
+
+      console.log(" Duration:", durationStr);
+
+      console.log(" Detailed log:", detailedLog);
+
+      // 4. Create Page
+      if (action === "create") {
+        try {
+          console.log("Attempting to create Notion page with full properties...");
+          const pageResponse = await notion.pages.create({
+            parent: { data_source_id: databaseId },
+            properties: {
+              Name: {
+                title: [{ text: { content: notionTitle } }],
+              },
+              Date: {
+                date: {
+                  start: detailedLog.start_time.toISOString(),
+                  end: detailedLog.end_time.toISOString(),
+                },
+              },
+              Project: {
+                rich_text: [{ text: { content: projectName } }],
+              },
+              Duration: {
+                rich_text: [{ text: { content: durationStr } }],
+              },
+              Organization: {
+                rich_text: [{ text: { content: orgName } }],
+              },
+              Team: {
+                rich_text: [{ text: { content: teamName } }],
+              },
+            },
+          });
+
+          const pageId = pageResponse.id;
+          await tx
+            .update(tables.timeLogs)
+            .set({ notion_page_id: pageId })
+            .where(eq(tables.timeLogs.id, timeLogId));
+        } catch (createErr: any) {
+          console.warn("Failed to create Notion page with full properties, retrying with title only...", createErr);
+          if (createErr.message.includes("Property not found")) {
+            throw new Error("Notion Error: Database schema mismatch. Please update your Notion database with the required properties.");
+          }
+          const pageResponse = await notion.pages.create({
+            parent: { data_source_id: databaseId },
+            properties: {
+              Name: {
+                title: [{ text: { content: notionTitle } }],
+              },
+            },
+          });
+
+          const pageId = pageResponse.id;
+          await tx
+            .update(tables.timeLogs)
+            .set({ notion_page_id: pageId })
+            .where(eq(tables.timeLogs.id, timeLogId));
+        }
+      }
+
+      // 5. Update Page
+      if (action === "update") {
+        if (detailedLog.notion_page_id) {
+          try {
+            await notion.pages.update({
+              page_id: detailedLog.notion_page_id,
+              properties: {
+                Name: {
+                  title: [{ text: { content: notionTitle } }],
+                },
+                Date: {
+                  date: {
+                    start: detailedLog.start_time.toISOString(),
+                    end: detailedLog.end_time.toISOString(),
+                  },
+                },
+                Project: {
+                  rich_text: [{ text: { content: projectName } }],
+                },
+                Duration: {
+                  rich_text: [{ text: { content: durationStr } }],
+                },
+              },
+            });
+          } catch (updateErr: any) {
+            console.warn("Failed to update Notion page with full properties, retrying with title only...", updateErr);
+            if (updateErr.message.includes("Property not found")) {
+              throw new Error("Notion Error: Database schema mismatch. Please update your Notion database with the required properties.");
+            }
+            await notion.pages.update({
+              page_id: detailedLog.notion_page_id,
+              properties: {
+                Name: {
+                  title: [{ text: { content: notionTitle } }],
+                },
+              },
+            });
+          }
+        } else {
+          // Self-healing: Create the page in Notion if it didn't exist when the log was first created
+          try {
+            const pageResponse = await notion.pages.create({
+              parent: { data_source_id: databaseId },
+              properties: {
+                Name: {
+                  title: [{ text: { content: notionTitle } }],
+                },
+                Date: {
+                  date: {
+                    start: detailedLog.start_time.toISOString(),
+                    end: detailedLog.end_time.toISOString(),
+                  },
+                },
+                Project: {
+                  rich_text: [{ text: { content: projectName } }],
+                },
+                Duration: {
+                  rich_text: [{ text: { content: durationStr } }],
+                },
+              },
+            });
+
+            const pageId = pageResponse.id;
+            await tx
+              .update(tables.timeLogs)
+              .set({ notion_page_id: pageId })
+              .where(eq(tables.timeLogs.id, timeLogId));
+          } catch (createErr: any) {
+            console.warn("Failed to self-heal create Notion page with full properties, retrying with title only...", createErr);
+            const pageResponse = await notion.pages.create({
+              parent: { data_source_id: databaseId },
+              properties: {
+                Name: {
+                  title: [{ text: { content: notionTitle } }],
+                },
+              },
+            });
+
+            const pageId = pageResponse.id;
+            await tx
+              .update(tables.timeLogs)
+              .set({ notion_page_id: pageId })
+              .where(eq(tables.timeLogs.id, timeLogId));
+          }
+        }
+      }
+    } catch (err) {
+      console.error("Error syncing to Notion:", err);
+    }
   }
 }

@@ -20,6 +20,9 @@ export const user = pgTable("user", {
     is_admin: boolean("is_admin").notNull().default(false),
     last_active_team_id: text("last_active_team_id"),
     deleted_at: timestamp("deleted_at"),
+    notion_access_token: text("notion_access_token"),
+    notion_database_id: text("notion_database_id"),
+    notion_workspace_name: text("notion_workspace_name"),
 });
 
 // Better Auth: Session table
@@ -161,6 +164,7 @@ export const timeLogs = pgTable("time_logs", {
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
+    notion_page_id: text("notion_page_id"),
 });
 
 // Time Log Tasks (Many-to-Many Join Table)
@@ -261,6 +265,9 @@ export const userSqlite = sqliteTable("user", {
     is_admin: sqliteInteger("is_admin", { mode: "boolean" }).notNull().default(false),
     last_active_team_id: sqliteText("last_active_team_id"),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
+    notion_access_token: sqliteText("notion_access_token"),
+    notion_database_id: sqliteText("notion_database_id"),
+    notion_workspace_name: sqliteText("notion_workspace_name"),
 });
 
 // Better Auth: Session table
@@ -402,6 +409,7 @@ export const timeLogsSqlite = sqliteTable("time_logs", {
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
+    notion_page_id: sqliteText("notion_page_id"),
 });
 
 // Time Log Tasks (Many-to-Many Join Table)
