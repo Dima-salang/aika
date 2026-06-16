@@ -20,12 +20,14 @@ import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
 import { LandingPage } from "@/components/landing-page";
 import { toast } from "sonner";
+import { useConfirmStore } from "@/lib/store";
 
 
 export default function Home() {
   const router = useRouter();
   const { session, activeOrg, isLoading: isPending, refetchSession } = useAuth();
   const utils = trpc.useUtils();
+  const { showConfirm } = useConfirmStore();
 
   // Dashboard & Dialog States
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -794,10 +796,14 @@ export default function Home() {
                             {session.user.notion_workspace_name ? (
                               <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
                                 <button
-                                  onClick={async () => {
-                                    if (confirm("Are you sure you want to disconnect from Notion? Syncing will stop.")) {
-                                      await disconnectNotionMutation.mutateAsync({ userId: session.user.id });
-                                    }
+                                  onClick={() => {
+                                    showConfirm({
+                                      title: "Disconnect from Notion?",
+                                      description: "Are you sure you want to disconnect from Notion? Syncing will stop.",
+                                      onConfirm: async () => {
+                                        await disconnectNotionMutation.mutateAsync({ userId: session.user.id });
+                                      }
+                                    });
                                   }}
                                   disabled={disconnectNotionMutation.isPending}
                                   className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-red-500/30 hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50"
@@ -805,15 +811,19 @@ export default function Home() {
                                   Disconnect
                                 </button>
                                 <button
-                                  onClick={async () => {
-                                    if (confirm("Are you sure you want to reset the database linkage? This will clear the linked database ID, forcing a new database creation on next reconnect.")) {
-                                      await resetNotionDatabaseMutation.mutateAsync({ userId: session.user.id });
-                                    }
+                                  onClick={() => {
+                                    showConfirm({
+                                      title: "Reset Database Link?",
+                                      description: "Are you sure you want to reset the database linkage? This will clear the linked database ID, forcing a new database creation on next reconnect.",
+                                      onConfirm: async () => {
+                                        await resetNotionDatabaseMutation.mutateAsync({ userId: session.user.id });
+                                      }
+                                    });
                                   }}
                                   disabled={resetNotionDatabaseMutation.isPending}
                                   className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-outline-variant hover:bg-surface-container-high text-on-surface transition-colors disabled:opacity-50"
                                 >
-                                  Reset Database Linkage
+                                  Reset Database Link
                                 </button>
                               </div>
                             ) : (
