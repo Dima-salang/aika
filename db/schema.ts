@@ -165,6 +165,7 @@ export const timeLogs = pgTable("time_logs", {
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
     notion_page_id: text("notion_page_id"),
+    duration: integer("duration").notNull().default(0),
 });
 
 // Time Log Tasks (Many-to-Many Join Table)
@@ -410,6 +411,7 @@ export const timeLogsSqlite = sqliteTable("time_logs", {
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
     notion_page_id: sqliteText("notion_page_id"),
+    duration: sqliteInteger("duration").notNull().default(0),
 });
 
 // Time Log Tasks (Many-to-Many Join Table)
@@ -747,6 +749,7 @@ export const readLogZodSchema = z.object({
   created_at: z.coerce.date(),
   updated_at: z.coerce.date(),
   deleted_at: z.coerce.date().nullable(),
+  duration: z.number(),
   tasks: z.array(z.string()),
   evidence: z.array(
     z.object({
