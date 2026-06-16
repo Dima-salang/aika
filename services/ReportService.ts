@@ -3,6 +3,7 @@ import { tables } from "./tables";
 import { eq, and, isNull, inArray, gte, lte } from "drizzle-orm";
 import { z } from "zod";
 import { TimeLog, TimeLogSqlite } from "@/db/schema";
+import { calculateDurationHours } from "@/utils/time";
 
 export interface ReportSummaryKPIs {
   totalHours: number;
@@ -37,7 +38,7 @@ export interface DetailedReportLog {
   description: string;
   startTime: Date;
   endTime: Date;
-  durationMs: number;
+  duration: number;
   projectName: string | null;
   taskTitles: string[];
   evidenceUrls: string[];
@@ -175,10 +176,8 @@ export class ReportService {
     let totalMs = 0;
 
     for (const log of logs) {
-      const start = new Date(log.startTime).getTime();
-      const end = new Date(log.endTime).getTime();
-      const duration = end > start ? end - start : 0;
-      totalMs += duration;
+      const duration = log.duration;
+      totalSeconds += duration;
 
       const current = projectMap.get(log.projectName) || { name: log.projectName || "No Project", ms: 0 };
       current.ms += duration;
@@ -337,7 +336,7 @@ export class ReportService {
         description: log.description,
         startTime: log.start_time,
         endTime: log.end_time,
-        durationMs,
+        duration: log.duration,
         projectName: log.project_id ? projectMap.get(log.project_id) || null : null,
         taskTitles: (logTasksMap.get(log.id) || []).map((t) => t.title),
         evidenceUrls: evidenceMap.get(log.id) || [],
