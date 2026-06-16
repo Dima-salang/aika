@@ -11,7 +11,7 @@ export function MetricCards({ kpis }: MetricCardsProps) {
   const cards = [
     {
       label: "Total Tracked Time",
-      value: `${kpis.totalHours.toFixed(1)}h`,
+      value: `${kpis.totalHours.toFixed(2)}h`,
       icon: "schedule",
       description: "Total hours logged in range",
       color: "text-primary bg-primary/10",
@@ -25,7 +25,7 @@ export function MetricCards({ kpis }: MetricCardsProps) {
     },
     {
       label: "Avg Session Duration",
-      value: `${kpis.averageSessionHours.toFixed(1)}h`,
+      value: `${kpis.averageSessionHours.toFixed(2)}h`,
       icon: "avg_time",
       description: "Average hours per session",
       color: "text-tertiary bg-tertiary/10",
