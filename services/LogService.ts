@@ -1,6 +1,6 @@
 import { db, DBInstance, runTransaction } from "@/db";
-import { Client } from "@notionhq/client";
-import { calculateDurationSeconds, formatDuration } from "@/utils/time";
+import { notionService } from "@/services/NotionService";
+import { calculateDurationSeconds } from "@/utils/time";
 import {
   NewTimeLog,
   newTimeLogZodSchema,
@@ -78,7 +78,7 @@ export class LogService {
   constructor(
     auditService: AuditService,
     taskService: TaskService,
-    storageService: StorageService
+    storageService: StorageService,
   ) {
     this.auditService = auditService;
     this.taskService = taskService;
@@ -87,6 +87,7 @@ export class LogService {
 
   /**
    * Helper to perform overlap validation
+   * Users cannot log overlapping time logs
    */
   private async checkOverlap(
     userId: string,
@@ -233,8 +234,6 @@ export class LogService {
         userAgent,
         tx
       );
-
-
       return insertedLog;
     };
 
@@ -243,7 +242,7 @@ export class LogService {
       await runTransaction(execute);
 
     // sync with notion db
-    await this.syncToNotion("create", successfulLogId!, parsedInput.userId);
+    await notionService.syncLog("create", successfulLogId!, parsedInput.userId);
 
     return returnedLog;
   }
@@ -405,7 +404,7 @@ export class LogService {
     };
 
     const updatedLog = await execute(db);
-    await this.syncToNotion("update", updatedLog.id, userId);
+    await notionService.syncLog("update", updatedLog.id, userId);
     return updatedLog;
   }
 
@@ -445,7 +444,7 @@ export class LogService {
       );
     };
     await execute(db);
-    await this.syncToNotion("delete", logId, userId);
+    await notionService.syncLog("delete", logId, userId);
     return true;
   }
 
@@ -1035,245 +1034,4 @@ export class LogService {
     }) as TimelineLog[];
   }
 
-  /**
-   * Sync a time log to Notion (creates, updates, or deletes)
-   */
-  private async syncToNotion(
-    action: "create" | "update" | "delete",
-    timeLogId: string,
-    userId: string,
-    tx: DBInstance = db
-  ): Promise<void> {
-    try {
-
-      // fetch user
-      const [userRecord] = await tx
-        .select({
-          accessToken: tables.user.notion_access_token,
-          databaseId: tables.user.notion_database_id,
-        })
-        .from(tables.user)
-        .where(eq(tables.user.id, userId));
-
-      if (!userRecord || !userRecord.accessToken || !userRecord.databaseId) {
-        throw new Error("User not integrated with Notion");
-      }
-
-      const accessToken = userRecord.accessToken;
-      const databaseId = userRecord.databaseId;
-
-
-      const notion = new Client({ auth: accessToken });
-
-      // sync to trash if delete
-      if (action === "delete") {
-        const [existingLog] = await tx
-          .select({ notionPageId: tables.timeLogs.notion_page_id })
-          .from(tables.timeLogs)
-          .where(eq(tables.timeLogs.id, timeLogId));
-
-        if (existingLog?.notionPageId) {
-          await notion.pages.update({
-            page_id: existingLog.notionPageId,
-            in_trash: true,
-          });
-        }
-        return;
-      }
-
-      // fetch log data all at once with left joins
-      // get org name, team name, and project name
-      const [combinedLogData] = await tx
-        .select({
-          orgName: tables.organization.name,
-          teamName: tables.teams.name,
-          projectName: tables.projects.name,
-          log: tables.timeLogs,
-        })
-        .from(tables.timeLogs)
-        .leftJoin(tables.projects, eq(tables.timeLogs.project_id, tables.projects.id))
-        .leftJoin(tables.teams, eq(tables.timeLogs.team_id, tables.teams.id))
-        .leftJoin(tables.organization, eq(tables.timeLogs.organization_id, tables.organization.id))
-        .where(eq(tables.timeLogs.id, timeLogId));
-
-      const detailedLog = combinedLogData?.log;
-      const orgName = combinedLogData?.orgName ?? "None";
-      const teamName = combinedLogData?.teamName ?? "None";
-      const projectName = combinedLogData?.projectName ?? "None";
-      
-      if (!detailedLog) {
-        throw new Error("Notion Error: Time log not found");
-      }
-
-      const durationStr = formatDuration(detailedLog.duration);
-
-
-      const notionTitle = detailedLog.title || detailedLog.description || "Time Log";
-
-
-      console.log(" Notion Title:", notionTitle);
-
-      console.log(" Project Name:", projectName);
-
-      console.log(" Duration:", durationStr);
-
-      console.log(" Detailed log:", detailedLog);
-
-      // 4. Create Page
-      if (action === "create") {
-        try {
-          console.log("Attempting to create Notion page with full properties...");
-          const pageResponse = await notion.pages.create({
-            parent: { data_source_id: databaseId },
-            properties: {
-              Name: {
-                title: [{ text: { content: notionTitle } }],
-              },
-              Date: {
-                date: {
-                  start: detailedLog.start_time.toISOString(),
-                  end: detailedLog.end_time.toISOString(),
-                },
-              },
-              Project: {
-                rich_text: [{ text: { content: projectName } }],
-              },
-              Duration: {
-                number: detailedLog.duration,
-              },
-              "Readable Duration": {
-                rich_text: [{ text: { content: durationStr } }],
-              },
-              Organization: {
-                rich_text: [{ text: { content: orgName } }],
-              },
-              Team: {
-                rich_text: [{ text: { content: teamName } }],
-              },
-            },
-          });
-
-          const pageId = pageResponse.id;
-          await tx
-            .update(tables.timeLogs)
-            .set({ notion_page_id: pageId })
-            .where(eq(tables.timeLogs.id, timeLogId));
-        } catch (createErr: any) {
-          console.warn("Failed to create Notion page with full properties, retrying with title only...", createErr);
-          if (createErr.message.includes("Property not found")) {
-            throw new Error("Notion Error: Database schema mismatch. Please update your Notion database with the required properties.");
-          }
-          const pageResponse = await notion.pages.create({
-            parent: { data_source_id: databaseId },
-            properties: {
-              Name: {
-                title: [{ text: { content: notionTitle } }],
-              },
-            },
-          });
-
-          const pageId = pageResponse.id;
-          await tx
-            .update(tables.timeLogs)
-            .set({ notion_page_id: pageId })
-            .where(eq(tables.timeLogs.id, timeLogId));
-        }
-      }
-
-      // 5. Update Page
-      if (action === "update") {
-        if (detailedLog.notion_page_id) {
-          try {
-            await notion.pages.update({
-              page_id: detailedLog.notion_page_id,
-              properties: {
-                Name: {
-                  title: [{ text: { content: notionTitle } }],
-                },
-                Date: {
-                  date: {
-                    start: detailedLog.start_time.toISOString(),
-                    end: detailedLog.end_time.toISOString(),
-                  },
-                },
-                Project: {
-                  rich_text: [{ text: { content: projectName } }],
-                },
-                Duration: {
-                  number: detailedLog.duration,
-                },
-                "Readable Duration": {
-                  rich_text: [{ text: { content: durationStr } }],
-                },
-              },
-            });
-          } catch (updateErr: any) {
-            console.warn("Failed to update Notion page with full properties, retrying with title only...", updateErr);
-            if (updateErr.message.includes("Property not found")) {
-              throw new Error("Notion Error: Database schema mismatch. Please update your Notion database with the required properties.");
-            }
-            await notion.pages.update({
-              page_id: detailedLog.notion_page_id,
-              properties: {
-                Name: {
-                  title: [{ text: { content: notionTitle } }],
-                },
-              },
-            });
-          }
-        } else {
-          // Self-healing: Create the page in Notion if it didn't exist when the log was first created
-          try {
-            const pageResponse = await notion.pages.create({
-              parent: { data_source_id: databaseId },
-              properties: {
-                Name: {
-                  title: [{ text: { content: notionTitle } }],
-                },
-                Date: {
-                  date: {
-                    start: detailedLog.start_time.toISOString(),
-                    end: detailedLog.end_time.toISOString(),
-                  },
-                },
-                Project: {
-                  rich_text: [{ text: { content: projectName } }],
-                },
-                Duration: {
-                  number: detailedLog.duration,
-                },
-                "Readable Duration": {
-                  rich_text: [{ text: { content: durationStr } }],
-                },
-              },
-            });
-
-            const pageId = pageResponse.id;
-            await tx
-              .update(tables.timeLogs)
-              .set({ notion_page_id: pageId })
-              .where(eq(tables.timeLogs.id, timeLogId));
-          } catch (createErr: any) {
-            console.warn("Failed to self-heal create Notion page with full properties, retrying with title only...", createErr);
-            const pageResponse = await notion.pages.create({
-              parent: { data_source_id: databaseId },
-              properties: {
-                Name: {
-                  title: [{ text: { content: notionTitle } }],
-                },
-              },
-            });
-
-            const pageId = pageResponse.id;
-            await tx
-              .update(tables.timeLogs)
-              .set({ notion_page_id: pageId })
-              .where(eq(tables.timeLogs.id, timeLogId));
-          }
-        }
-      }
-    } catch (err) {
-      console.error("Error syncing to Notion:", err);
-    }
-  }
 }
