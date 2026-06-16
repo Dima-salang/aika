@@ -19,6 +19,10 @@ export const env = createEnv({
         GOOGLE_CLIENT_ID: z.string().optional(),
         GOOGLE_CLIENT_SECRET: z.string().optional(),
         SENTRY_AUTH_TOKEN: z.string().optional(),
+        NOTION_CLIENT_ID: z.string().optional(),
+        NOTION_CLIENT_SECRET: z.string().optional(),
+        NOTION_REDIRECT_URI: z.string().optional(),
+        NOTION_AUTHORIZATION_URL: z.string().optional(),
     },
     runtimeEnv: {
         DATABASE_URL: process.env.DATABASE_URL,
@@ -34,5 +38,9 @@ export const env = createEnv({
         GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
         GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
         SENTRY_AUTH_TOKEN: process.env.SENTRY_AUTH_TOKEN,
+        NOTION_CLIENT_ID: process.env.NOTION_CLIENT_ID,
+        NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET,
+        NOTION_REDIRECT_URI: process.env.NOTION_REDIRECT_URI,
+        NOTION_AUTHORIZATION_URL: process.env.NOTION_AUTHORIZATION_URL,
     },
 });

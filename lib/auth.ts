@@ -33,6 +33,18 @@ export const auth = betterAuth({
         type: "string",
         required: false,
       },
+      notion_access_token: {
+        type: "string",
+        required: false,
+      },
+      notion_database_id: {
+        type: "string",
+        required: false,
+      },
+      notion_workspace_name: {
+        type: "string",
+        required: false,
+      },
     },
   },
   emailAndPassword: {
