@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo } from "react";
 import { trpc } from "@/utils/trpc";
+import { calculateDurationHours } from "@/utils/time";
 import { ReportFilters } from "./report-filters";
 import { MetricCards } from "./metric-cards";
 import { ProjectDistributionChart } from "./project-distribution-chart";
@@ -154,8 +155,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
 
     logs.forEach((log: any) => {
       const start = new Date(log.startTime);
-      const end = new Date(log.endTime);
-      const hours = (end.getTime() - start.getTime()) / (1000 * 60 * 60);
+      const hours = calculateDurationHours(log.duration);
       if (hours <= 0) return;
 
       if (groupBy === "day") {
@@ -231,7 +231,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
       const title = `"${log.title.replace(/"/g, '""')}"`;
       const desc = `"${log.description.replace(/"/g, '""')}"`;
       const proj = `"${(log.projectName || "No Project").replace(/"/g, '""')}"`;
-      const duration = (log.durationMs / (1000 * 60 * 60)).toFixed(2);
+      const duration = calculateDurationHours(log.duration).toFixed(2);
       const links = `"${log.evidenceUrls.join("; ")}"`;
 
       csvContent += `${date},${time},${name},${email},${title},${desc},${proj},${duration},${links}\n`;

@@ -2,6 +2,7 @@
 
 import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
+import { calculateDurationHours } from "@/utils/time";
 import { Loader2, Plus, Trash2, Copy, Check, X, ShieldAlert, Key, Sparkles, UserCheck, UserX, Clock, FileText } from "lucide-react";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
@@ -406,8 +407,7 @@ export function DashboardManageControls({ userId }: DashboardManageControlsProps
           ) : teamTimeline && teamTimeline.length > 0 ? (
             <div className="relative pl-6 border-l border-outline-variant/60 space-y-8 py-2">
               {teamTimeline.map((log: any) => {
-                const durationMs = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-                const durationHrs = (durationMs / 3600000).toFixed(2);
+                const durationHrs = calculateDurationHours(log.duration).toFixed(2);
                 
                 return (
                   <div key={log.id} className="relative group">

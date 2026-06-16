@@ -12,6 +12,7 @@ import {
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
 import { renderMarkdown } from "@/utils/markdown";
+import { formatDuration } from "@/utils/time";
 
 interface LogTask {
   id: string;
@@ -39,6 +40,7 @@ export interface ActivityLogItemData {
   userEmail?: string;
   userImage?: string | null;
   userRole?: string;
+  duration?: number;
 }
 
 interface ActivityLogItemProps {
@@ -94,11 +96,10 @@ export function ActivityLogItem({
   onDelete,
   onSelect
 }: ActivityLogItemProps) {
-  const durationMs = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-  const minutes = Math.max(0, Math.floor(durationMs / 60000));
-  const hrs = Math.floor(minutes / 60);
-  const mins = minutes % 60;
-  const durationFormatted = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+  const durationSeconds = log.duration !== undefined 
+    ? log.duration 
+    : Math.max(0, Math.floor((new Date(log.end_time).getTime() - new Date(log.start_time).getTime()) / 1000));
+  const durationFormatted = formatDuration(durationSeconds);
 
   const formattedTimeRange = `${new Date(log.start_time).toLocaleTimeString(undefined, {
     hour: "2-digit",

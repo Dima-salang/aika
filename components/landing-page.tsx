@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { calculateDurationHours } from "@/utils/time";
 import { Play, Square, Sparkles, Clock, Check, BarChart3, Users, Keyboard, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 export function LandingPage() {
@@ -38,7 +39,7 @@ export function LandingPage() {
     if (isTimerRunning) {
       setIsTimerRunning(false);
       const displayTask = taskName.trim() || "Building my project";
-      const hours = (timerSeconds / 3600).toFixed(4);
+      const hours = calculateDurationHours(timerSeconds).toFixed(4);
       toast.success(`Logged: ${timerSeconds} seconds on "${displayTask}" under #${selectedTag}!`, {
         description: "In the real app, this goes straight into your dashboard charts.",
         duration: 5000,
