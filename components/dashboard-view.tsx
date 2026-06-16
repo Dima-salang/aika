@@ -7,6 +7,7 @@ import { WeeklyOverview } from "./dashboard/weekly-overview";
 import { RecentActivities } from "./dashboard/recent-activities";
 import { ProjectBreakdown } from "./dashboard/project-breakdown";
 import { InsightsCards } from "./dashboard/insights-cards";
+import { getLogDurationSeconds, calculateDurationHours } from "@/utils/time";
 
 interface DashboardViewProps {
   logs: any[];
@@ -36,7 +37,7 @@ export function DashboardView({
   onSelectLog,
   startPending = false,
   stopPending = false,
-}: DashboardViewProps) {
+ }: DashboardViewProps) {
   // 1. Current Date
   const formattedDate = useMemo(() => {
     return new Date().toLocaleDateString(undefined, {
@@ -64,12 +65,10 @@ export function DashboardView({
   }, [logs, startOfWeek]);
 
   const thisWeekHours = useMemo(() => {
-    const totalMs = thisWeekLogs.reduce((acc, log) => {
-      if (!log.start_time || !log.end_time) return acc;
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-      return acc + (diff > 0 ? diff : 0);
+    const totalSeconds = thisWeekLogs.reduce((acc, log) => {
+      return acc + getLogDurationSeconds(log);
     }, 0);
-    return (totalMs / 3600000).toFixed(1);
+    return calculateDurationHours(totalSeconds).toFixed(1);
   }, [thisWeekLogs]);
 
   // 3. Weekly Overview Chart Data
@@ -83,11 +82,11 @@ export function DashboardView({
 
     const hoursByDate: Record<string, number> = {};
     logs.forEach((log) => {
-      if (!log.start_time || !log.end_time) return;
+      if (!log.start_time) return;
       const dateStr = new Date(log.start_time).toDateString();
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-      if (diff > 0) {
-        hoursByDate[dateStr] = (hoursByDate[dateStr] || 0) + diff / 3600000;
+      const seconds = getLogDurationSeconds(log);
+      if (seconds > 0) {
+        hoursByDate[dateStr] = (hoursByDate[dateStr] || 0) + calculateDurationHours(seconds);
       }
     });
 
@@ -101,28 +100,27 @@ export function DashboardView({
 
   // 4. Project Breakdown calculations
   const projectBreakdown = useMemo(() => {
-    const hoursByProject: Record<string, number> = {};
-    let totalMs = 0;
+    const secondsByProject: Record<string, number> = {};
+    let totalSeconds = 0;
 
     thisWeekLogs.forEach((log) => {
-      if (!log.start_time || !log.end_time) return;
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-      if (diff > 0) {
-        totalMs += diff;
+      const seconds = getLogDurationSeconds(log);
+      if (seconds > 0) {
+        totalSeconds += seconds;
         const projId = log.project_id || "other";
-        hoursByProject[projId] = (hoursByProject[projId] || 0) + diff;
+        secondsByProject[projId] = (secondsByProject[projId] || 0) + seconds;
       }
     });
 
-    const breakdownList = Object.entries(hoursByProject).map(([projId, ms]) => {
+    const breakdownList = Object.entries(secondsByProject).map(([projId, secs]) => {
       const projObj = projects.find((p) => p.id === projId);
-      const hours = ms / 3600000;
+      const hours = calculateDurationHours(secs);
       return {
         id: projId,
-        name: projObj ? projObj.name : projId === "other" ? "Other Tasks" : "Unassigned",
+        name: projObj ? projObj.name : "Unassigned",
         hours: hours.toFixed(1) + "h",
         rawHours: hours,
-        percentage: totalMs > 0 ? (ms / totalMs) * 100 : 0,
+        percentage: totalSeconds > 0 ? (secs / totalSeconds) * 100 : 0,
       };
     });
 
@@ -193,13 +191,13 @@ export function DashboardView({
 
   return (
     <section className="flex-1 overflow-y-auto custom-scrollbar p-unit-6 max-w-container-max mx-auto w-full flex flex-col gap-unit-6 animate-in fade-in duration-300">
-      
+
       {/* 1. Welcome Header (Modular & SSR friendly) */}
       <DashboardHeader formattedDate={formattedDate} thisWeekHours={thisWeekHours} />
 
       {/* 2. Bento Grid Layout */}
       <div className="grid grid-cols-12 gap-unit-4">
-        
+
         {/* Currently Tracking (Priority Card) */}
         <CurrentlyTracking
           runningTimer={runningTimer}

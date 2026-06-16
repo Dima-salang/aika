@@ -1,4 +1,5 @@
 import React from "react";
+import { getLogDurationSeconds, formatDuration } from "@/utils/time";
 
 interface RecentActivitiesProps {
   recentActivities: any[];
@@ -40,12 +41,9 @@ export function RecentActivities({ recentActivities = [], projects = [], onSelec
           recentActivities.map((log) => {
             const projectObj = projects.find((p) => p.id === log.project_id);
             const { icon, colorClass } = getActivityIcon(log.title || log.description, projectObj?.name);
-            
-            const ms = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-            const totalMins = Math.floor(ms / 60000);
-            const hrs = Math.floor(totalMins / 60);
-            const mins = totalMins % 60;
-            const formattedDuration = `${hrs.toString().padStart(2, "0")}:${mins.toString().padStart(2, "0")}:00`;
+
+            const durationSeconds = getLogDurationSeconds(log);
+            const formattedDuration = formatDuration(durationSeconds);
             
             const logDate = new Date(log.start_time);
             const timeStr = logDate.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
