@@ -166,6 +166,7 @@ export const timeLogs = pgTable("time_logs", {
     deleted_at: timestamp("deleted_at"),
     notion_page_id: text("notion_page_id"),
     duration: integer("duration").notNull().default(0),
+    is_public: boolean("is_public").default(false),
 });
 
 // Time Log Tasks (Many-to-Many Join Table)
@@ -412,6 +413,7 @@ export const timeLogsSqlite = sqliteTable("time_logs", {
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
     notion_page_id: sqliteText("notion_page_id"),
     duration: sqliteInteger("duration").notNull().default(0),
+    is_public: sqliteInteger("is_public", { mode: "boolean" }).default(false),
 });
 
 // Time Log Tasks (Many-to-Many Join Table)
@@ -722,6 +724,7 @@ export const createLogInputZodSchema = z.object({
   description: z.string().min(1),
   taskIds: z.array(z.string()).optional(),
   evidence: z.array(evidenceInputSchema).min(1),
+  isPublic: z.boolean().optional(),
 });
 
 export const updateLogInputZodSchema = z.object({
@@ -734,6 +737,7 @@ export const updateLogInputZodSchema = z.object({
   description: z.string().min(1).optional(),
   taskIds: z.array(z.string()).optional(),
   evidence: z.array(evidenceInputSchema).min(1).optional(),
+  isPublic: z.boolean().optional(),
 });
 
 export const readLogZodSchema = z.object({
@@ -750,6 +754,7 @@ export const readLogZodSchema = z.object({
   updated_at: z.coerce.date(),
   deleted_at: z.coerce.date().nullable(),
   duration: z.number(),
+  is_public: z.boolean().nullable().optional(),
   tasks: z.array(z.string()),
   evidence: z.array(
     z.object({
