@@ -23,7 +23,7 @@ export class NotionService {
     try {
       const notionConfig = await this.getNotionConfig(userId, tx);
       if (!notionConfig) {
-        throw new Error("User not integrated with Notion");
+        return;
       }
 
       const notion = new Client({ auth: notionConfig.accessToken });

@@ -12,6 +12,7 @@ import {
   TimeLogSqlite,
   Timer,
   TimerSqlite,
+  evidenceInputSchema
 } from "@/db/schema";
 import { eq, and, lt, gt, isNull, ne, inArray, lte, gte, desc, or, like } from "drizzle-orm";
 import { SQL } from "drizzle-orm";
@@ -22,6 +23,7 @@ import { TaskService } from "./TaskService";
 import { tables } from "./tables";
 import crypto from "crypto";
 import { z } from "zod";
+import { ImportedLogInput } from "./import-export/types";
 
 const stopTimerSchema = z.object({
   userId: z.string(),
@@ -41,6 +43,14 @@ const stopTimerSchema = z.object({
   projectId: z.string().nullable().optional(),
   title: z.string().optional(),
 });
+
+export const bulkLogItemSchema = createLogInputZodSchema
+  .omit({ organizationId: true, teamId: true, userId: true })
+  .extend({
+    evidence: z.array(evidenceInputSchema),
+  });
+
+export type BulkLogItemInput = z.infer<typeof bulkLogItemSchema>;
 
 export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_at"> {
   deleted_at: Date | null;
@@ -1032,6 +1042,221 @@ export class LogService {
         evidence: evidenceMap[log.id] || [],
       };
     }) as TimelineLog[];
+  }
+
+  async bulkCreateLogs(
+    userId: string,
+    organizationId: string,
+    teamId: string | null,
+    logs: BulkLogItemInput[],
+    ipAddress?: string,
+    userAgent?: string,
+    outerTx?: DBInstance
+  ): Promise<{ successCount: number }> {
+    const execute = async (tx: DBInstance) => {
+      if (logs.length === 0) return { successCount: 0 };
+
+      const timeLogValues: NewTimeLog[] = [];
+      const timeLogTaskValues: any[] = [];
+      const documentEvidenceValues: any[] = [];
+
+      for (const log of logs) {
+        const logId = crypto.randomUUID();
+        timeLogValues.push({
+          id: logId,
+          user_id: userId,
+          organization_id: organizationId,
+          team_id: teamId,
+          project_id: log.projectId,
+          start_time: log.startTime,
+          end_time: log.endTime,
+          title: log.title || "Untitled Task",
+          description: log.description,
+          created_at: new Date(),
+          updated_at: new Date(),
+          deleted_at: null,
+          duration: calculateDurationSeconds(log.startTime, log.endTime),
+        });
+
+        if (log.taskIds && log.taskIds.length > 0) {
+          log.taskIds.forEach((taskId) => {
+            timeLogTaskValues.push({
+              time_log_id: logId,
+              task_id: taskId,
+            });
+          });
+        }
+
+        if (log.evidence && log.evidence.length > 0) {
+          log.evidence.forEach((file) => {
+            documentEvidenceValues.push({
+              id: crypto.randomUUID(),
+              time_log_id: logId,
+              file_url: file.fileUrl,
+              file_key: file.fileKey,
+              file_name: file.fileName,
+              file_size: file.fileSize,
+              mime_type: file.mimeType,
+              created_at: new Date(),
+              deleted_at: null,
+            });
+          });
+        }
+      }
+
+      await tx.insert(tables.timeLogs).values(timeLogValues);
+
+      if (timeLogTaskValues.length > 0) {
+        await tx.insert(tables.timeLogTasks).values(timeLogTaskValues);
+      }
+
+      if (documentEvidenceValues.length > 0) {
+        await tx.insert(tables.documentEvidences).values(documentEvidenceValues);
+      }
+
+      await this.auditService.createAuditLog(
+        userId,
+        "bulk_time_log_creation",
+        "time_logs",
+        userId,
+        `Bulk created ${logs.length} time logs`,
+        { count: logs.length },
+        ipAddress,
+        userAgent,
+        tx
+      );
+
+      if (timeLogValues.length > 0) {
+        Promise.all(
+          timeLogValues.map((log) =>
+            notionService.syncLog("create", log.id, userId).catch((err) => {
+              console.error(`Notion sync failed for log ${log.id}:`, err);
+            })
+          )
+        );
+      }
+
+      return { successCount: logs.length };
+    };
+
+    return outerTx ? await execute(outerTx) : await runTransaction(execute);
+  }
+
+  async importLogs(
+    userId: string,
+    organizationId: string,
+    teamId: string | null,
+    logs: ImportedLogInput[],
+    ipAddress?: string,
+    userAgent?: string
+  ): Promise<{ successCount: number; errors: Array<{ title: string; error: string }> }> {
+    const errors: Array<{ title: string; error: string }> = [];
+
+    const orgProjects = await db.select().from(tables.projects).where(
+      and(
+        eq(tables.projects.organization_id, organizationId),
+        isNull(tables.projects.deleted_at)
+      )
+    );
+
+    const orgTasks = await db.select().from(tables.tasks).where(
+      and(
+        eq(tables.tasks.organization_id, organizationId),
+        isNull(tables.tasks.deleted_at)
+      )
+    );
+
+    const logsToCreate: any[] = [];
+
+    for (const log of logs) {
+      try {
+        if (!log.title) {
+          throw new Error("Validation Error: Title is required");
+        }
+        if (!log.description) {
+          throw new Error("Validation Error: Description is required");
+        }
+        if (log.startTime >= log.endTime) {
+          throw new Error("Validation Error: Start time must be before end time");
+        }
+
+        let projectId: string | null = null;
+        if (log.projectName) {
+          const matchedProj = orgProjects.find(
+            (p) => p.name.trim().toLowerCase() === log.projectName!.trim().toLowerCase()
+          );
+          if (matchedProj) {
+            projectId = matchedProj.id;
+          }
+        }
+
+        const taskIds: string[] = [];
+        if (log.taskTitles && log.taskTitles.length > 0) {
+          log.taskTitles.forEach((title) => {
+            const matchedTask = orgTasks.find(
+              (t) => t.title.trim().toLowerCase() === title.trim().toLowerCase()
+            );
+            if (matchedTask) {
+              taskIds.push(matchedTask.id);
+            }
+          });
+        }
+
+        const evidence = log.evidenceUrls
+          ? log.evidenceUrls.map((url) => {
+              const fileName = url.split("/").pop() || "evidence-file";
+              return {
+                fileUrl: url,
+                fileKey: `imported/${crypto.randomUUID()}`,
+                fileName,
+                fileSize: 1024,
+                mimeType: url.endsWith(".png") ? "image/png" : url.endsWith(".jpg") || url.endsWith(".jpeg") ? "image/jpeg" : "application/pdf",
+              };
+            })
+          : [];
+
+        if (evidence.length === 0) {
+          evidence.push({
+            fileUrl: "https://example.com/imported_placeholder.txt",
+            fileKey: "imported/placeholder",
+            fileName: "imported_placeholder.txt",
+            fileSize: 22,
+            mimeType: "text/plain",
+          });
+        }
+
+        logsToCreate.push({
+          title: log.title,
+          description: log.description,
+          startTime: log.startTime,
+          endTime: log.endTime,
+          projectId,
+          taskIds,
+          evidence,
+        });
+      } catch (err: any) {
+        errors.push({
+          title: log.title || "Untitled Log",
+          error: err.message || "Unknown error",
+        });
+      }
+    }
+
+    if (logsToCreate.length > 0) {
+      await this.bulkCreateLogs(
+        userId,
+        organizationId,
+        teamId,
+        logsToCreate,
+        ipAddress,
+        userAgent
+      );
+    }
+
+    return {
+      successCount: logsToCreate.length,
+      errors,
+    };
   }
 
 }
