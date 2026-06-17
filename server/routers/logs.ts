@@ -11,6 +11,7 @@ import {
   userIdInputZodSchema,
 } from "@/db/schema";
 import { handleDbError } from "@/utils/db-errors";
+import { importedLogZodSchema } from "@/services/import-export/types";
 
 // Service Imports & Instantiation
 import { AuditService } from "@/services/AuditService";
@@ -96,6 +97,28 @@ export const logsRouter = router({
     .mutation(async ({ input }) => {
       try {
         return await logService.createLog(input);
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
+  importLogs: publicProcedure
+    .input(
+      z.object({
+        userId: z.string(),
+        organizationId: z.string(),
+        teamId: z.string().nullable().optional(),
+        logs: z.array(importedLogZodSchema),
+      })
+    )
+    .mutation(async ({ input }) => {
+      try {
+        return await logService.importLogs(
+          input.userId,
+          input.organizationId,
+          input.teamId ?? null,
+          input.logs
+        );
       } catch (error) {
         handleDbError(error);
       }
