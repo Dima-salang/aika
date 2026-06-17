@@ -20,9 +20,10 @@ interface TeamSpaceViewProps {
   organizationId: string;
   activeTeamId: string | null;
   onSelectLog?: (log: any) => void;
+  onShareLog?: (log: any) => void;
 }
 
-export function TeamSpaceView({ userId, organizationId, activeTeamId: propActiveTeamId, onSelectLog }: TeamSpaceViewProps) {
+export function TeamSpaceView({ userId, organizationId, activeTeamId: propActiveTeamId, onSelectLog, onShareLog }: TeamSpaceViewProps) {
   const [activeSubTab, setActiveSubTab] = useState<"feed" | "members" | "manage">("feed");
   const [selectedTeamId, setSelectedTeamId] = useState<string>("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -323,6 +324,7 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
             hasNextPage={!!hasNextTimelinePage}
             isFetchingNextPage={isFetchingNextTimelinePage}
             onSelect={onSelectLog}
+            onShare={onShareLog}
           />
         )}
         {activeSubTab === "members" && (

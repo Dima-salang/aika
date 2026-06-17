@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { Clock, ExternalLink, Edit2, Trash2 } from "lucide-react";
+import { Clock, ExternalLink, Edit2, Trash2, Share2 } from "lucide-react";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
 import { renderMarkdown } from "@/utils/markdown";
@@ -13,6 +13,7 @@ interface TimeLogCardProps {
   onEdit: (log: any) => void;
   onDelete: (logId: string) => void;
   onSelect?: (log: any) => void;
+  onShare?: (log: any) => void;
 }
 
 export const getProjectColorBadge = (projName: string) => {
@@ -55,6 +56,7 @@ export function TimeLogCard({
   onEdit,
   onDelete,
   onSelect,
+  onShare,
 }: TimeLogCardProps) {
   const getFriendlyDuration = (start: Date, end: Date) => {
     const ms = new Date(end).getTime() - new Date(start).getTime();
@@ -93,6 +95,18 @@ export function TimeLogCard({
         )}
 
         <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          {onShare && (
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onShare(log);
+              }}
+              className={`p-1 hover:bg-surface-container-high rounded transition-colors ${log.is_public ? "text-primary hover:text-primary-hover" : "text-outline hover:text-primary"}`}
+              title={log.is_public ? "Copy Share Link (Shared)" : "Copy Share Link"}
+            >
+              <Share2 className="h-3.5 w-3.5" />
+            </button>
+          )}
           <button
             onClick={(e) => {
               e.stopPropagation();

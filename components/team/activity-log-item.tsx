@@ -7,7 +7,8 @@ import {
   ExternalLink, 
   Edit2, 
   Trash2,
-  Calendar
+  Calendar,
+  Share2
 } from "lucide-react";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
@@ -41,6 +42,7 @@ export interface ActivityLogItemData {
   userImage?: string | null;
   userRole?: string;
   duration?: number;
+  is_public?: boolean;
 }
 
 interface ActivityLogItemProps {
@@ -51,6 +53,7 @@ interface ActivityLogItemProps {
   onEdit?: (log: any) => void;
   onDelete?: (logId: string) => void;
   onSelect?: (log: any) => void;
+  onShare?: (log: any) => void;
 }
 
 // Harmonious color palettes matching the tracker & feed pages
@@ -94,7 +97,8 @@ export function ActivityLogItem({
   compact = false,
   onEdit,
   onDelete,
-  onSelect
+  onSelect,
+  onShare
 }: ActivityLogItemProps) {
   const durationSeconds = getLogDurationSeconds(log);
   const durationFormatted = formatDuration(durationSeconds);
@@ -169,6 +173,18 @@ export function ActivityLogItem({
 
             {showActions && (
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                {onShare && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onShare(log);
+                    }}
+                    className={`p-1 hover:bg-surface-container-high rounded transition-colors ${log.is_public ? "text-primary hover:text-primary-hover" : "text-outline hover:text-primary"}`}
+                    title={log.is_public ? "Copy Share Link (Shared)" : "Copy Share Link"}
+                  >
+                    <Share2 className="h-3 w-3" />
+                  </button>
+                )}
                 {onEdit && (
                   <button
                     onClick={(e) => {

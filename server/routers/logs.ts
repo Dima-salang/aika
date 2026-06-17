@@ -27,9 +27,39 @@ const logService = new LogService(auditService, taskService, storageService);
 export const logsRouter = router({
   getLog: publicProcedure
     .input(getLogInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
-        return await logService.getLogById(input.id);
+        const log = await logService.getLogById(input.id);
+        if (!log) return null;
+
+        // public access allowed if is_public is true
+        if (log.is_public) {
+          return log;
+        }
+
+        // otherwise require session authentication
+        const session = ctx.session;
+        if (!session || !session.user) {
+          throw new Error("Security Error: Unauthorized");
+        }
+
+        // user is the owner
+        if (log.user_id === session.user.id) {
+          return log;
+        }
+
+        // user is a global admin (custom is_admin field on user)
+        const userDetails = session.user as any;
+        if (userDetails.is_admin) {
+          return log;
+        }
+
+        // user belongs to the active organization of the log
+        if (session.session.activeOrganizationId === log.organization_id) {
+          return log;
+        }
+
+        throw new Error("Security Error: Unauthorized");
       } catch (error) {
         handleDbError(error);
       }

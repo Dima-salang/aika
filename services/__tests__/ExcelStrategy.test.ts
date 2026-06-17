@@ -21,6 +21,7 @@ describe("ExcelStrategy", () => {
       deleted_at: null,
       duration: 7200,
       notion_page_id: null,
+      is_public: false,
       tasks: ["task-1", "task-2"],
       evidence: [
         { file_url: "https://example.com/file1.pdf", file_name: "file1.pdf" },
@@ -42,6 +43,7 @@ describe("ExcelStrategy", () => {
       deleted_at: null,
       duration: 5400,
       notion_page_id: null,
+      is_public: false,
       tasks: [],
       evidence: []
     }

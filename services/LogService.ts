@@ -59,6 +59,16 @@ export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_
   duration: number;
 }
 
+const NotionLogPropertiesSchema = z.object({
+  title: z.string(),
+  description: z.string(),
+  start_time: z.string(),
+  end_time: z.string(),
+  duration: z.number(),
+});
+
+export type NotionTimeLogProperties = z.infer<typeof NotionLogPropertiesSchema>;
+
 export interface TimelineLog {
   id: string;
   user_id: string;
@@ -76,6 +86,7 @@ export interface TimelineLog {
   userImage: string | null;
   projectName: string | null;
   userRole: string;
+  is_public: boolean;
   tasks: Array<{ id: string; title: string }>;
   evidence: unknown[];
 }
@@ -202,6 +213,7 @@ export class LogService {
         updated_at: new Date(),
         deleted_at: null,
         duration: calculateDurationSeconds(parsedInput.startTime, parsedInput.endTime),
+        is_public: parsedInput.isPublic || false,
       };
 
       const validatedLog = newTimeLogZodSchema.parse(logData) as NewTimeLog;
@@ -333,6 +345,7 @@ export class LogService {
         description: parsedInput.description ?? existing.description,
         updated_at: new Date(),
         duration: calculateDurationSeconds(startTime, endTime),
+        is_public: parsedInput.isPublic !== undefined ? parsedInput.isPublic : existing.is_public,
       };
 
       const [updatedLog] = await tx
@@ -412,9 +425,17 @@ export class LogService {
 
       return updatedLog;
     };
-
     const updatedLog = await execute(db);
-    await notionService.syncLog("update", updatedLog.id, userId);
+
+
+    // determine if notion update is required
+    // check if the updated fields has one of the notion properties
+    const incomingFields = Object.keys(parsedInput);
+    const requiresNotionUpdate = incomingFields.some(field => field in NotionLogPropertiesSchema.keyof());
+
+    if (requiresNotionUpdate) {
+      await notionService.syncLog("update", updatedLog.id, userId);
+    }
     return updatedLog;
   }
 
@@ -718,6 +739,7 @@ export class LogService {
         deleted_at: table.deleted_at,
         notion_page_id: table.notion_page_id,
         duration: table.duration,
+        is_public: table.is_public,
         projectName: tables.projects.name,
       })
       .from(table)
@@ -959,6 +981,7 @@ export class LogService {
         created_at: timeLogsTable.created_at,
         updated_at: timeLogsTable.updated_at,
         duration: timeLogsTable.duration,
+        is_public: timeLogsTable.is_public,
         userName: userTable.name,
         userEmail: userTable.email,
         userImage: userTable.image,

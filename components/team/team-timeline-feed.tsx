@@ -76,6 +76,7 @@ interface TeamTimelineFeedProps {
   hasNextPage: boolean;
   isFetchingNextPage: boolean;
   onSelect?: (log: any) => void;
+  onShare?: (log: any) => void;
 }
 
 // Color coding helpers matching tracker page, optimized for light and dark high-contrast
@@ -129,7 +130,8 @@ export function TeamTimelineFeed({
   fetchNextPage,
   hasNextPage,
   isFetchingNextPage,
-  onSelect
+  onSelect,
+  onShare
 }: TeamTimelineFeedProps) {
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
@@ -292,6 +294,7 @@ export function TeamTimelineFeed({
                     showUser={true}
                     compact={false}
                     onSelect={onSelect}
+                    onShare={onShare}
                   />
                 ))}
               </div>

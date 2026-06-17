@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { X, Calendar, Clock, ClipboardList, ExternalLink, Tag, AlertCircle, FileText } from "lucide-react";
+import { X, Calendar, Clock, ClipboardList, ExternalLink, Tag, AlertCircle, FileText, Share2 } from "lucide-react";
 import { getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { renderMarkdown } from "@/utils/markdown";
@@ -13,6 +13,7 @@ interface DetailViewDialogProps {
   selectedTask?: any;
   projects: any[];
   tasks: any[];
+  onShareLog?: (log: any) => void;
 }
 
 export function DetailViewDialog({
@@ -22,6 +23,7 @@ export function DetailViewDialog({
   selectedTask,
   projects = [],
   tasks = [],
+  onShareLog,
 }: DetailViewDialogProps) {
   if (!isOpen) return null;
 
@@ -89,9 +91,20 @@ export function DetailViewDialog({
                     Log #{selectedLog.id.slice(0, 8)}
                   </span>
                 </div>
-                <h3 className="text-xl text-on-surface font-extrabold leading-snug">
-                  {selectedLog.title}
-                </h3>
+                <div className="flex items-start justify-between gap-3">
+                  <h3 className="text-xl text-on-surface font-extrabold leading-snug">
+                    {selectedLog.title}
+                  </h3>
+                  {onShareLog && (
+                    <button
+                      onClick={() => onShareLog(selectedLog)}
+                      className={`p-1.5 border border-outline-variant rounded-lg hover:bg-surface-container-high transition-colors cursor-pointer shrink-0 ${selectedLog.is_public ? "text-primary border-primary/30 bg-primary/5" : "text-outline hover:text-primary"}`}
+                      title={selectedLog.is_public ? "Copy Share Link (Shared)" : "Copy Share Link"}
+                    >
+                      <Share2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Time Window Details */}
