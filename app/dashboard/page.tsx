@@ -53,6 +53,9 @@ export default function Dashboard() {
   const [isDark, setIsDark] = useState(false);
   const [isShortcutsOpen, setIsShortcutsOpen] = useState(false);
 
+  // Mobile Navigation State
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+
   // Auth Redirect if no session
   useEffect(() => {
     if (!isPending && !session) {
@@ -127,6 +130,7 @@ export default function Dashboard() {
   const handleSetActiveTab = (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports") => {
     localStorage.setItem("aika-active-tab", tab);
     setActiveTab(tab);
+    setIsMobileSidebarOpen(false); // Close sidebar on mobile after choosing a tab
   };
 
   const prevOrgIdRef = useRef<string | null>(null);
@@ -540,23 +544,36 @@ export default function Dashboard() {
         isDark={isDark}
         toggleTheme={toggleTheme}
         onOpenShortcuts={() => setIsShortcutsOpen(true)}
+        isOpenMobile={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
       <div className="flex-1 flex overflow-hidden h-screen w-full">
         <main className="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden h-screen">
-          {activeTab !== "projects" && activeTab !== "team" && activeTab !== "reports" && (
-            <Header
-              searchQuery={searchQuery}
-              setSearchQuery={setSearchQuery}
-              isDark={isDark}
-              toggleTheme={toggleTheme}
-              runningTimer={runningTimer}
-              handleStartTimer={handleStartTimer}
-              setIsDialogOpen={setIsDialogOpen}
-              setEditingLog={setEditingLog}
-              session={session}
-            />
-          )}
+          <Header
+            searchQuery={searchQuery}
+            setSearchQuery={setSearchQuery}
+            isDark={isDark}
+            toggleTheme={toggleTheme}
+            runningTimer={runningTimer}
+            handleStartTimer={handleStartTimer}
+            setIsDialogOpen={setIsDialogOpen}
+            setEditingLog={setEditingLog}
+            session={session}
+            onOpenMobileSidebar={() => setIsMobileSidebarOpen(true)}
+            projects={projects || []}
+            timerProjId={timerProjId}
+            setTimerProjId={setTimerProjId}
+            timerDesc={timerDesc}
+            setTimerDesc={setTimerDesc}
+            timerSeconds={timerSeconds}
+            formatDuration={formatDuration}
+            stopTimerMutation={stopTimerMutation}
+            handleStopTimerWithEvidence={handleStopTimerWithEvidence}
+            handleDiscardTimer={handleDiscardTimer}
+            startPending={startTimerMutation.isPending}
+            activeTab={activeTab}
+          />
 
           {activeTab === "projects" ? (
             <ProjectsTasksTab
