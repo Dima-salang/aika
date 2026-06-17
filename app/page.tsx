@@ -703,6 +703,13 @@ export default function Home() {
                             setLogFilterStartDate("");
                             setLogFilterEndDate("");
                           }}
+                          userId={userId}
+                          organizationId={activeOrgId}
+                          teamId={activeTeamId}
+                          onRefreshLogs={() => {
+                            refetchPaginatedLogs();
+                          }}
+                          rawLogs={rawLogs || []}
                         />
                       </div>
                     </div>
