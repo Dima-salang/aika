@@ -30,6 +30,7 @@ interface TimeLogDialogProps {
     projectId?: string | null;
     taskIds: string[];
     evidence: FileEvidence[];
+    isPublic: boolean;
   }) => Promise<void>;
   tasks: Array<{ id: string; title: string; project_id?: string | null; status: string; description?: string | null; updated_at?: any }>;
   projects: Array<{ id: string; name: string }>;
@@ -47,6 +48,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [projectId, setProjectId] = useState<string>("");
   const [selectedTasks, setSelectedTasks] = useState<string[]>([]);
   const [evidenceList, setEvidenceList] = useState<FileEvidence[]>([]);
+  const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -106,6 +108,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     } else {
       setEvidenceList([]);
     }
+    setIsPublic(initialLog?.is_public || false);
     setError(null);
   } else if (!isOpen && lastIsOpen) {
     setLastIsOpen(false);
@@ -221,6 +224,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         projectId: projectId || null,
         taskIds: selectedTasks,
         evidence: evidenceList,
+        isPublic,
       });
       onClose();
     } catch (err: any) {
@@ -376,6 +380,23 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                       />
                     </div>
                   </div>
+                </div>
+
+                {/* Public Sharing Toggle */}
+                <div className="flex items-center justify-between p-4 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl select-none">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="log-public" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block cursor-pointer">
+                      Share Log Publicly
+                    </Label>
+                    <p className="text-[9px] text-outline">Let other people view the details of this log.</p>
+                  </div>
+                  <input
+                    id="log-public"
+                    type="checkbox"
+                    checked={isPublic}
+                    onChange={(e) => setIsPublic(e.target.checked)}
+                    className="h-4.5 w-4.5 text-primary border-outline-variant rounded focus:ring-primary cursor-pointer accent-primary"
+                  />
                 </div>
     
                 {/* Drag and Drop Drop Zone for Linked Tasks */}

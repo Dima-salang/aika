@@ -18,6 +18,7 @@ interface TimeLogsListProps {
   searchQuery: string;
   onManualLog?: () => void;
   onSelect?: (log: any) => void;
+  onShare?: (log: any) => void;
   isMutating?: boolean;
   isLoading?: boolean;
   fetchNextPage?: () => void;
@@ -46,6 +47,7 @@ export function TimeLogsList({
   searchQuery,
   onManualLog,
   onSelect,
+  onShare,
   isMutating = false,
   isLoading = false,
   fetchNextPage,
@@ -332,6 +334,7 @@ export function TimeLogsList({
                             });
                           }}
                           onSelect={onSelect}
+                          onShare={onShare}
                         />
                       );
                     })}
@@ -371,6 +374,7 @@ export function TimeLogsList({
                             });
                           }}
                           onSelect={onSelect}
+                          onShare={onShare}
                         />
                       );
                     })}

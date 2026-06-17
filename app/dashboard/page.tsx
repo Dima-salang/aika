@@ -428,6 +428,7 @@ export default function Dashboard() {
           description: data.description,
           taskIds: data.taskIds,
           evidence: data.evidence,
+          isPublic: data.isPublic,
         },
       });
     } else {
@@ -442,6 +443,7 @@ export default function Dashboard() {
         description: data.description,
         taskIds: data.taskIds,
         evidence: data.evidence,
+        isPublic: data.isPublic,
       });
     }
   };
@@ -451,6 +453,27 @@ export default function Dashboard() {
       logId,
       userId,
     });
+  };
+
+  const handleShareLog = async (log: any) => {
+    try {
+      const shareUrl = `${window.location.origin}/share/log/${log.id}`;
+      await navigator.clipboard.writeText(shareUrl);
+      
+      if (!log.is_public) {
+        log.is_public = true;
+        await updateLogMutation.mutateAsync({
+          logId: log.id,
+          userId,
+          input: {
+            isPublic: true,
+          },
+        });
+      }
+      toast.success("Public share link copied to clipboard!");
+    } catch (err: any) {
+      toast.error("Failed to copy or share link: " + err.message);
+    }
   };
 
   if (isPending || !session) {
@@ -556,6 +579,7 @@ export default function Dashboard() {
                 setDetailTask(null);
                 setIsDetailOpen(true);
               }}
+              onShareLog={handleShareLog}
             />
           ) : activeTab === "reports" ? (
             <ReportsView activeOrg={activeOrg} session={session} />
@@ -597,6 +621,7 @@ export default function Dashboard() {
                         setIsDialogOpen(true);
                       }}
                       onDelete={handleDeleteLog}
+                      onShare={handleShareLog}
                       searchQuery={searchQuery}
                       onManualLog={() => {
                         setEditingLog(null);
@@ -698,6 +723,7 @@ export default function Dashboard() {
         selectedTask={detailTask}
         projects={projects || []}
         tasks={tasks || []}
+        onShareLog={handleShareLog}
       />
 
       <ShortcutsHelpDialog isOpen={isShortcutsOpen} onClose={() => setIsShortcutsOpen(false)} />
