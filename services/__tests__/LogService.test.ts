@@ -12,6 +12,7 @@ import { userSqlite, tasksSqlite, timeLogsSqlite, timersSqlite, documentEvidence
 import { eq, sql } from "drizzle-orm";
 import { StorageService } from "@/services/StorageService";
 import { MockProvider } from "./StorageService.test";
+import { ImportedLogInput } from "../import-export/types";
 
 describe("LogService", () => {
   let auditService: AuditService;
@@ -543,4 +544,67 @@ describe("LogService", () => {
     expect(timeline[1].userName).toBe("Bob");
     expect((timeline[1].evidence[0] as any).file_name).toBe("b.png");
   });
+
+
+  // bulk import
+  test("importLogs should create all logs if no error", async () => {
+    const now = Date.now();
+    const logs: ImportedLogInput[] = [
+      {
+        title: "Test log 1",
+        description: "Test log 1 description",
+        startTime: new Date(now - 14400000), // 4 hours ago
+        endTime: new Date(now - 10800000),   // 3 hours ago
+        projectName: "Project 1",
+        taskTitles: ["Clean Kitchen"],
+        evidenceUrls: ["https://x.com/a.png"],
+      },
+      {
+        title: "Test log 2",
+        description: "Test log 2 description",
+        startTime: new Date(now - 7200000),  // 2 hours ago
+        endTime: new Date(now - 3600000),   // 1 hour ago
+        projectName: "Project 1",
+        taskTitles: ["Clean Kitchen"],
+        evidenceUrls: ["https://x.com/b.png"],
+      },
+    ];
+
+    const result = await logService.importLogs(
+      testUserId,
+      testOrgId,
+      null,
+      logs
+    );
+    expect(result.successCount).toBe(2);
+    expect(result.errors).toHaveLength(0);
+    
+    const fetchedLogs = await logService.getUserLogs(testUserId);
+    expect(fetchedLogs.length).toBe(2);
+  });
+
+  test("importLogs should fail if end time is before start time", async () => {
+    const logs: ImportedLogInput[] = [
+      {
+        title: "Test log 1",
+        description: "Test log 1 description",
+        startTime: new Date(),
+        endTime: new Date(new Date().getTime() - 1000),
+        projectName: "Test project",
+        taskTitles: ["Test task 1"],
+        evidenceUrls: ["https://x.com/a.png"],
+      },
+    ];
+
+    const result = await logService.importLogs(
+      testUserId,
+      testOrgId,
+      null,
+      logs
+    );
+    expect(result.successCount).toBe(0);
+    expect(result.errors).toHaveLength(1);
+    expect(result.errors[0].error).toBe("Validation Error: Start time must be before end time");
+  });
+
 });
