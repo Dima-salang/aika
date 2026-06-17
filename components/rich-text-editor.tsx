@@ -465,7 +465,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
       },
       heading: {
         h1: "text-lg font-bold text-on-surface mt-2 mb-1",
-        h2: "text-md font-bold text-on-surface mt-2 mb-1",
+        h2: "text-base font-bold text-on-surface mt-2 mb-1",
         h3: "text-sm font-bold text-on-surface mt-2 mb-1",
         h4: "text-xs font-bold text-on-surface",
         h5: "text-xs font-bold text-on-surface",
