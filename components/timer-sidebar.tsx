@@ -57,7 +57,7 @@ export function TimerSidebar({
 
   return (
     <aside
-      className={`h-screen bg-surface-container-low dark:bg-surface-dim border-l border-outline-variant flex flex-col p-unit-6 shrink-0 overflow-y-auto transition-all duration-300 z-30 ${collapsed ? "w-16 p-unit-3" : "w-80"
+      className={`h-screen bg-surface-container-low dark:bg-surface-dim border-l border-outline-variant hidden lg:flex flex-col p-unit-6 shrink-0 overflow-y-auto transition-all duration-300 z-30 ${collapsed ? "w-16 p-unit-3" : "w-80"
         }`}
       aria-label="Timer Control Panel"
     >

@@ -12,7 +12,7 @@ export function OrgTab() {
       <div className="space-y-4">
         <div className="text-center p-8 border border-dashed border-outline-variant rounded-xl">
           <p className="text-outline text-body-sm mb-4 max-w-sm mx-auto font-medium">
-            Access team directories and scale organizational control with Better Auth Tenant modules.
+            Access team directories.
           </p>
           <button className="rounded-lg text-body-sm px-unit-4 py-2 font-bold border border-outline-variant hover:bg-surface-container-high text-on-surface transition-colors flex items-center gap-2 mx-auto">
             Manage Workspace <span className="material-symbols-outlined text-[14px]">open_in_new</span>

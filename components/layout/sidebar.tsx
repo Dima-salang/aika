@@ -15,6 +15,8 @@ interface SidebarProps {
   isDark: boolean;
   toggleTheme: () => void;
   onOpenShortcuts?: () => void;
+  isOpenMobile?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export function Sidebar({
@@ -25,6 +27,8 @@ export function Sidebar({
   isDark,
   toggleTheme,
   onOpenShortcuts,
+  isOpenMobile = false,
+  onCloseMobile,
 }: SidebarProps) {
   const [mounted, setMounted] = React.useState(false);
   const [dropdownOpen, setDropdownOpen] = React.useState(false);
@@ -107,12 +111,22 @@ export function Sidebar({
   }
 
   return (
-    <aside
-      className={`h-screen sticky left-0 top-0 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant flex flex-col gap-unit-2 shrink-0 transition-all duration-300 z-30 ${
-        collapsed ? "w-16 p-unit-2" : "w-sidebar-width p-unit-4"
-      }`}
-      aria-label="Primary Navigation"
-    >
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isOpenMobile && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300 animate-in fade-in"
+          aria-hidden="true"
+        />
+      )}
+
+      <aside
+        className={`h-screen fixed lg:sticky left-0 top-0 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant flex flex-col gap-unit-2 shrink-0 transition-transform duration-300 z-50 ${
+          isOpenMobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        } ${collapsed ? "w-16 p-unit-2" : "w-64 p-unit-4"}`}
+        aria-label="Primary Navigation"
+      >
       {collapsed ? (
         <div className="flex flex-col items-center gap-2 mb-unit-4">
           <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
@@ -360,5 +374,6 @@ export function Sidebar({
         )}
       </div>
     </aside>
+    </>
   );
 }

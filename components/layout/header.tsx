@@ -15,7 +15,22 @@ interface HeaderProps {
   setIsDialogOpen: (isOpen: boolean) => void;
   setEditingLog: (log: any) => void;
   session: any;
+  onOpenMobileSidebar?: () => void;
+  projects?: any[];
+  timerProjId?: string;
+  setTimerProjId?: (projId: string) => void;
+  timerDesc?: string;
+  setTimerDesc?: (desc: string) => void;
+  timerSeconds?: number;
+  formatDuration?: (seconds: number) => string;
+  stopTimerMutation?: any;
+  handleStopTimerWithEvidence?: (evidenceData: any) => Promise<void>;
+  handleDiscardTimer?: () => Promise<void>;
+  startPending?: boolean;
+  activeTab?: string;
 }
+
+import { Menu, Play, Square, RefreshCw, Trash, Folder } from "lucide-react";
 
 export function Header({
   searchQuery,
@@ -25,8 +40,22 @@ export function Header({
   setIsDialogOpen,
   setEditingLog,
   session,
+  onOpenMobileSidebar,
+  projects = [],
+  timerProjId = "",
+  setTimerProjId = () => {},
+  timerDesc = "",
+  setTimerDesc = () => {},
+  timerSeconds = 0,
+  formatDuration = (s) => `${s}s`,
+  stopTimerMutation,
+  handleStopTimerWithEvidence = async () => {},
+  handleDiscardTimer = async () => {},
+  startPending = false,
+  activeTab = "dashboard",
 }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isMobileTimerOpen, setIsMobileTimerOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const userId = session?.user?.id || "";
@@ -102,28 +131,153 @@ export function Header({
     }
   };
 
+  const hasSearch = activeTab === "dashboard" || activeTab === "logs";
+
   return (
-    <header className="h-16 w-full sticky top-0 z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center px-unit-6 shrink-0">
-      <div className="flex items-center gap-unit-4">
-        <div className="flex items-center gap-unit-2 px-unit-3 py-1 bg-surface-container border border-outline-variant rounded-md min-w-[280px]">
-          <span className="material-symbols-outlined text-outline" data-icon="search">
-            search
-          </span>
-          <input
-            id="global-search-input"
-            className="bg-transparent border-none text-body-sm focus:ring-0 w-full placeholder:text-outline text-on-surface focus:outline-none"
-            placeholder="Search logs..."
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          <kbd className="hidden sm:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold text-outline bg-surface-container-high border border-outline-variant rounded pointer-events-none select-none">
-            <span className="text-[10px]">⌘</span>K
-          </kbd>
-        </div>
+    <header className="h-16 w-full sticky top-0 z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center px-4 md:px-unit-6 shrink-0 gap-2">
+      <div className="flex items-center gap-2 md:gap-unit-4 flex-1 min-w-0">
+        {/* Mobile Hamburger menu */}
+        <button
+          onClick={onOpenMobileSidebar}
+          className="p-2 -ml-2 text-on-surface-variant hover:bg-surface-container-high rounded-md lg:hidden transition-colors"
+          aria-label="Open navigation menu"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
+        {/* Global Search Bar (hidden on mobile search-less pages, compact size) */}
+        {hasSearch ? (
+          <div className="flex items-center gap-unit-2 px-unit-3 py-1.5 bg-surface-container border border-outline-variant rounded-md w-full max-w-[200px] xs:max-w-[280px]">
+            <span className="material-symbols-outlined text-outline text-[16px] leading-none" data-icon="search">
+              search
+            </span>
+            <input
+              id="global-search-input"
+              className="bg-transparent border-none text-xs focus:ring-0 w-full placeholder:text-outline text-on-surface focus:outline-none py-0"
+              placeholder="Search..."
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            <kbd className="hidden md:inline-flex items-center gap-0.5 px-1.5 py-0.5 text-[9px] font-bold text-outline bg-surface-container-high border border-outline-variant rounded pointer-events-none select-none">
+              <span className="text-[10px]">⌘</span>K
+            </kbd>
+          </div>
+        ) : (
+          <div className="text-body-sm font-extrabold text-on-surface capitalize truncate">
+            {activeTab === "projects" ? "Projects & Tasks" : activeTab === "team" ? "Team Space" : activeTab}
+          </div>
+        )}
       </div>
-      <div className="flex items-center gap-unit-4">
-        <div className="flex items-center gap-unit-2">
+
+      <div className="flex items-center gap-2 md:gap-unit-4 shrink-0">
+        {/* Mobile Integrated Timer Display */}
+        <div className="lg:hidden flex items-center gap-1">
+          {runningTimer ? (
+            <button
+              onClick={() => setIsMobileTimerOpen(!isMobileTimerOpen)}
+              className="px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary hover:bg-primary/20 transition-all font-mono-timer text-xs font-bold flex items-center gap-1.5 animate-pulse"
+            >
+              <Clock className="h-3.5 w-3.5" />
+              <span>{formatDuration(timerSeconds)}</span>
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsMobileTimerOpen(!isMobileTimerOpen)}
+              className="p-2 text-on-surface-variant hover:bg-surface-container-high rounded-md transition-colors"
+              title="Track Time"
+            >
+              <Clock className="h-5 w-5" />
+            </button>
+          )}
+
+          {/* Mini mobile timer popover sheet */}
+          {isMobileTimerOpen && (
+            <div className="absolute top-16 right-4 w-72 bg-surface dark:bg-surface-dim border border-outline-variant rounded-xl shadow-2xl p-4 z-50 animate-in fade-in slide-in-from-top-2 duration-150 space-y-3">
+              <div className="flex justify-between items-center pb-2 border-b border-outline-variant/50">
+                <span className="text-[10px] font-extrabold text-outline uppercase tracking-wider">
+                  {runningTimer ? "Currently Clocked In" : "Quick Track"}
+                </span>
+                {runningTimer && (
+                  <span className="text-xs font-mono-timer text-primary font-black animate-pulse">
+                    {formatDuration(timerSeconds)}
+                  </span>
+                )}
+              </div>
+
+              {!runningTimer ? (
+                <div className="space-y-2.5">
+                  <input
+                    className="w-full bg-surface-container border border-outline-variant rounded-lg text-xs p-2 focus:ring-1 focus:ring-primary focus:border-primary text-on-surface focus:outline-none"
+                    placeholder="What are you doing?"
+                    type="text"
+                    value={timerDesc}
+                    onChange={(e) => setTimerDesc(e.target.value)}
+                  />
+                  {projects.length > 0 && (
+                    <div className="flex items-center gap-1.5 px-2 py-1.5 bg-surface-container border border-outline-variant rounded-lg">
+                      <Folder className="h-3.5 w-3.5 text-outline" />
+                      <select
+                        value={timerProjId}
+                        onChange={(e) => setTimerProjId(e.target.value)}
+                        className="bg-transparent border-none text-xs text-on-surface font-semibold focus:ring-0 focus:outline-none cursor-pointer py-0 w-full"
+                      >
+                        <option value="">No Project</option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                  <button
+                    onClick={async () => {
+                      await handleStartTimer();
+                      setIsMobileTimerOpen(false);
+                    }}
+                    disabled={startPending}
+                    className="w-full py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1"
+                  >
+                    <Play className="h-3.5 w-3.5" /> Start Timer
+                  </button>
+                </div>
+              ) : (
+                <div className="space-y-2 text-xs">
+                  <p className="font-bold text-on-surface break-words leading-tight">
+                    {runningTimer.description || "Work session"}
+                  </p>
+                  <p className="text-[10px] text-outline">
+                    Project: {projects.find((p) => p.id === runningTimer.project_id)?.name || "No Project"}
+                  </p>
+                  <div className="flex gap-2 pt-1">
+                    <button
+                      onClick={() => {
+                        setEditingLog(null);
+                        setIsDialogOpen(true);
+                        setIsMobileTimerOpen(false);
+                      }}
+                      className="flex-1 py-1.5 bg-error text-on-error rounded-lg text-[11px] font-bold hover:opacity-90 active:scale-95 transition-all flex items-center justify-center gap-1"
+                    >
+                      <Square className="h-3 w-3" /> Stop & Log
+                    </button>
+                    <button
+                      onClick={async () => {
+                        await handleDiscardTimer();
+                        setIsMobileTimerOpen(false);
+                      }}
+                      className="py-1.5 px-2 bg-surface-container border border-outline-variant hover:bg-error/15 hover:text-error text-on-surface-variant rounded-lg text-[11px] font-bold active:scale-95 transition-all flex items-center justify-center gap-1"
+                    >
+                      <Trash className="h-3 w-3" /> Discard
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center gap-1">
           {/* Notifications Dropdown Anchor */}
           <div className="relative" ref={dropdownRef}>
             <button

@@ -32,7 +32,7 @@ export function ProfileTab() {
         <h3 className="text-headline-sm font-headline-sm font-bold flex items-center gap-2 text-on-surface">
           <span className="material-symbols-outlined">person</span> My Profile
         </h3>
-        <p className="text-body-sm text-outline mt-1">Your account particulars synced through Better Auth.</p>
+        <p className="text-body-sm text-outline mt-1">Your account details.</p>
       </div>
       <div className="space-y-4">
         <div className="flex items-center gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant">
