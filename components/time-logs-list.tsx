@@ -7,6 +7,7 @@ import { ActivityLogItem } from "@/components/team/activity-log-item";
 import { getLogDurationSeconds, formatDuration } from "@/utils/time";
 import { toast } from "sonner";
 import { useConfirmStore } from "@/lib/store";
+import { ImportExportDialog } from "./import-export-dialog";
 
 interface TimeLogsListProps {
   logsByDay: { [key: string]: any[] };
@@ -29,6 +30,11 @@ interface TimeLogsListProps {
   endDateFilter?: string;
   setEndDateFilter?: (date: string) => void;
   onClearFilters?: () => void;
+  userId: string;
+  organizationId: string;
+  teamId: string | null;
+  onRefreshLogs: () => void;
+  rawLogs: any[];
 }
 
 export function TimeLogsList({
@@ -52,8 +58,14 @@ export function TimeLogsList({
   endDateFilter = "",
   setEndDateFilter,
   onClearFilters,
+  userId,
+  organizationId,
+  teamId,
+  onRefreshLogs,
+  rawLogs,
 }: TimeLogsListProps) {
   const [viewMode, setViewMode] = useState<"list" | "card">("list");
+  const [isImportExportOpen, setIsImportExportOpen] = useState(false);
   const { showConfirm } = useConfirmStore();
   const sentinelRef = React.useRef<HTMLDivElement>(null);
 
@@ -106,13 +118,22 @@ export function TimeLogsList({
         </h2>
         <div className="flex items-center gap-3">
           {onManualLog && (
-            <button
-              onClick={onManualLog}
-              className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold rounded border border-outline-variant transition-all active:scale-[0.98]"
-            >
-              <span className="material-symbols-outlined text-[14px]" data-icon="add">add</span>
-              Log Time
-            </button>
+            <>
+              <button
+                onClick={() => setIsImportExportOpen(true)}
+                className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold rounded border border-outline-variant transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[14px]">file_upload</span>
+                Import/Export
+              </button>
+              <button
+                onClick={onManualLog}
+                className="flex items-center gap-1.5 px-3 py-1 bg-surface-container-high hover:bg-surface-container-highest text-on-surface text-xs font-bold rounded border border-outline-variant transition-all active:scale-[0.98]"
+              >
+                <span className="material-symbols-outlined text-[14px]" data-icon="add">add</span>
+                Log Time
+              </button>
+            </>
           )}
           <div className="flex items-center gap-2 bg-surface-container-low dark:bg-surface-dim p-0.5 rounded-lg border border-outline-variant">
             <button
@@ -368,6 +389,16 @@ export function TimeLogsList({
         </div>
       )}
       <div ref={sentinelRef} className="h-2 w-full" />
+
+      <ImportExportDialog
+        isOpen={isImportExportOpen}
+        onClose={() => setIsImportExportOpen(false)}
+        userId={userId}
+        organizationId={organizationId}
+        teamId={teamId}
+        onSuccess={onRefreshLogs}
+        currentLogs={rawLogs}
+      />
     </div>
   );
 }
