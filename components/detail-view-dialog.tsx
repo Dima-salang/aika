@@ -89,7 +89,7 @@ export function DetailViewDialog({
                     Log #{selectedLog.id.slice(0, 8)}
                   </span>
                 </div>
-                <h3 className="text-headline-sm text-on-surface font-extrabold leading-snug">
+                <h3 className="text-xl text-on-surface font-extrabold leading-snug">
                   {selectedLog.title}
                 </h3>
               </div>
@@ -227,7 +227,7 @@ export function DetailViewDialog({
                     Task #{selectedTask.id.slice(0, 8)}
                   </span>
                 </div>
-                <h3 className="text-headline-sm text-on-surface font-extrabold leading-snug">
+                <h3 className="text-xl text-on-surface font-extrabold leading-snug">
                   {selectedTask.title}
                 </h3>
               </div>

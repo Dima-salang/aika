@@ -201,7 +201,7 @@ export function ActivityLogItem({
         {/* Title and descriptions */}
         <div className="space-y-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h4 className="text-xs font-bold text-on-surface leading-snug group-hover:text-primary transition-colors">
+            <h4 className="text-base font-bold text-on-surface leading-snug group-hover:text-primary transition-colors">
               {log.title || "Untitled Activity"}
             </h4>
             {log.projectName ? (

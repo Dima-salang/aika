@@ -118,7 +118,7 @@ export function TimeLogCard({
 
       {/* Title */}
       <div className="flex-1 mb-unit-3">
-        <h3 className="font-headline-sm text-[15px] font-bold text-on-surface leading-snug group-hover:text-primary transition-colors truncate">
+        <h3 className="font-headline-sm text-lg font-bold text-on-surface leading-snug group-hover:text-primary transition-colors truncate">
           {log.title}
         </h3>
         
