@@ -9,27 +9,33 @@ import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
-import { 
-  FORMAT_TEXT_COMMAND, 
-  $getSelection, 
-  $isRangeSelection, 
+import {
+  FORMAT_TEXT_COMMAND,
+  $getSelection,
+  $isRangeSelection,
   SELECTION_CHANGE_COMMAND,
   $createParagraphNode,
   $createTextNode,
-  TextNode
+  TextNode,
+  INDENT_CONTENT_COMMAND,
+  OUTDENT_CONTENT_COMMAND,
+  COMMAND_PRIORITY_HIGH,
+  $getNodeByKey,
+  KEY_TAB_COMMAND
 } from "lexical";
-import { INSERT_UNORDERED_LIST_COMMAND, INSERT_ORDERED_LIST_COMMAND } from "@lexical/list";
-import { 
-  Bold, 
-  Italic, 
-  Code, 
-  List, 
-  ListOrdered, 
-  Strikethrough, 
-  Quote, 
-  Link, 
-  Heading1, 
-  Heading2, 
+import { TabIndentationPlugin } from "@lexical/react/LexicalTabIndentationPlugin";
+import { INSERT_UNORDERED_LIST_COMMAND, INSERT_ORDERED_LIST_COMMAND, $isListItemNode } from "@lexical/list";
+import {
+  Bold,
+  Italic,
+  Code,
+  List,
+  ListOrdered,
+  Strikethrough,
+  Quote,
+  Link,
+  Heading1,
+  Heading2,
   Heading3,
   Underline,
   Check,
@@ -237,9 +243,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "bold")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isBold ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isBold ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Bold"
       >
         <Bold className="h-3.5 w-3.5" />
@@ -248,9 +253,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "italic")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isItalic ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isItalic ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Italic"
       >
         <Italic className="h-3.5 w-3.5" />
@@ -259,9 +263,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "underline")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isUnderline ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isUnderline ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Underline"
       >
         <Underline className="h-3.5 w-3.5" />
@@ -271,9 +274,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "strikethrough")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isStrikethrough ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isStrikethrough ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Strikethrough"
       >
         <Strikethrough className="h-3.5 w-3.5" />
@@ -282,9 +284,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(FORMAT_TEXT_COMMAND, "code")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isCode ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isCode ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Inline Code"
       >
         <Code className="h-3.5 w-3.5" />
@@ -328,9 +329,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={insertLink}
-          className={`p-1 rounded transition-colors cursor-pointer ${
-            isLink ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-          }`}
+          className={`p-1 rounded transition-colors cursor-pointer ${isLink ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+            }`}
           title={isLink ? "Remove Link" : "Add Link"}
         >
           <Link className="h-3.5 w-3.5" />
@@ -343,9 +343,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => toggleHeading("h1")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          activeHeading === "h1" ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${activeHeading === "h1" ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Heading 1"
       >
         <Heading1 className="h-3.5 w-3.5" />
@@ -354,9 +353,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => toggleHeading("h2")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          activeHeading === "h2" ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${activeHeading === "h2" ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Heading 2"
       >
         <Heading2 className="h-3.5 w-3.5" />
@@ -365,9 +363,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => toggleHeading("h3")}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          activeHeading === "h3" ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${activeHeading === "h3" ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Heading 3"
       >
         <Heading3 className="h-3.5 w-3.5" />
@@ -379,9 +376,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(INSERT_UNORDERED_LIST_COMMAND, undefined)}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isBullet ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isBullet ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Bullet List"
       >
         <List className="h-3.5 w-3.5" />
@@ -390,9 +386,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => editor.dispatchCommand(INSERT_ORDERED_LIST_COMMAND, undefined)}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isNumbered ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isNumbered ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Numbered List"
       >
         <ListOrdered className="h-3.5 w-3.5" />
@@ -401,9 +396,8 @@ function ToolbarPlugin({ isFullscreen, toggleFullscreen }: { isFullscreen: boole
         type="button"
         onMouseDown={(e) => e.preventDefault()}
         onClick={toggleQuote}
-        className={`p-1 rounded transition-colors cursor-pointer ${
-          isQuote ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
-        }`}
+        className={`p-1 rounded transition-colors cursor-pointer ${isQuote ? "bg-primary/20 text-primary" : "text-outline hover:text-on-surface hover:bg-surface-container-high"
+          }`}
         title="Blockquote"
       >
         <Quote className="h-3.5 w-3.5" />
@@ -459,8 +453,22 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
     theme: {
       paragraph: "text-xs text-on-surface leading-relaxed mb-1",
       list: {
-        ul: "list-disc list-inside ml-4 mb-2 text-xs text-on-surface",
-        ol: "list-decimal list-inside ml-4 mb-2 text-xs text-on-surface",
+        ul: "list-disc list-outside mb-2 text-xs text-on-surface",
+        ol: "list-decimal list-outside mb-2 text-xs text-on-surface",
+        ulDepth: [
+          "pl-5",
+          "pl-5",
+          "pl-5",
+          "pl-5",
+          "pl-5"
+        ],
+        olDepth: [
+          "pl-5",
+          "pl-5",
+          "pl-5",
+          "pl-5",
+          "pl-5"
+        ],
         listitem: "text-xs text-on-surface",
       },
       heading: {
@@ -502,12 +510,12 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
   return (
     <LexicalComposer initialConfig={initialConfig}>
       <div className={
-        isFullscreen 
+        isFullscreen
           ? "fixed inset-0 z-[100] bg-surface/95 dark:bg-[#0a0a0c]/98 backdrop-blur-md p-6 flex flex-col h-screen w-screen animate-in fade-in duration-200"
           : "relative border border-outline-variant bg-surface-container-low rounded-lg focus-within:ring-1 focus-within:ring-primary min-h-[140px] p-3 transition-all flex flex-col"
       }>
         <ToolbarPlugin isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen} />
-        
+
         <div className={isFullscreen ? "flex-1 flex flex-col mt-4 min-h-0 relative" : "relative flex-1"}>
           <RichTextPlugin
             contentEditable={
@@ -532,6 +540,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
           <MarkdownShortcutPlugin transformers={EDITOR_TRANSFORMERS} />
           <ListPlugin />
           <LinkPlugin />
+          <TabIndentationPlugin />
           <OnChangePlugin
             onChange={(editorState) => {
               editorState.read(() => {
