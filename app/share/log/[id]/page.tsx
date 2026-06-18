@@ -1,14 +1,14 @@
 "use client";
 
-import React from "react";
 import { useParams, useRouter } from "next/navigation";
 import { trpc } from "@/utils/trpc";
-import { Clock, Calendar, AlertCircle, FileText, ExternalLink, ArrowLeft, ShieldAlert } from "lucide-react";
+import { FileText, ExternalLink, ArrowLeft, ShieldAlert } from "lucide-react";
 import { renderMarkdown } from "@/utils/markdown";
 import { isImageUrl } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { ImageViewer } from "@/components/image-viewer";
 import { getProjectColorBadge, getTaskColorBadge } from "@/components/time-log-card";
+import { getLogDurationSeconds } from "@/utils/time";
 
 export default function SharedLogPage() {
   const params = useParams();
@@ -25,19 +25,11 @@ export default function SharedLogPage() {
     { organizationId: log?.organization_id || "org-default" },
     { enabled: !!log }
   );
-  
+
   const { data: tasks } = trpc.getTasks.useQuery(
     { userId: log?.user_id || "" },
     { enabled: !!log }
   );
-
-  const getFriendlyDuration = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const hrs = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    if (hrs > 0) return `${hrs}h ${mins}m`;
-    return `${mins}m`;
-  };
 
   if (isLoading) {
     return (
@@ -80,7 +72,7 @@ export default function SharedLogPage() {
             onClick={() => router.push("/")}
             className="w-full mt-4 flex items-center justify-center gap-2 px-4 py-2.5 bg-primary hover:opacity-90 text-on-primary text-xs font-bold rounded-xl transition-all shadow-md cursor-pointer"
           >
-            <ArrowLeft className="h-4 w-4" /> Go to Workspace
+            <ArrowLeft className="h-4 w-4" /> Go to Dashboard
           </button>
         </div>
       </div>
@@ -95,23 +87,23 @@ export default function SharedLogPage() {
   return (
     <div className="min-h-screen w-full bg-surface-container-lowest text-on-surface flex flex-col items-center justify-between p-4 md:p-8 font-sans">
       <div className="max-w-2xl w-full space-y-6">
-        
+
         {/* Navigation / Header */}
         <div className="flex items-center justify-between select-none">
           <button
             onClick={() => router.push("/")}
             className="flex items-center gap-1.5 px-3 py-1.5 hover:bg-surface-container-high text-outline hover:text-on-surface text-xs font-bold rounded-lg border border-outline-variant/60 transition-all cursor-pointer"
           >
-            <ArrowLeft className="h-3.5 w-3.5" /> Workspace
+            <ArrowLeft className="h-3.5 w-3.5" /> Dashboard
           </button>
           <span className="text-[10px] text-outline font-bold uppercase tracking-wider">
-            Public Shared Log
+            Shared Log
           </span>
         </div>
 
         {/* Main Card Sheet */}
         <div className="glass-card rounded-2xl border border-outline-variant/65 p-6 md:p-8 space-y-6 shadow-xl relative overflow-hidden">
-          
+
           {/* Top Info Badges */}
           <div className="flex items-center justify-between gap-4 flex-wrap select-none">
             {projectObj ? (
@@ -138,7 +130,7 @@ export default function SharedLogPage() {
             <div className="flex justify-between items-center text-xs font-semibold">
               <span className="text-outline uppercase text-[10px] tracking-wider">Duration</span>
               <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded font-bold text-body-sm">
-                {getFriendlyDuration(log.duration)}
+                {getLogDurationSeconds(log)}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-4 border-t border-outline-variant/30 pt-3 text-xs select-none">
@@ -160,7 +152,7 @@ export default function SharedLogPage() {
           {/* Work description */}
           {log.description && (
             <div className="space-y-2">
-              <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Description Notes</span>
+              <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Description</span>
               <div className="bg-surface-container-low/20 border border-outline-variant/30 p-4 rounded-xl text-body-sm text-on-surface leading-relaxed">
                 {renderMarkdown(log.description)}
               </div>
@@ -170,7 +162,7 @@ export default function SharedLogPage() {
           {/* Linked Kanban tasks */}
           {log.tasks && log.tasks.length > 0 && (
             <div className="space-y-2">
-              <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Linked Deliverables</span>
+              <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Tasks</span>
               <div className="flex flex-col gap-2">
                 {log.tasks.map((tId: string) => {
                   const taskObj = tasks?.find((t) => t.id === tId);
@@ -198,7 +190,7 @@ export default function SharedLogPage() {
           {/* Attached proofs / files */}
           {log.evidence && log.evidence.length > 0 && (
             <div className="space-y-2">
-              <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Attached Proof ({log.evidence.length})</span>
+              <span className="text-[10px] text-outline font-extrabold uppercase tracking-wider block">Attached Documents ({log.evidence.length})</span>
               <div className="grid grid-cols-2 gap-4">
                 {log.evidence.map((ev: any, idx: number) => {
                   const isImg = ev.mime_type?.startsWith("image/") || isImageUrl(ev.file_url);
