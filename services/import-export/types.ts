@@ -3,7 +3,7 @@ import { z } from "zod";
 
 export interface ImportedLog {
   title: string;
-  description: string;
+  description?: string;
   startTime: Date;
   endTime: Date;
   projectName?: string;
@@ -15,7 +15,7 @@ export interface ImportedLog {
 // zod schema
 export const importedLogZodSchema = z.object({
   title: z.string(),
-  description: z.string(),
+  description: z.string().optional().default(""),
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
   projectName: z.string().optional(),
