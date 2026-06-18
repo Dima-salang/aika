@@ -114,11 +114,11 @@ export function TimeLogsList({
   return (
     <div className="space-y-6">
       {/* Visual Mode Selector */}
-      <div className="flex items-center justify-between py-4 border-b border-outline-variant">
-        <h2 className="font-headline-sm text-headline-sm flex items-center gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-4 border-b border-outline-variant">
+        <h2 className="font-headline-sm text-headline-sm flex flex-wrap items-baseline gap-2">
           Logs Feed <span className="text-outline font-normal text-body-md">Activity Journal</span>
         </h2>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-3">
           {onManualLog && (
             <>
               <button

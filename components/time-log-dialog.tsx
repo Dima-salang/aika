@@ -78,42 +78,44 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [lastInitialLogId, setLastInitialLogId] = useState<string | null>(null);
   const [lastIsOpen, setLastIsOpen] = useState(false);
 
-  const initialId = initialLog?.id || null;
-  if (isOpen && (!lastIsOpen || (initialId !== lastInitialLogId))) {
-    setLastIsOpen(true);
-    setLastInitialLogId(initialId);
-    setTitle(initialLog?.title || "");
-    setDescription(initialLog?.description || "");
-    
-    const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
-    const end = initialLog ? new Date(initialLog.end_time) : new Date();
-    const offset = start.getTimezoneOffset() * 60000;
-    setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
-    setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
-    
-    setProjectId(initialLog?.project_id || "");
-    setSelectedTasks(initialLog?.tasks || []);
-    
-    if (initialLog?.evidence) {
-      setEvidenceList(
-        initialLog.evidence.map((ev: any) => ({
-          fileUrl: ev.file_url,
-          fileKey: ev.file_key,
-          fileName: ev.file_name,
-          fileSize: ev.file_size,
-          mimeType: ev.mime_type,
-          previewUrl: ev.file_url,
-        }))
-      );
-    } else {
-      setEvidenceList([]);
+  useEffect(() => {
+    const initialId = initialLog?.id || null;
+    if (isOpen && (!lastIsOpen || (initialId !== lastInitialLogId))) {
+      setLastIsOpen(true);
+      setLastInitialLogId(initialId);
+      setTitle(initialLog?.title || "");
+      setDescription(initialLog?.description || "");
+      
+      const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
+      const end = initialLog ? new Date(initialLog.end_time) : new Date();
+      const offset = start.getTimezoneOffset() * 60000;
+      setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
+      setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
+      
+      setProjectId(initialLog?.project_id || "");
+      setSelectedTasks(initialLog?.tasks || []);
+      
+      if (initialLog?.evidence) {
+        setEvidenceList(
+          initialLog.evidence.map((ev: any) => ({
+            fileUrl: ev.file_url,
+            fileKey: ev.file_key,
+            fileName: ev.file_name,
+            fileSize: ev.file_size,
+            mimeType: ev.mime_type,
+            previewUrl: ev.file_url,
+          }))
+        );
+      } else {
+        setEvidenceList([]);
+      }
+      setIsPublic(initialLog?.is_public || false);
+      setError(null);
+    } else if (!isOpen && lastIsOpen) {
+      setLastIsOpen(false);
+      setLastInitialLogId(null);
     }
-    setIsPublic(initialLog?.is_public || false);
-    setError(null);
-  } else if (!isOpen && lastIsOpen) {
-    setLastIsOpen(false);
-    setLastInitialLogId(null);
-  }
+  }, [isOpen, initialLog, lastIsOpen, lastInitialLogId]);
 
   if (!isOpen) return null;
 
@@ -282,10 +284,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
           </div>
     
           {/* Horizontal Split Body */}
-          <div className="flex-1 flex overflow-hidden min-h-0 bg-surface">
+          <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden min-h-0 bg-surface">
             
             {/* Left Column: Log Details Form */}
-            <div className="w-1/2 overflow-y-auto px-unit-6 py-unit-6 space-y-8 border-r border-outline-variant/60 custom-scrollbar flex flex-col">
+            <div className="w-full lg:w-1/2 lg:overflow-y-auto px-4 py-4 sm:px-unit-6 sm:py-unit-6 space-y-6 sm:space-y-8 border-b lg:border-b-0 lg:border-r border-outline-variant/60 custom-scrollbar flex flex-col shrink-0">
               <form id="time-log-form" onSubmit={handleSubmit} className="space-y-7 flex-1">
                 {error && (
                   <div className="p-3.5 rounded-lg bg-error-container border border-error/20 text-error text-xs flex items-start gap-2.5 animate-in slide-in-from-top-2">
@@ -543,7 +545,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
             </div>
     
             {/* Right Column: Kanban board */}
-            <div className="w-1/2 flex flex-col bg-surface-container-lowest/40 p-unit-6 min-h-0 overflow-hidden">
+            <div className="w-full lg:w-1/2 flex flex-col bg-surface-container-lowest/40 p-4 sm:p-unit-6 min-h-[450px] lg:min-h-0 overflow-hidden shrink-0 lg:shrink">
               <div className="flex items-center justify-between mb-5 shrink-0">
                 <h3 className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
                   <Kanban className="h-4 w-4 text-primary" /> Kanban Board
