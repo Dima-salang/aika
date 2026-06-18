@@ -129,21 +129,23 @@ export function ReportFilters({
 
       <div className="flex flex-wrap items-center gap-6 text-xs font-semibold">
         {/* Manual Date Input Range */}
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-2 w-full sm:w-auto">
           <span className="text-[11px] font-bold text-outline uppercase tracking-wider shrink-0">Range:</span>
-          <input
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            className="bg-surface-container border border-outline-variant rounded-lg p-1.5 text-on-surface focus:outline-none focus:border-primary font-mono-timer text-xs cursor-pointer hover:bg-surface-container-high transition-colors"
-          />
-          <span className="text-outline/60 font-normal">to</span>
-          <input
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            className="bg-surface-container border border-outline-variant rounded-lg p-1.5 text-on-surface focus:outline-none focus:border-primary font-mono-timer text-xs cursor-pointer hover:bg-surface-container-high transition-colors"
-          />
+          <div className="flex items-center gap-1.5 w-full sm:w-auto">
+            <input
+              type="date"
+              value={startDate}
+              onChange={(e) => setStartDate(e.target.value)}
+              className="bg-surface-container border border-outline-variant rounded-lg p-1.5 text-on-surface focus:outline-none focus:border-primary font-mono-timer text-xs cursor-pointer hover:bg-surface-container-high transition-colors flex-1 sm:flex-initial"
+            />
+            <span className="text-outline/60 font-normal shrink-0">to</span>
+            <input
+              type="date"
+              value={endDate}
+              onChange={(e) => setEndDate(e.target.value)}
+              className="bg-surface-container border border-outline-variant rounded-lg p-1.5 text-on-surface focus:outline-none focus:border-primary font-mono-timer text-xs cursor-pointer hover:bg-surface-container-high transition-colors flex-1 sm:flex-initial"
+            />
+          </div>
         </div>
 
         {/* Aggregation Selector */}
