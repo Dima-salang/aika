@@ -640,7 +640,6 @@ export class LogService {
    * Fetch single log by ID
    */
   async getLogById(logId: string, tx: DBInstance = db): Promise<DetailedTimeLog | null> {
-    z.string().parse(logId);
     const [log] = await tx
       .select()
       .from(tables.timeLogs)
