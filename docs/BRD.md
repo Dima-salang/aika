@@ -277,7 +277,7 @@ Users may:
 
 Constraints:
 
-- Document Evidence is mandatory — logs cannot be saved in final submission without at least one Document Evidence file attached
+- Document Evidence is optional — logs can be saved without any Document Evidence files attached
 - Maximum file size: 10 MB
 
 ---

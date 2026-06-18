@@ -140,21 +140,21 @@ describe("LogService", () => {
     ).rejects.toThrow("Failed query");
   });
 
-  test("createLog should validate evidence existence, file size and mime types", async () => {
+  test("createLog should validate evidence size and mime types", async () => {
     const startTime = new Date(Date.now() - 7200000);
     const endTime = new Date(Date.now() - 3600000);
 
-    // Empty evidence
-    expect(
-      logService.createLog({
-        userId: testUserId,
-        organizationId: testOrgId,
-        startTime,
-        endTime,
-        description: "No evidence",
-        evidence: [],
-      })
-    ).rejects.toThrow("Too small");
+    const noEvidenceResult = await logService.createLog({
+      userId: testUserId,
+      organizationId: testOrgId,
+      startTime,
+      endTime,
+      description: "No evidence",
+      evidence: [],
+    });
+
+    // Empty evidence is allowed
+    expect(noEvidenceResult).not.rejects;
 
     // Size limit exceeded (> 10MB)
     expect(
@@ -578,7 +578,7 @@ describe("LogService", () => {
     );
     expect(result.successCount).toBe(2);
     expect(result.errors).toHaveLength(0);
-    
+
     const fetchedLogs = await logService.getUserLogs(testUserId);
     expect(fetchedLogs.length).toBe(2);
   });

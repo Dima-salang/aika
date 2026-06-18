@@ -164,17 +164,15 @@ export class LogService {
     let successfulLogId: string | null = null;
 
     const execute = async (tx: DBInstance) => {
-      if (!parsedInput.evidence || parsedInput.evidence.length === 0) {
-        throw new Error("Validation Error: At least one Document Evidence file is required");
-      }
-
-      for (const file of parsedInput.evidence) {
-        if (file.fileSize > 10 * 1024 * 1024) {
-          throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
-        }
-        const mime = file.mimeType.toLowerCase();
-        if (!isSupportedMimeType(mime)) {
-          throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
+      if (parsedInput.evidence) {
+        for (const file of parsedInput.evidence) {
+          if (file.fileSize > 10 * 1024 * 1024) {
+            throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
+          }
+          const mime = file.mimeType.toLowerCase();
+          if (!isSupportedMimeType(mime)) {
+            throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
+          }
         }
       }
 
@@ -242,7 +240,9 @@ export class LogService {
         created_at: new Date(),
         deleted_at: null,
       }));
-      await tx.insert(tables.documentEvidences).values(evidenceEntries);
+      if (evidenceEntries.length > 0) {
+        await tx.insert(tables.documentEvidences).values(evidenceEntries);
+      }
 
       // Record Audit Log
       await this.auditService.createAuditLog(
@@ -388,9 +388,6 @@ export class LogService {
           .set({ deleted_at: new Date() })
           .where(eq(tables.documentEvidences.time_log_id, logId));
 
-        if (parsedInput.evidence.length === 0) {
-          throw new Error("Validation Error: At least one Document Evidence file is required");
-        }
         const evidenceEntries = parsedInput.evidence.map((file) => ({
           id: crypto.randomUUID(),
           time_log_id: logId,
@@ -402,7 +399,9 @@ export class LogService {
           created_at: new Date(),
           deleted_at: null,
         }));
-        await tx.insert(tables.documentEvidences).values(evidenceEntries);
+        if (evidenceEntries.length > 0) {
+          await tx.insert(tables.documentEvidences).values(evidenceEntries);
+        }
 
         // Delete deleted files from physical storage provider(s)
         for (const file of deletedFiles) {

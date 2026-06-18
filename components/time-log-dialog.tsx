@@ -211,10 +211,6 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
       return;
     }
 
-    if (evidenceList.length === 0) {
-      setError("Please upload at least one screenshot or proof photo of your work.");
-      return;
-    }
 
     setLoading(true);
     try {
@@ -338,7 +334,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block font-sans">
-                      Detailed Work Description (Markdown supported)
+                      Detailed Work Description (Optional, Markdown supported)
                     </Label>
                     <RichTextEditor
                       key={initialLog?.id || "new"}
@@ -454,7 +450,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 {/* Evidence Upload */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
-                    Attach Screen Evidence Proof
+                    Attach Screen Evidence Proof (Optional)
                   </Label>
                   
                   <div

@@ -658,11 +658,11 @@ export const newTaskZodSchema = createInsertSchema(tasks, {
 
 export const timeLogZodSchema = createSelectSchema(timeLogs, {
   title: z.string().min(1),
-  description: z.string().min(1),
+  description: z.string(),
 });
 export const newTimeLogZodSchema = createInsertSchema(timeLogs, {
   title: z.string().min(1),
-  description: z.string().min(1),
+  description: z.string().optional().default(""),
 }).omit({ created_at: true, updated_at: true }).partial({
   id: true,
 });
@@ -721,9 +721,9 @@ export const createLogInputZodSchema = z.object({
   startTime: z.coerce.date(),
   endTime: z.coerce.date(),
   title: z.string().min(1).optional().default("Untitled Task"),
-  description: z.string().min(1),
+  description: z.string().optional().default(""),
   taskIds: z.array(z.string()).optional(),
-  evidence: z.array(evidenceInputSchema).min(1),
+  evidence: z.array(evidenceInputSchema).optional().default([]),
   isPublic: z.boolean().optional(),
 });
 
@@ -734,9 +734,9 @@ export const updateLogInputZodSchema = z.object({
   startTime: z.coerce.date().optional(),
   endTime: z.coerce.date().optional(),
   title: z.string().min(1).optional(),
-  description: z.string().min(1).optional(),
+  description: z.string().optional(),
   taskIds: z.array(z.string()).optional(),
-  evidence: z.array(evidenceInputSchema).min(1).optional(),
+  evidence: z.array(evidenceInputSchema).optional(),
   isPublic: z.boolean().optional(),
 });
 

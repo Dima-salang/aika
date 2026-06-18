@@ -173,7 +173,7 @@ Each time log contains:
 - End time
 - Description
 - Linked task(s)
-- Document Evidence (required)
+- Document Evidence (optional)
 - Timestamp metadata
 
 Note: Duration is always computed from end time minus start time. It is never stored as a separate field.
@@ -217,10 +217,9 @@ Note: Duration is always computed from end time minus start time. It is never st
 
 # 3.6 Document Evidence Management System
 
-### FR-19 Document Evidence Requirement
+### FR-19 Document Evidence Option
 
-- Each time log MUST contain at least one Document Evidence file before final submission
-    - Validation error in UI if not met
+- Document Evidence files are optional for time logs.
 
 ---
 
@@ -468,7 +467,7 @@ The system shall log the following mutation events only (reads/page views are NO
 
 - A task may optionally belong to one project, or none at all
 - Time logs must not overlap
-- Document Evidence is mandatory for logs
+- Document Evidence is optional for logs
 - Only one active timer per user
 - Document Evidence cannot be reused
 - Admin cannot modify audit logs
@@ -509,7 +508,7 @@ System is considered complete when:
 - Kanban + backlog works
 - Time logging works (manual + timer)
 - Overlap validation works
-- Document Evidence upload enforced
+- Document Evidence upload supported
 - Dashboards display analytics
 - Reports can be exported
 - In-app notifications work
