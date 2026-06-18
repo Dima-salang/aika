@@ -110,53 +110,55 @@ export function Heatmap({ logs, className = "max-w-xl", weeksToShow = 12 }: Heat
         </div>
       </div>
 
-      <div className="flex flex-col flex-1 justify-center w-full">
-        {/* Month Headings Row */}
-        <div className="flex pl-7 w-full text-[10px] text-outline select-none mb-1">
-          {monthLabels.map((label, idx) => (
-            <div
-              key={idx}
-              style={{ width: `${(label.colSpan / weeksToShow) * 100}%` }}
-              className="truncate"
-            >
-              {label.text}
-            </div>
-          ))}
-        </div>
-
-        {/* Grid Setup */}
-        <div className="flex gap-2 items-start w-full">
-          {/* Day of week side column labels (Alternating like GitHub) */}
-          <div className="grid grid-rows-7 gap-1 text-[9px] text-outline pr-1 select-none h-[91px] leading-[10px] pt-[2px]">
-            {dayLabels.map((dayName, idx) => (
-              <span key={idx} className={idx % 2 === 1 ? "block" : "invisible"}>
-                {dayName}
-              </span>
+      <div className="w-full overflow-x-auto custom-scrollbar -mx-4 px-4 sm:-mx-0 sm:px-0">
+        <div className="flex flex-col flex-1 justify-center min-w-[760px] pb-2">
+          {/* Month Headings Row */}
+          <div className="flex pl-7 w-full text-[10px] text-outline select-none mb-1">
+            {monthLabels.map((label, idx) => (
+              <div
+                key={idx}
+                style={{ width: `${(label.colSpan / weeksToShow) * 100}%` }}
+                className="truncate"
+              >
+                {label.text}
+              </div>
             ))}
           </div>
 
-          {/* Grid Columns container */}
-          <div className="flex gap-1 justify-between items-center w-full">
-            {grid.map((week, weekIdx) => (
-              <div key={weekIdx} className="grid grid-rows-7 gap-1">
-                {week.map((day, dayIdx) => {
-                  const hours = durationMap[day.toDateString()] || 0;
-                  const colorClass = getColorClass(hours);
+          {/* Grid Setup */}
+          <div className="flex gap-2 items-start w-full">
+            {/* Day of week side column labels (Alternating like GitHub) */}
+            <div className="grid grid-rows-7 gap-1 text-[9px] text-outline pr-1 select-none h-[91px] leading-[10px] pt-[2px]">
+              {dayLabels.map((dayName, idx) => (
+                <span key={idx} className={idx % 2 === 1 ? "block" : "invisible"}>
+                  {dayName}
+                </span>
+              ))}
+            </div>
 
-                  return (
-                    <div
-                      key={dayIdx}
-                      className={`w-[10px] h-[10px] rounded-[2px] transition-all duration-200 hover:ring-1 hover:ring-primary cursor-pointer ${colorClass}`}
-                      title={`${day.toLocaleDateString(undefined, {
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric"
-                      })}: ${hours.toFixed(1)} hrs logged`}
-                    />
-                  );
-                })}
-              </div>
-            ))}
+            {/* Grid Columns container */}
+            <div className="flex gap-1 justify-between items-center w-full">
+              {grid.map((week, weekIdx) => (
+                <div key={weekIdx} className="grid grid-rows-7 gap-1">
+                  {week.map((day, dayIdx) => {
+                    const hours = durationMap[day.toDateString()] || 0;
+                    const colorClass = getColorClass(hours);
+
+                    return (
+                      <div
+                        key={dayIdx}
+                        className={`w-[10px] h-[10px] rounded-[2px] transition-all duration-200 hover:ring-1 hover:ring-primary cursor-pointer ${colorClass}`}
+                        title={`${day.toLocaleDateString(undefined, {
+                          month: "short",
+                          day: "numeric",
+                          year: "numeric"
+                        })}: ${hours.toFixed(1)} hrs logged`}
+                      />
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
       </div>
