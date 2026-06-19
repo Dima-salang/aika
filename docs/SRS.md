@@ -196,6 +196,10 @@ Note: Duration is always computed from end time minus start time. It is never st
 - Timer continues running when user switches teams (full page reload does NOT stop the timer)
 - After reload, the running timer is restored from backend state and displayed on the current page
 
+### FR-16.1 Local Draft Retention
+- The system shall automatically save the state of a time log form (title, description, project, tasks, files, times) client-side when the creation/editing dialog is closed, allowing users to resume later.
+- Draft state is persisted across page reloads and context switches using a Zustand-based client-side store.
+
 ---
 
 ### FR-17 Overlap Prevention
@@ -235,6 +239,8 @@ Note: Duration is always computed from end time minus start time. It is never st
 - Images stored in Cloudinary; non-image documents stored in Supabase Object Storage
 - Files organized by organization and user under the `evidences` bucket
 - Document Evidence cannot be reused across logs
+- The system shall support parallel uploading of multiple evidence files up to the file size limit.
+- The system shall support deleting multiple files in a single batch to minimize network requests.
 
 ---
 
@@ -386,6 +392,51 @@ The system shall log the following mutation events only (reads/page views are NO
 - Only Admins can view audit logs
 - Leaders see team activity via their dashboard (not raw audit trails)
 - Members see personal activity via their own dashboard/history
+
+---
+
+# 3.11 Third-Party Integrations
+
+### FR-36 Notion Integration
+- Users shall be able to connect their Notion workspace using OAuth.
+- Once connected, Aika will create the Aika Time Logs database inside the Aika Workspace page in the root workspace of the user.
+- Aika will sync the logs from the dashboard to the database, and the user can view the logs in the Notion database.
+- Users can disconnect Notion at any time via a confirmation modal.
+
+---
+
+# 3.12 Import & Export Capabilities
+
+### FR-37 Excel Import & Exporting
+- The system shall support importing time log and task records from formatted Excel worksheets.
+- Imported data is parsed, validated, and appended to the user's active logs.
+- The system shall support exporting personal or team reports to standard Excel and CSV formats.
+
+---
+
+# 3.13 Rich Content & Formatting
+
+### FR-38 Markdown Support & Rich Text Editor (Lexical)
+- The time log description and task comments/notes shall support rendering of standard Markdown.
+- Editing text fields (like log descriptions) shall use a rich text editor built on Lexical.
+- Lexical editor features include headers (H1/H2/H3), ordered and unordered lists, bold, italics, code blocks, and blockquotes.
+
+---
+
+# 3.14 Public Access Control
+
+### FR-39 Public Shareable Links
+- Users can generate public shareable links for individual time logs.
+- Anyone visiting a shareable link can view a full read-only detail page of the log (including its title, description with rendered Markdown, metadata, and evidence attachments).
+
+---
+
+# 3.15 Enhanced Mobile Responsiveness
+
+### FR-40 Responsive UI & Sidebar Collapsing
+- The main sidebar navigation shall collapse into a top header bar on mobile viewports.
+- The collapsed sidebar is accessible via a header hamburger toggle button.
+- The time-tracking sidebar / active timer control panel is integrated directly into the header bar on mobile devices to ensure readability and access.
 
 ---
 
