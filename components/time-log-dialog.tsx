@@ -5,19 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText } from "lucide-react";
+import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText, Globe, Lock } from "lucide-react";
 import { isSupportedMimeType, formatErrorMessage } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { RichTextEditor } from "@/components/rich-text-editor";
+import { useTimeLogDraftStore } from "@/lib/store";
 
-interface FileEvidence {
-  fileUrl: string;
-  fileKey: string;
-  fileName: string;
-  fileSize: number;
-  mimeType: string;
+import type { CreateLogInput } from "@/db/schema";
+
+export type FileEvidence = NonNullable<CreateLogInput["evidence"]>[number] & {
   previewUrl?: string;
-}
+};
 
 interface TimeLogDialogProps {
   isOpen: boolean;
@@ -50,10 +48,16 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [evidenceList, setEvidenceList] = useState<FileEvidence[]>([]);
   const [isPublic, setIsPublic] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadingFiles, setUploadingFiles] = useState<Array<{ name: string; size: number }>>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
+  const skipSaveRef = useRef(false);
+  const activeLogKeyRef = useRef<string>("new");
+  const { drafts, setDraft, clearDraft } = useTimeLogDraftStore();
+
   // Filter tasks based on selected project
   const projectTasks = useMemo(() => {
     if (!projectId) return [];
@@ -83,39 +87,88 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     if (isOpen && (!lastIsOpen || (initialId !== lastInitialLogId))) {
       setLastIsOpen(true);
       setLastInitialLogId(initialId);
-      setTitle(initialLog?.title || "");
-      setDescription(initialLog?.description || "");
       
-      const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
-      const end = initialLog ? new Date(initialLog.end_time) : new Date();
-      const offset = start.getTimezoneOffset() * 60000;
-      setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
-      setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
+      const currentKey = initialId || "new";
+      activeLogKeyRef.current = currentKey;
       
-      setProjectId(initialLog?.project_id || "");
-      setSelectedTasks(initialLog?.tasks || []);
-      
-      if (initialLog?.evidence) {
-        setEvidenceList(
-          initialLog.evidence.map((ev: any) => ({
-            fileUrl: ev.file_url,
-            fileKey: ev.file_key,
-            fileName: ev.file_name,
-            fileSize: ev.file_size,
-            mimeType: ev.mime_type,
-            previewUrl: ev.file_url,
-          }))
-        );
+      // determine the draft
+      const draft = drafts[currentKey];
+      if (draft) {
+        // ponytail: restore from persisted draft
+        setTitle(draft.title || "");
+        setDescription(draft.description || "");
+        setStartTime(draft.startTime || "");
+        setEndTime(draft.endTime || "");
+        setProjectId(draft.projectId || "");
+        setSelectedTasks(draft.selectedTasks || []);
+        setEvidenceList(draft.evidenceList || []);
+        setIsPublic(draft.isPublic || false);
       } else {
-        setEvidenceList([]);
+        setTitle(initialLog?.title || "");
+        setDescription(initialLog?.description || "");
+        
+        const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
+        const end = initialLog ? new Date(initialLog.end_time) : new Date();
+        const offset = start.getTimezoneOffset() * 60000;
+        setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
+        setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
+        
+        setProjectId(initialLog?.project_id || "");
+        setSelectedTasks(initialLog?.tasks || []);
+        
+        if (initialLog?.evidence) {
+          setEvidenceList(
+            initialLog.evidence.map((ev: any) => ({
+              fileUrl: ev.file_url,
+              fileKey: ev.file_key,
+              fileName: ev.file_name,
+              fileSize: ev.file_size,
+              mimeType: ev.mime_type,
+              previewUrl: ev.file_url,
+            }))
+          );
+        } else {
+          setEvidenceList([]);
+        }
+        setIsPublic(initialLog?.is_public || false);
       }
-      setIsPublic(initialLog?.is_public || false);
       setError(null);
     } else if (!isOpen && lastIsOpen) {
       setLastIsOpen(false);
       setLastInitialLogId(null);
     }
-  }, [isOpen, initialLog, lastIsOpen, lastInitialLogId]);
+  }, [isOpen, initialLog, lastIsOpen, lastInitialLogId, drafts]);
+
+  useEffect(() => {
+    // ponytail: auto-save fields as draft when closing/canceling
+    if (!isOpen && lastIsOpen) {
+      if (!skipSaveRef.current) {
+        setDraft(activeLogKeyRef.current, {
+          title,
+          description,
+          projectId,
+          selectedTasks,
+          evidenceList,
+          isPublic,
+          startTime,
+          endTime,
+        });
+      }
+      skipSaveRef.current = false;
+    }
+  }, [
+    isOpen,
+    lastIsOpen,
+    title,
+    description,
+    projectId,
+    selectedTasks,
+    evidenceList,
+    isPublic,
+    startTime,
+    endTime,
+    setDraft,
+  ]);
 
   if (!isOpen) return null;
 
@@ -124,56 +177,83 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     setError(null);
     setIsUploading(true);
 
-    const uploadedEvidence: FileEvidence[] = [];
-
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-      const isImage = file.type.startsWith("image/");
-
+    const filesArray = Array.from(files);
+    // Filter out unsupported files or files that are too large first to avoid server errors
+    const validFiles: File[] = [];
+    for (const file of filesArray) {
       if (!isSupportedMimeType(file.type)) {
         setError(`File ${file.name} has unsupported type.`);
-        continue;
+        setIsUploading(false);
+        return;
       }
-
       if (file.size > 10 * 1024 * 1024) {
         setError(`File ${file.name} is too big. Max size is 10MB.`);
-        continue;
+        setIsUploading(false);
+        return;
       }
-
-      try {
-        const formData = new FormData();
-        formData.append("file", file);
-        formData.append("organizationId", organizationId || "org-default");
-
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
-        });
-
-        if (!res.ok) {
-          const errData = await res.json();
-          throw new Error(errData.error || "Upload failed");
-        }
-
-        const data = await res.json();
-        uploadedEvidence.push({
-          fileUrl: data.fileUrl,
-          fileKey: data.fileKey,
-          fileName: data.fileName,
-          fileSize: data.fileSize,
-          mimeType: data.mimeType,
-          previewUrl: isImage ? URL.createObjectURL(file) : undefined,
-        });
-      } catch (err: any) {
-        setError(`Failed to upload ${file.name}. Please try again.`);
-      }
+      validFiles.push(file);
     }
 
-    setEvidenceList((prev) => [...prev, ...uploadedEvidence]);
-    setIsUploading(false);
+    setUploadingFiles(validFiles.map((f) => ({ name: f.name, size: f.size })));
+
+    try {
+      const formData = new FormData();
+      for (const file of validFiles) {
+        formData.append("file", file);
+      }
+      formData.append("organizationId", organizationId || "org-default");
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!res.ok) {
+        const errData = await res.json();
+        throw new Error(errData.error || "Upload failed");
+      }
+
+      const data = await res.json();
+      const uploadedEvidence = data.files.map((fileData: any, idx: number) => {
+        const originalFile = validFiles[idx];
+        const isImage = originalFile.type.startsWith("image/");
+        return {
+          fileUrl: fileData.fileUrl,
+          fileKey: fileData.fileKey,
+          fileName: fileData.fileName,
+          fileSize: fileData.fileSize,
+          mimeType: fileData.mimeType,
+          previewUrl: isImage ? URL.createObjectURL(originalFile) : undefined,
+        };
+      });
+
+      setEvidenceList((prev) => [...prev, ...uploadedEvidence]);
+    } catch (err: any) {
+      setError(err.message || "Failed to upload files.");
+    } finally {
+      setUploadingFiles([]);
+      setIsUploading(false);
+    }
   };
 
-  const removeEvidence = (index: number) => {
+  const removeEvidence = async (index: number) => {
+    const ev = evidenceList[index];
+    const initialUrls = new Set(
+      (initialLog?.evidence || []).map((e: any) => e.file_url || e.fileUrl)
+    );
+    if (!initialUrls.has(ev.fileUrl)) {
+      setIsDeleting(true);
+      try {
+        await fetch(`/api/upload?fileUrl=${encodeURIComponent(ev.fileUrl)}`, {
+          method: "DELETE",
+        });
+      } catch (err) {
+        console.error("Failed to delete file:", err);
+      } finally {
+        setIsDeleting(false);
+      }
+    }
+    
     setEvidenceList((prev) => {
       const copy = [...prev];
       const removed = copy.splice(index, 1)[0];
@@ -182,6 +262,31 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
       }
       return copy;
     });
+  };
+
+  const deleteUploadedEvidence = async (evidences: FileEvidence[]) => {
+    const initialUrls = new Set(
+      (initialLog?.evidence || []).map((ev: any) => ev.file_url || ev.fileUrl)
+    );
+    const newEvidences = evidences.filter((ev) => !initialUrls.has(ev.fileUrl));
+
+    if (newEvidences.length === 0) return;
+
+    setIsDeleting(true);
+    try {
+      const fileUrls = newEvidences.map((ev) => ev.fileUrl);
+      await fetch("/api/upload", {
+        method: "DELETE",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ fileUrls }),
+      });
+    } catch (err) {
+      console.error("Failed to delete files in bulk:", err);
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,6 +329,8 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         evidence: evidenceList,
         isPublic,
       });
+      skipSaveRef.current = true;
+      clearDraft(activeLogKeyRef.current);
       onClose();
     } catch (err: any) {
       setError(formatErrorMessage(err));
@@ -271,12 +378,43 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 </p>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="p-1.5 rounded-full hover:bg-surface-container-high text-outline hover:text-on-surface transition-colors cursor-pointer"
-            >
-              <X className="h-4.5 w-4.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setIsPublic(!isPublic)}
+                className={`p-2 rounded-lg border transition-all cursor-pointer relative group flex items-center justify-center gap-1.5 text-xs font-semibold ${
+                  isPublic 
+                    ? "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" 
+                    : "bg-surface-container border-outline-variant text-outline hover:text-on-surface"
+                }`}
+                aria-label={isPublic ? "Public Log" : "Private Log"}
+              >
+                {isPublic ? (
+                  <>
+                    <Globe className="h-4 w-4" />
+                    <span className="text-[10px]">Public</span>
+                  </>
+                ) : (
+                  <>
+                    <Lock className="h-4 w-4" />
+                    <span className="text-[10px]">Private</span>
+                  </>
+                )}
+                {/* Tooltip */}
+                <span className="absolute right-0 top-full mt-2 hidden group-hover:block bg-zinc-900 text-white text-[9px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">
+                  {isPublic 
+                    ? "Anyone with the link can view this log details" 
+                    : "Only organization/team members can view this log"}
+                </span>
+              </button>
+
+              <button
+                onClick={onClose}
+                className="p-1.5 rounded-full hover:bg-surface-container-high text-outline hover:text-on-surface transition-colors cursor-pointer"
+              >
+                <X className="h-4.5 w-4.5" />
+              </button>
+            </div>
           </div>
     
           {/* Horizontal Split Body */}
@@ -380,23 +518,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   </div>
                 </div>
 
-                {/* Public Sharing Toggle */}
-                <div className="flex items-center justify-between p-4 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl select-none">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="log-public" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block cursor-pointer">
-                      Share Log Publicly
-                    </Label>
-                    <p className="text-[9px] text-outline">Let other people view the details of this log.</p>
-                  </div>
-                  <input
-                    id="log-public"
-                    type="checkbox"
-                    checked={isPublic}
-                    onChange={(e) => setIsPublic(e.target.checked)}
-                    className="h-4.5 w-4.5 text-primary border-outline-variant rounded focus:ring-primary cursor-pointer accent-primary"
-                  />
-                </div>
-    
+
                 {/* Drag and Drop Drop Zone for Linked Tasks */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
@@ -421,17 +543,18 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                         ) : (
                           <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto custom-scrollbar">
                             {selectedTasks.map((tId) => {
-                              const t = tasks.find((item) => item.id === tId);
-                              const tTitle = t ? t.title : `Task-${tId.slice(0, 4)}`;
+                              const tIdStr = typeof tId === "string" ? tId : (tId as any)?.id || "";
+                              const t = tasks.find((item) => item.id === tIdStr);
+                              const tTitle = t ? t.title : `Task-${tIdStr.slice(0, 4)}`;
                               return (
                                 <div
-                                  key={tId}
+                                  key={tIdStr}
                                   className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10.5px] font-semibold animate-in zoom-in-95 duration-100"
                                 >
                                   <span className="truncate max-w-[130px]">{tTitle}</span>
                                   <button
                                     type="button"
-                                    onClick={() => toggleTask(tId)}
+                                    onClick={() => toggleTask(tIdStr)}
                                     className="p-0.5 rounded-full hover:bg-primary/20 text-primary shrink-0 transition-colors"
                                   >
                                     <X className="h-3 w-3" />
@@ -490,7 +613,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                     </div>
                   </div>
       
-                  {evidenceList.length > 0 && (
+                  {(evidenceList.length > 0 || uploadingFiles.length > 0) && (
                     <div className="grid grid-cols-4 gap-2 pt-1">
                       {evidenceList.map((ev, idx) => (
                         <div
@@ -532,6 +655,17 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                               <X className="h-3 w-3" />
                             </button>
                           </div>
+                        </div>
+                      ))}
+
+                      {uploadingFiles.map((uf, idx) => (
+                        <div
+                          key={`uploading-${idx}`}
+                          className="relative aspect-square border border-dashed border-outline-variant/60 rounded-lg overflow-hidden bg-surface-container-high/20 p-2 flex flex-col items-center justify-center text-center animate-pulse select-none"
+                        >
+                          <Loader2 className="h-5 w-5 text-primary animate-spin mb-1.5" />
+                          <span className="text-[9px] font-bold text-outline truncate w-full px-1">{uf.name}</span>
+                          <span className="text-[7.5px] text-outline/60 mt-0.5">{(uf.size / 1024).toFixed(0)} KB</span>
                         </div>
                       ))}
                     </div>
@@ -651,16 +785,75 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 variant="outline"
                 type="button"
                 className="rounded-lg text-xs font-semibold h-9 text-error border-outline-variant hover:bg-error/10 hover:text-error mr-auto cursor-pointer"
-                onClick={onDiscard}
-                disabled={loading}
+                onClick={() => {
+                  skipSaveRef.current = true;
+                  clearDraft(activeLogKeyRef.current);
+                  onDiscard();
+                }}
+                disabled={loading || isDeleting}
               >
                 Discard Session
               </Button>
             )}
-            <Button variant="outline" type="button" className="rounded-lg text-xs font-semibold h-9 cursor-pointer" onClick={onClose} disabled={loading}>
-              Cancel
+            <Button
+              variant="outline"
+              type="button"
+              className="rounded-lg text-xs font-semibold h-9 border-outline-variant hover:bg-surface-container-high cursor-pointer text-outline hover:text-on-surface mr-auto"
+              onClick={async () => {
+                await deleteUploadedEvidence(evidenceList);
+                setTitle("");
+                setDescription("");
+                setProjectId("");
+                setSelectedTasks([]);
+                setEvidenceList([]);
+                setIsPublic(false);
+                const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
+                const end = initialLog ? new Date(initialLog.end_time) : new Date();
+                const offset = start.getTimezoneOffset() * 60000;
+                setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
+                setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
+                clearDraft(activeLogKeyRef.current);
+              }}
+              disabled={loading || isDeleting}
+            >
+              {isDeleting ? "Clearing..." : "Clear Form"}
             </Button>
-            <Button type="submit" form="time-log-form" className="rounded-lg text-xs bg-primary text-on-primary font-bold hover:opacity-90 h-9 cursor-pointer" disabled={loading}>
+            <Button
+              variant="outline"
+              type="button"
+              className="rounded-lg text-xs font-semibold h-9 cursor-pointer"
+              onClick={async () => {
+                skipSaveRef.current = true;
+                await deleteUploadedEvidence(evidenceList);
+                clearDraft(activeLogKeyRef.current);
+                onClose();
+              }}
+              disabled={loading || isDeleting}
+            >
+              {isDeleting ? "Canceling..." : "Cancel"}
+            </Button>
+            <Button
+              variant="outline"
+              type="button"
+              className="rounded-lg text-xs font-semibold h-9 border-outline-variant bg-surface-container-low hover:bg-surface-container-high cursor-pointer"
+              onClick={() => {
+                setDraft(activeLogKeyRef.current, {
+                  title,
+                  description,
+                  projectId,
+                  selectedTasks,
+                  evidenceList,
+                  isPublic,
+                  startTime,
+                  endTime,
+                });
+                onClose();
+              }}
+              disabled={loading || isDeleting}
+            >
+              Save Draft
+            </Button>
+            <Button type="submit" form="time-log-form" className="rounded-lg text-xs bg-primary text-on-primary font-bold hover:opacity-90 h-9 cursor-pointer" disabled={loading || isDeleting}>
               {loading ? "Saving..." : initialLog ? "Apply Update" : "Save Log Entry"}
             </Button>
           </div>
