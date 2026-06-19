@@ -25,6 +25,10 @@ export class MockProvider implements StorageProvider {
   async delete(fileUrl: string): Promise<void> {
     this.deleted.push(fileUrl);
   }
+
+  async deleteBatch(fileUrls: string[]): Promise<void> {
+    this.deleted.push(...fileUrls);
+  }
 }
 
 describe("Storage Service and Log Evidence Deletion", () => {

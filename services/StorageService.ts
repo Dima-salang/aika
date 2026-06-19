@@ -4,6 +4,7 @@ import { createClient } from "@supabase/supabase-js";
 export interface StorageProvider {
   upload(fileBuffer: Buffer, path: string, mimeType: string): Promise<string>;
   delete(fileUrl: string): Promise<void>;
+  deleteBatch(fileUrls: string[]): Promise<void>;
 }
 
 // Check for Cloudinary placeholders
@@ -75,6 +76,32 @@ export class CloudinaryStorageProvider implements StorageProvider {
         if (error) reject(error);
         else {
           console.log(`Cloudinary deletion result for ${publicId}:`, result);
+          resolve();
+        }
+      });
+    });
+  }
+
+  async deleteBatch(fileUrls: string[]): Promise<void> {
+    if (isCloudinaryPlaceholder()) {
+      console.log(`[Mock Cloudinary] Deleted batch of ${fileUrls.length} files`);
+      return;
+    }
+
+    const publicIds = fileUrls.map(url => this.getPublicId(url)).filter((id): id is string => !!id);
+    if (publicIds.length === 0) return;
+
+    cloudinary.config({
+      cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+      api_key: process.env.CLOUDINARY_API_KEY,
+      api_secret: process.env.CLOUDINARY_API_SECRET,
+    });
+
+    await new Promise<void>((resolve, reject) => {
+      cloudinary.api.delete_resources(publicIds, (error, result) => {
+        if (error) reject(error);
+        else {
+          console.log(`Cloudinary batch deletion result:`, result);
           resolve();
         }
       });
@@ -159,6 +186,30 @@ export class SupabaseStorageProvider implements StorageProvider {
     }
   }
 
+  async deleteBatch(fileUrls: string[]): Promise<void> {
+    if (isSupabasePlaceholder()) {
+      console.log(`[Mock Supabase] Deleted batch of ${fileUrls.length} files`);
+      return;
+    }
+
+    const paths = fileUrls.map(url => this.getStoragePath(url)).filter((p): p is string => !!p);
+    if (paths.length === 0) return;
+
+    const supabase = createClient(
+      process.env.SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
+    const { error } = await supabase.storage
+      .from("documents")
+      .remove(paths);
+
+    if (error) {
+      console.error(`Supabase Storage batch deletion error:`, error);
+      throw new Error(`Attachment deletion failed. Please try again.`);
+    }
+  }
+
   private getStoragePath(url: string): string | null {
     if (!url.includes("supabase.co") && !url.includes("supabase-storage.co")) return null;
     try {
@@ -208,6 +259,27 @@ export class StorageService {
     } catch (err) {
       // Gracefully catch and log deletion errors to avoid blocking parent updates/transactions
       console.error(`Failed to delete storage file at ${fileUrl}:`, err);
+    }
+  }
+
+  async deleteBatch(fileUrls: string[]): Promise<void> {
+    try {
+      const cloudinaryUrls = fileUrls.filter(url => url.includes("cloudinary.com"));
+      const supabaseUrls = fileUrls.filter(url => url.includes("supabase.co") || url.includes("supabase-storage.co"));
+
+      const deletePromises: Promise<any>[] = [];
+
+      if (cloudinaryUrls.length > 0) {
+        deletePromises.push(this.cloudinaryProvider.deleteBatch(cloudinaryUrls));
+      }
+
+      if (supabaseUrls.length > 0) {
+        deletePromises.push(this.supabaseProvider.deleteBatch(supabaseUrls));
+      }
+
+      await Promise.all(deletePromises);
+    } catch (err) {
+      console.error("Failed to delete batch of storage files:", err);
     }
   }
 }

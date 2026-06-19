@@ -435,6 +435,17 @@ function InitialValuePlugin({ value }: { value: string }) {
     }
   }, [value, editor]);
 
+  useEffect(() => {
+    if (value === "") {
+      editor.update(() => {
+        const currentMarkdown = $convertToMarkdownString(EDITOR_TRANSFORMERS);
+        if (currentMarkdown.trim() !== "") {
+          $convertFromMarkdownString("", EDITOR_TRANSFORMERS);
+        }
+      });
+    }
+  }, [value, editor]);
+
   return null;
 }
 
