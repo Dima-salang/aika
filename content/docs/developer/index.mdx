@@ -1,0 +1,85 @@
+---
+title: Developer Quick Start
+description: System prerequisites, environment setup, and running Aika locally.
+---
+
+<Callout title="In Progress" icon="⏳" type="info">
+  **The developer guide is currently under construction.** Check back soon for the full developer quick start guide.
+</Callout>
+
+## Installation Steps
+
+Follow these steps to configure your local development environment:
+
+<Steps>
+  <Step>
+    ### Prerequisites
+    Aika is built on Bun. Ensure you have it installed before starting:
+    *   [Bun Installation Guide](https://bun.sh/)
+  </Step>
+
+  <Step>
+    ### Configure Local Environment Variables
+    Create a `.env` file in the root workspace and define the following variables:
+    ```ini
+    # Database Connection
+    DATABASE_URL="file:aika.db" # Or postgresql connection string
+    DEBUG_MODE=1
+
+    # Better Auth Keys
+    BETTER_AUTH_SECRET="d9d037005b27ab04f9ddb9b8d8a8f8274b5e426176f5c92af34ed4b86c4673ea"
+    BETTER_AUTH_URL="http://localhost:3020"
+
+    # OAuth Clients
+    GITHUB_CLIENT_ID="your-github-client-id"
+    GITHUB_CLIENT_SECRET="your-github-client-secret"
+    GOOGLE_CLIENT_ID="your-google-client-id"
+    GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+    # Supabase Storage (Document Evidence)
+    SUPABASE_URL="https://yourproject.supabase.co"
+    SUPABASE_ANON_KEY="your-anon-key"
+    SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+    # Cloudinary Storage (Image Evidence)
+    CLOUDINARY_CLOUD_NAME="your-cloud-name"
+    CLOUDINARY_API_KEY="your-api-key"
+    CLOUDINARY_API_SECRET="your-api-secret"
+    CLOUDINARY_URL="cloudinary://api_key:api_secret@cloud_name"
+
+    # Sentry
+    SENTRY_AUTH_TOKEN="your-sentry-token"
+
+    # Notion Developer API
+    NOTION_CLIENT_ID="your-notion-client-id"
+    NOTION_CLIENT_SECRET="your-notion-client-secret"
+    NOTION_REDIRECT_URI="http://localhost:3020/api/integrations/callback/notion"
+    NOTION_AUTHORIZATION_URL="https://api.notion.com/v1/oauth/authorize?client_id=..."
+    ```
+  </Step>
+
+  <Step>
+    ### Dependency Setup
+    Install all package requirements:
+    ```bash
+    bun install
+    ```
+  </Step>
+
+  <Step>
+    ### Database Push & Sync
+    Synchronize database tables using Drizzle:
+    ```bash
+    bun x drizzle-kit push
+    ```
+  </Step>
+
+  <Step>
+    ### Run Dev Server
+    Launch Next.js in hot-reload mode:
+    ```bash
+    bun dev
+    ```
+    Open [http://localhost:3000](http://localhost:3000) (or the port defined by Better Auth) to view your local Aika dashboard.
+  </Step>
+</Steps>
