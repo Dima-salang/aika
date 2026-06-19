@@ -732,6 +732,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                                       ref={providedDraggable.innerRef}
                                       {...providedDraggable.draggableProps}
                                       {...providedDraggable.dragHandleProps}
+                                      style={providedDraggable.draggableProps.style as React.CSSProperties}
                                       onClick={() => toggleTask(task.id)}
                                       className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${isLinked
                                           ? "border-primary bg-primary/[4%] shadow-sm"
