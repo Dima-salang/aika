@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { FileEvidence } from "@/components/time-log-dialog";
 
 interface LayoutState {
   leftSidebarCollapsed: boolean;
@@ -65,3 +66,60 @@ export const usePreferenceStore = create<PreferenceState>()(
     }
   )
 );
+
+import type { CreateLogInput } from "@/db/schema";
+
+export type TimeLogDraft = Omit<
+  CreateLogInput,
+  "userId" | "organizationId" | "teamId" | "projectId" | "startTime" | "endTime" | "evidence" | "taskIds"
+> & {
+  projectId: string;
+  selectedTasks: string[];
+  evidenceList: FileEvidence[];
+  isPublic: boolean;
+  startTime: string;
+  endTime: string;
+};
+
+interface TimeLogDraftState {
+  drafts: Record<string, TimeLogDraft>;
+  setDraft: (logKey: string, draft: Partial<TimeLogDraft>) => void;
+  clearDraft: (logKey: string) => void;
+}
+
+export const useTimeLogDraftStore = create<TimeLogDraftState>()(
+  persist(
+    (set) => ({
+      drafts: {},
+      setDraft: (logKey, draft) =>
+        set((state) => ({
+          drafts: {
+            ...state.drafts,
+            [logKey]: {
+              ...(state.drafts[logKey] || {
+                title: "",
+                description: "",
+                projectId: "",
+                selectedTasks: [],
+                evidenceList: [],
+                isPublic: false,
+                startTime: "",
+                endTime: "",
+              }),
+              ...draft,
+            },
+          },
+        })),
+      clearDraft: (logKey) =>
+        set((state) => {
+          const newDrafts = { ...state.drafts };
+          delete newDrafts[logKey];
+          return { drafts: newDrafts };
+        }),
+    }),
+    {
+      name: "aika-time-log-draft-store",
+    }
+  )
+);
+
