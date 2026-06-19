@@ -1,0 +1,8 @@
+{
+  "title": "🛠️ Developer Reference",
+  "pages": [
+    "index",
+    "architecture",
+    "observability-auditing"
+  ]
+}

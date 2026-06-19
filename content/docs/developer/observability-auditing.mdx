@@ -1,0 +1,35 @@
+---
+title: Observability & Auditing
+description: Technical implementations of error tracking and system audit logging.
+---
+
+## Mutation Audit Logging
+
+Aika records all data modifications in the database using the `audit_logs` table.
+
+### Relational Audits
+*   **Target Scope**: Auditing is strictly confined to data mutations (creates, updates, and deletes). Reading pages or viewing dashboards is **not** logged to keep database noise and write volumes low.
+*   **Immutability**: Audit logs are read-only. No API controller or resolver supports editing or deleting rows inside the `audit_logs` table.
+*   **Access Control**: Query routes for audit logs verify the session context and require the user's `is_admin` flag to be set to `true`. Non-admin requests are rejected with a `403 Forbidden` status.
+
+---
+
+## Logging Payload Structures
+
+Each audit record captures structural metadata regarding the event:
+
+*   `user_id`: The ID of the authenticated user who initiated the mutation.
+*   `event`: Uppercase action keyword (e.g., `TASK_CREATE`, `TIME_LOG_DELETE`).
+*   `table_name`: The relational database table affected by the query.
+*   `record_id`: The UUID or ID key of the modified table row.
+*   `payload`: A JSON string stringifying the updated fields or database diff.
+*   `ip_address` & `user_agent`: Telemetry variables extracted from request headers.
+
+---
+
+## Observability & Sentry Integrations
+
+Application errors are caught and logged to Sentry using edge, server, and client SDK files:
+
+*   **API Edge Routes**: Edge failures are caught at serverless routing boundaries.
+*   **Query Trace Operations**: tRPC context middleware traces slow queries and catches runtime database failures.
