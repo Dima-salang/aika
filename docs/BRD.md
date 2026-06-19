@@ -108,6 +108,20 @@ The platform aims to achieve the following objectives:
 
 - In-app notifications for team invitations, task updates, and log events
 
+### Third-Party & Data Integrations
+
+- Notion task integration via OAuth
+- Excel/CSV import and exporting of task/time log reports
+
+### Rich Text & Shared Access
+
+- Rich Text editing powered by Lexical and Markdown format rendering for descriptions
+- Publicly shareable read-only links for individual time logs
+
+### Enhanced Layout & Responsiveness
+
+- Mobile-first adaptive layout with hamburger toggle navigation and integrated time sidebar header controls
+
 ---
 
 ## Out of Scope
@@ -249,6 +263,7 @@ Support:
 
 - Manual logging
 - Timer-based logging
+- Local draft persistence (automatically caching in-progress log inputs when the dialog is closed)
 
 Required fields:
 
@@ -269,6 +284,8 @@ Support:
 
 - Image and Document uploads (PDF, Word, Excel, PowerPoint, Text, Zip)
 - Document Evidence attachment to logs
+- Batch uploading (parallel upload processing)
+- Batch deletion (bulk deletion of files from providers)
 
 Users may:
 

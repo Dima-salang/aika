@@ -21,3 +21,9 @@ A user-scoped report compiling an individual's own time logs and task metrics. C
 ## Team Report
 A team-scoped report aggregating time logs, workload distribution, and task metrics across all members of a specific Team. Visible only to Team Leaders, Organization Admins, or Global Admins.
 
+## Local Draft
+Client-side persisted state of an in-progress time log form, preserved using a Zustand store to prevent data loss when a dialog is closed or the page is refreshed.
+
+## Evidence Batching
+Parallel uploading of multiple files and bulk deletion of stored assets in a single request to minimize latency and network overhead.
+
