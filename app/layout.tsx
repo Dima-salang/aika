@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Space_Grotesk, Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
+import { RootProvider } from "fumadocs-ui/provider/next";
 
 const spaceGrotesk = Space_Grotesk({
   variable: "--font-space-grotesk",
@@ -52,7 +53,9 @@ export default function RootLayout({
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
       </head>
       <body className="min-h-screen flex bg-background text-foreground antialiased font-sans">
-        <Providers>{children}</Providers>
+        <RootProvider>
+          <Providers>{children}</Providers>
+        </RootProvider>
         <Toaster richColors position="top-right" />
         <ConfirmDialog />
         <Analytics />
