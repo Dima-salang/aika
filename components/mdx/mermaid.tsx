@@ -1,6 +1,6 @@
 'use client';
 
-import { use, useEffect, useId, useState } from 'react';
+import { useEffect, useId, useState } from 'react';
 import { useTheme } from 'next-themes';
 
 export function Mermaid({ chart }: { chart: string }) {
@@ -14,41 +14,55 @@ export function Mermaid({ chart }: { chart: string }) {
   return <MermaidContent chart={chart} />;
 }
 
-const cache = new Map<string, Promise<unknown>>();
-
-function cachePromise<T>(key: string, setPromise: () => Promise<T>): Promise<T> {
-  const cached = cache.get(key);
-  if (cached) return cached as Promise<T>;
-
-  const promise = setPromise();
-  cache.set(key, promise);
-  return promise;
-}
-
 function MermaidContent({ chart }: { chart: string }) {
   const id = useId();
   const { resolvedTheme } = useTheme();
-  const { default: mermaid } = use(cachePromise('mermaid', () => import('mermaid')));
+  const [svg, setSvg] = useState<string>('');
 
-  mermaid.initialize({
-    startOnLoad: false,
-    securityLevel: 'loose',
-    fontFamily: 'inherit',
-    themeCSS: 'margin: 1.5rem auto 0;',
-    theme: resolvedTheme === 'dark' ? 'dark' : 'default',
-  });
+  useEffect(() => {
+    let active = true;
 
-  const { svg, bindFunctions } = use(
-    cachePromise(`${chart}-${resolvedTheme}`, () => {
-      return mermaid.render(id, chart.replaceAll('\\n', '\n'));
-    }),
-  );
+    async function renderChart() {
+      try {
+        const { default: mermaid } = await import('mermaid');
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: 'strict',
+          fontFamily: 'inherit',
+          themeCSS: 'margin: 1.5rem auto 0;',
+          theme: resolvedTheme === 'dark' ? 'dark' : 'default',
+        });
+        
+        const { svg: renderedSvg } = await mermaid.render(
+          id, 
+          chart.replaceAll('\\n', '\n')
+        );
+
+        if (active) {
+          setSvg(renderedSvg);
+        }
+      } catch (err) {
+        console.error('Failed to render Mermaid chart:', err);
+      }
+    }
+
+    renderChart();
+
+    return () => {
+      active = false;
+    };
+  }, [id, chart, resolvedTheme]);
+
+  if (!svg) {
+    return (
+      <div className="animate-pulse h-20 bg-muted/20 rounded flex items-center justify-center text-sm text-muted-foreground border border-dashed border-muted/50 my-6">
+        Loading diagram...
+      </div>
+    );
+  }
 
   return (
     <div
-      ref={(container) => {
-        if (container) bindFunctions?.(container);
-      }}
       dangerouslySetInnerHTML={{ __html: svg }}
     />
   );
