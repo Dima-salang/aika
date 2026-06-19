@@ -1,5 +1,5 @@
 import { db, DBInstance, runTransaction } from "@/db";
-import { notionService } from "@/services/NotionService";
+import { notionService } from "@/services/integrations/NotionService";
 import { calculateDurationSeconds } from "@/utils/time";
 import {
   NewTimeLog,
@@ -18,12 +18,12 @@ import { eq, and, lt, gt, isNull, ne, inArray, lte, gte, desc, or, like } from "
 import { SQL } from "drizzle-orm";
 import { AuditService } from "./AuditService";
 import { isSupportedMimeType } from "@/utils/file";
-import { StorageService } from "./StorageService";
+import { StorageService } from "../integrations/StorageService";
 import { TaskService } from "./TaskService";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import crypto from "crypto";
 import { z } from "zod";
-import { ImportedLogInput } from "./import-export/types";
+import { ImportedLogInput } from "../import-export/types";
 
 const stopTimerSchema = z.object({
   userId: z.string(),
@@ -1225,15 +1225,15 @@ export class LogService {
 
         const evidence = log.evidenceUrls
           ? log.evidenceUrls.map((url) => {
-              const fileName = url.split("/").pop() || "evidence-file";
-              return {
-                fileUrl: url,
-                fileKey: `imported/${crypto.randomUUID()}`,
-                fileName,
-                fileSize: 1024,
-                mimeType: url.endsWith(".png") ? "image/png" : url.endsWith(".jpg") || url.endsWith(".jpeg") ? "image/jpeg" : "application/pdf",
-              };
-            })
+            const fileName = url.split("/").pop() || "evidence-file";
+            return {
+              fileUrl: url,
+              fileKey: `imported/${crypto.randomUUID()}`,
+              fileName,
+              fileSize: 1024,
+              mimeType: url.endsWith(".png") ? "image/png" : url.endsWith(".jpg") || url.endsWith(".jpeg") ? "image/jpeg" : "application/pdf",
+            };
+          })
           : [];
 
         if (evidence.length === 0) {

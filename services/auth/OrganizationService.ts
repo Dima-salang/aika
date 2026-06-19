@@ -9,7 +9,7 @@ import {
   updateOrganizationInputZodSchema,
 } from "@/db/schema";
 import { eq, and, like, SQL } from "drizzle-orm";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import { z } from "zod";
 
 const addMemberSchema = z.object({

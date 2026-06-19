@@ -7,7 +7,7 @@ import {
   updateProjectRouterInputZodSchema,
   idInputZodSchema,
 } from "@/db/schema";
-import { ProjectService } from "@/services/ProjectService";
+import { ProjectService } from "@/services/core/ProjectService";
 import { handleDbError } from "@/utils/db-errors";
 
 const projectService = new ProjectService();

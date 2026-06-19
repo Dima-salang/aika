@@ -7,7 +7,7 @@ import { ActivityLogItem } from "@/components/team/activity-log-item";
 import { getLogDurationSeconds, formatDuration } from "@/utils/time";
 import { toast } from "sonner";
 import { useConfirmStore } from "@/lib/store";
-import { ImportExportDialog } from "./import-export-dialog";
+import { ImportExportDialog } from "../ui-components/import-export-dialog";
 
 interface TimeLogsListProps {
   logsByDay: { [key: string]: any[] };
@@ -141,8 +141,8 @@ export function TimeLogsList({
             <button
               onClick={() => setViewMode("list")}
               className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${viewMode === "list"
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
                 }`}
               title="List View"
             >
@@ -152,8 +152,8 @@ export function TimeLogsList({
             <button
               onClick={() => setViewMode("card")}
               className={`p-1.5 rounded-md transition-all flex items-center gap-1 ${viewMode === "card"
-                  ? "bg-primary text-on-primary shadow-sm"
-                  : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
+                ? "bg-primary text-on-primary shadow-sm"
+                : "text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high"
                 }`}
               title="Card View"
             >

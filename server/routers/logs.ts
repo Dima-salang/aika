@@ -14,10 +14,10 @@ import { handleDbError } from "@/utils/db-errors";
 import { importedLogZodSchema } from "@/services/import-export/types";
 
 // Service Imports & Instantiation
-import { AuditService } from "@/services/AuditService";
-import { TaskService } from "@/services/TaskService";
-import { LogService, DetailedTimeLog } from "@/services/LogService";
-import { StorageService } from "@/services/StorageService";
+import { AuditService } from "@/services/core/AuditService";
+import { TaskService } from "@/services/core/TaskService";
+import { LogService, DetailedTimeLog } from "@/services/core/LogService";
+import { StorageService } from "@/services/integrations/StorageService";
 
 const auditService = new AuditService();
 const taskService = new TaskService();

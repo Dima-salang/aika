@@ -8,15 +8,15 @@ import {
   getUserTeamsInputZodSchema,
   setActiveTeamInputZodSchema,
 } from "@/db/schema";
-import { LogService } from "@/services/LogService";
-import { TeamService } from "@/services/TeamService";
-import { AuditService } from "@/services/AuditService";
-import { NotificationService } from "@/services/NotificationService";
-import { TaskService } from "@/services/TaskService";
-import { UserService } from "@/services/UserService";
-import { OrganizationService } from "@/services/OrganizationService";
+import { LogService } from "@/services/core/LogService";
+import { TeamService } from "@/services/auth/TeamService";
+import { AuditService } from "@/services/core/AuditService";
+import { NotificationService } from "@/services/core/NotificationService";
+import { TaskService } from "@/services/core/TaskService";
+import { UserService } from "@/services/auth/UserService";
+import { OrganizationService } from "@/services/auth/OrganizationService";
 import { handleDbError } from "@/utils/db-errors";
-import { StorageService } from "@/services/StorageService";
+import { StorageService } from "@/services/integrations/StorageService";
 
 const auditService = new AuditService();
 const organizationService = new OrganizationService();

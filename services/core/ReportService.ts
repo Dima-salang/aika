@@ -1,5 +1,5 @@
 import { db, DBInstance } from "@/db";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import { eq, and, isNull, inArray, gte, lte, sum } from "drizzle-orm";
 import { z } from "zod";
 import { TimeLog, TimeLogSqlite } from "@/db/schema";
@@ -188,7 +188,7 @@ export class ReportService {
    */
   aggregateTaskStatuses(tasks: { id: string; status: string }[]): TaskStatusBreakdown[] {
     const statusMap = new Map<string, number>();
-    
+
     for (const task of tasks) {
       const current = statusMap.get(task.status) || 0;
       statusMap.set(task.status, current + 1);
@@ -274,7 +274,7 @@ export class ReportService {
       .select({ id: evidenceTable.id, time_log_id: evidenceTable.time_log_id, file_url: evidenceTable.file_url })
       .from(evidenceTable)
       .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
-    
+
     const evidenceMap = new Map<string, string[]>();
     for (const ev of evidence) {
       const current = evidenceMap.get(ev.time_log_id) || [];

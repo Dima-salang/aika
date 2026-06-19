@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { NotificationService } from "../NotificationService";
+import { NotificationService } from "../core/NotificationService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { notificationsSqlite } from "@/db/schema";

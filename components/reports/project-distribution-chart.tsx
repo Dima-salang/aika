@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ProjectTimeBreakdown } from "@/services/ReportService";
+import { ProjectTimeBreakdown } from "@/services/core/ReportService";
 import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip } from "recharts";
 
 interface ProjectDistributionChartProps {

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { AuditService } from "../AuditService";
+import { AuditService } from "../core/AuditService";
 import { clearDatabase, db } from "./db-helper";
 import { auditLogsSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";

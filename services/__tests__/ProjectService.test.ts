@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { ProjectService } from "../ProjectService";
+import { ProjectService } from "../core/ProjectService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { projectsSqlite } from "@/db/schema";

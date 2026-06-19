@@ -1,21 +1,21 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { LogService } from "../LogService";
-import { AuditService } from "../AuditService";
-import { NotificationService } from "../NotificationService";
-import { TaskService } from "../TaskService";
-import { UserService } from "../UserService";
-import { OrganizationService } from "../OrganizationService";
-import { TeamService } from "../TeamService";
+import { LogService } from "../core/LogService";
+import { AuditService } from "../core/AuditService";
+import { NotificationService } from "../core/NotificationService";
+import { TaskService } from "../core/TaskService";
+import { UserService } from "../auth/UserService";
+import { OrganizationService } from "../auth/OrganizationService";
+import { TeamService } from "../auth/TeamService";
 import { clearDatabase, db } from "./db-helper";
 import { userSqlite, timeLogsSqlite, documentEvidencesSqlite, organizationSqlite } from "@/db/schema";
-import { StorageService, StorageProvider } from "@/services/StorageService";
+import { StorageService, StorageProvider } from "@/services/integrations/StorageService";
 
 // Mock providers
 export class MockProvider implements StorageProvider {
   uploaded: { fileBuffer: Buffer; path: string; mimeType: string }[] = [];
   deleted: string[] = [];
 
-  constructor(private prefix: string) {}
+  constructor(private prefix: string) { }
 
   async upload(fileBuffer: Buffer, path: string, mimeType: string): Promise<string> {
     this.uploaded.push({ fileBuffer, path, mimeType });
@@ -35,7 +35,7 @@ describe("Storage Service and Log Evidence Deletion", () => {
   let cloudinaryMock: MockProvider;
   let supabaseMock: MockProvider;
   let storageService: StorageService;
-  
+
   let auditService: AuditService;
   let notificationService: NotificationService;
   let taskService: TaskService;

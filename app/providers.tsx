@@ -7,7 +7,7 @@ import React, { useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { formatErrorMessage } from "@/utils/file";
 import { toast } from "sonner";
-import { ImageViewer } from "@/components/image-viewer";
+import { ImageViewer } from "@/components/ui-components/image-viewer";
 import { AuthProvider } from "@/components/providers/auth-provider";
 
 // Monkey patch toast.error on the client side to format all error messages automatically
@@ -51,7 +51,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       },
     },
   }));
-  
+
   const [trpcClient] = useState(() =>
     trpc.createClient({
       links: [

@@ -39,14 +39,14 @@ export function DetailViewDialog({
   const projectObj = selectedLog
     ? projects.find((p) => p.id === selectedLog.project_id)
     : selectedTask
-    ? projects.find((p) => p.id === selectedTask.project_id)
-    : null;
+      ? projects.find((p) => p.id === selectedTask.project_id)
+      : null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/50 dark:bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      
+
       <div className="relative w-full max-w-lg bg-surface dark:bg-[#131315] border border-outline-variant rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-        
+
         {/* Header */}
         <div className="flex items-center justify-between px-unit-6 py-unit-4 border-b border-outline-variant bg-surface-container-lowest select-none">
           <div className="flex items-center gap-unit-3">
@@ -72,7 +72,7 @@ export function DetailViewDialog({
 
         {/* Content */}
         <div className="p-unit-6 space-y-6 overflow-y-auto max-h-[70vh] custom-scrollbar">
-          
+
           {selectedLog && (
             <div className="space-y-5">
               {/* Title & Project */}
@@ -249,25 +249,23 @@ export function DetailViewDialog({
               <div className="grid grid-cols-2 gap-4 p-4 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl select-none">
                 <div className="space-y-1">
                   <span className="text-outline text-[10px] uppercase font-bold block">Status</span>
-                  <span className={`px-2 py-0.5 rounded text-[10.5px] border uppercase font-extrabold inline-block ${
-                    selectedTask.status === "done" 
-                      ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30" 
-                      : selectedTask.status === "in_progress"
+                  <span className={`px-2 py-0.5 rounded text-[10.5px] border uppercase font-extrabold inline-block ${selectedTask.status === "done"
+                    ? "bg-emerald-500/15 text-emerald-300 border-emerald-500/30"
+                    : selectedTask.status === "in_progress"
                       ? "bg-primary/15 text-primary border-primary/30"
                       : "bg-zinc-500/15 text-zinc-300 border-zinc-500/30"
-                  }`}>
+                    }`}>
                     {selectedTask.status}
                   </span>
                 </div>
                 <div className="space-y-1">
                   <span className="text-outline text-[10px] uppercase font-bold block">Priority</span>
-                  <span className={`px-2 py-0.5 rounded text-[10.5px] border uppercase font-extrabold inline-block ${
-                    selectedTask.priority === "high"
-                      ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
-                      : selectedTask.priority === "medium"
+                  <span className={`px-2 py-0.5 rounded text-[10.5px] border uppercase font-extrabold inline-block ${selectedTask.priority === "high"
+                    ? "bg-rose-500/15 text-rose-300 border-rose-500/30"
+                    : selectedTask.priority === "medium"
                       ? "bg-amber-500/15 text-amber-300 border-amber-500/30"
                       : "bg-sky-500/15 text-sky-300 border-sky-500/30"
-                  }`}>
+                    }`}>
                     {selectedTask.priority || "none"}
                   </span>
                 </div>

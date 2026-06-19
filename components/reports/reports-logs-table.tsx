@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { DetailedReportLog } from "@/services/ReportService";
+import { DetailedReportLog } from "@/services/core/ReportService";
 import { calculateDurationHours } from "@/utils/time";
 
 interface ReportsLogsTableProps {

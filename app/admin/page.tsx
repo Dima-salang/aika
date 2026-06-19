@@ -6,7 +6,7 @@ import { db } from "@/db";
 import { AdminShell } from "@/components/admin/admin-shell";
 import { Shield, ArrowLeft } from "lucide-react";
 import { eq, inArray, and, or } from "drizzle-orm";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 
 export const revalidate = 0; // Ensure admin dashboard is always fresh and server-rendered on demand
 

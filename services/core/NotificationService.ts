@@ -1,6 +1,6 @@
 import { db, DBInstance } from "@/db";
 import { eq, and, isNull, isNotNull, desc, SQL } from "drizzle-orm";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import { Notification, NotificationSqlite, notificationZodSchema } from "@/db/schema";
 import { z } from "zod";
 

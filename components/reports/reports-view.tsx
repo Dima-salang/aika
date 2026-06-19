@@ -10,7 +10,7 @@ import { ReportsLogsTable } from "./reports-logs-table";
 import { WorkloadTable } from "./workload-table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
-import { Heatmap } from "@/components/heatmap";
+import { Heatmap } from "@/components/ui-components/heatmap";
 
 interface ReportsViewProps {
   activeOrg: any;
@@ -111,7 +111,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
   );
 
   const isLoading = activeSubTab === "personal" ? personalPending : teamPending;
-  
+
   const activeReport = useMemo(() => {
     const report = activeSubTab === "personal" ? personalReport : teamReport;
     if (!report) return null;
@@ -288,11 +288,10 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
       <div className="flex items-center gap-1.5 border-b border-outline-variant/40 pb-0.5 print:hidden">
         <button
           onClick={() => setActiveSubTab("personal")}
-          className={`px-4 py-2 font-bold text-xs uppercase tracking-wider transition-all border-b-2 ${
-            activeSubTab === "personal"
+          className={`px-4 py-2 font-bold text-xs uppercase tracking-wider transition-all border-b-2 ${activeSubTab === "personal"
               ? "border-primary text-primary"
               : "border-transparent text-on-surface-variant hover:text-on-surface"
-          }`}
+            }`}
         >
           Personal Report
         </button>
@@ -300,11 +299,10 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
         {isLeader && (
           <button
             onClick={() => setActiveSubTab("team")}
-            className={`px-4 py-2 font-bold text-xs uppercase tracking-wider transition-all border-b-2 ${
-              activeSubTab === "team"
+            className={`px-4 py-2 font-bold text-xs uppercase tracking-wider transition-all border-b-2 ${activeSubTab === "team"
                 ? "border-primary text-primary"
                 : "border-transparent text-on-surface-variant hover:text-on-surface"
-            }`}
+              }`}
           >
             Team Report
           </button>
@@ -352,7 +350,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
         </div>
       ) : activeReport ? (
         <div className="space-y-6 print:space-y-4">
-          
+
           {/* Printable Header */}
           <div className="hidden print:block border-b border-black pb-4 mb-4">
             <h1 className="text-3xl font-black">{activeSubTab === "personal" ? "Personal Work Report" : "Team Work Report"}</h1>
@@ -370,7 +368,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
 
           {/* Charts Grid */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-1">
-            
+
             {/* Daily Hours Bar Chart */}
             <div className="glass-card rounded-xl p-6 bg-surface-container-low text-on-surface border border-outline-variant lg:col-span-2 flex flex-col justify-between h-[280px]">
               <div>

@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import type { FileEvidence } from "@/components/time-log-dialog";
+import type { FileEvidence } from "@/components/timer/time-log-dialog";
 
 interface LayoutState {
   leftSidebarCollapsed: boolean;

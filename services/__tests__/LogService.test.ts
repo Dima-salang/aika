@@ -1,16 +1,16 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { LogService } from "../LogService";
-import { AuditService } from "../AuditService";
-import { NotificationService } from "../NotificationService";
-import { TaskService } from "../TaskService";
-import { UserService } from "../UserService";
-import { OrganizationService } from "../OrganizationService";
-import { TeamService } from "../TeamService";
+import { LogService } from "../core/LogService";
+import { AuditService } from "../core/AuditService";
+import { NotificationService } from "../core/NotificationService";
+import { TaskService } from "../core/TaskService";
+import { UserService } from "../auth/UserService";
+import { OrganizationService } from "../auth/OrganizationService";
+import { TeamService } from "../auth/TeamService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { userSqlite, tasksSqlite, timeLogsSqlite, timersSqlite, documentEvidencesSqlite, organizationSqlite, projectsSqlite, teamsSqlite, teamMembersSqlite } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
-import { StorageService } from "@/services/StorageService";
+import { StorageService } from "@/services/integrations/StorageService";
 import { MockProvider } from "./StorageService.test";
 import { ImportedLogInput } from "../import-export/types";
 

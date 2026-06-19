@@ -68,12 +68,12 @@ export const auth = betterAuth({
       organizationHooks: {
         afterAcceptInvitation: async ({ invitation, user }) => {
           if (invitation.teamId) {
-            const { TeamService } = await import("@/services/TeamService");
+            const { TeamService } = await import("@/services/auth/TeamService");
             const teamService = new TeamService();
             await teamService.addTeamMember(invitation.teamId, user.id, "member");
-            
-            const { UserService } = await import("@/services/UserService");
-            const { OrganizationService } = await import("@/services/OrganizationService");
+
+            const { UserService } = await import("@/services/auth/UserService");
+            const { OrganizationService } = await import("@/services/auth/OrganizationService");
             const userService = new UserService(new OrganizationService(), teamService);
             await userService.setActiveTeam(user.id, undefined, invitation.teamId);
           }

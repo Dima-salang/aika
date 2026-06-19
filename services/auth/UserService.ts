@@ -8,7 +8,7 @@ import {
 import { eq, and, isNull, isNotNull, inArray, SQL } from "drizzle-orm";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import { z } from "zod";
 
 const createUserSchema = z.object({
