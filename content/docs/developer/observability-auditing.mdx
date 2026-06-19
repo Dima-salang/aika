@@ -9,7 +9,7 @@ Aika records all data modifications in the database using the `audit_logs` table
 
 ### Relational Audits
 *   **Target Scope**: Auditing is strictly confined to data mutations (creates, updates, and deletes). Reading pages or viewing dashboards is **not** logged to keep database noise and write volumes low.
-*   **Immutability**: Audit logs are read-only. No API controller or resolver supports editing or deleting rows inside the `auditLogs` table.
+*   **Immutability**: Audit logs are read-only. No API controller or resolver supports editing or deleting rows inside the `audit_logs` table.
 *   **Access Control**: Query routes for audit logs verify the session context and require the user's `is_admin` flag to be set to `true`. Non-admin requests are rejected with a `403 Forbidden` status.
 
 ---
