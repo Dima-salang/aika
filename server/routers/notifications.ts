@@ -1,6 +1,6 @@
 import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
-import { NotificationService } from "@/services/NotificationService";
+import { NotificationService } from "@/services/core/NotificationService";
 import { handleDbError } from "@/utils/db-errors";
 
 const notificationService = new NotificationService();

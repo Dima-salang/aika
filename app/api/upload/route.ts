@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { headers } from "next/headers";
 import crypto from "crypto";
 import { isSupportedMimeType } from "@/utils/file";
-import { StorageService } from "@/services/StorageService";
+import { StorageService } from "@/services/integrations/StorageService";
 
 export async function POST(req: NextRequest) {
   try {
@@ -54,7 +54,7 @@ export async function POST(req: NextRequest) {
       const uniqueFileName = `${fileKey}-${sanitizedFileName}`;
 
       const isImage = mimeType.startsWith("image/");
-      
+
       const path = isImage
         ? `organizations/${organizationId}/users/${userId}/images/${fileKey}`
         : `organizations/${organizationId}/users/${userId}/${uniqueFileName}`;

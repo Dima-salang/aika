@@ -1,11 +1,11 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { UserService } from "../UserService";
+import { UserService } from "../auth/UserService";
 import { clearDatabase, db } from "./db-helper";
 import { userSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { DBInstance } from "@/db";
-import { OrganizationService } from "../OrganizationService";
-import { TeamService } from "../TeamService";
+import { OrganizationService } from "../auth/OrganizationService";
+import { TeamService } from "../auth/TeamService";
 
 describe("UserService", () => {
   let mockOrganizationService: { getMembers: ReturnType<typeof mock> };

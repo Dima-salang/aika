@@ -8,7 +8,7 @@ import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea
 import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText, Globe, Lock } from "lucide-react";
 import { isSupportedMimeType, formatErrorMessage } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
-import { RichTextEditor } from "@/components/rich-text-editor";
+import { RichTextEditor } from "@/components/ui-components/rich-text-editor";
 import { useTimeLogDraftStore } from "@/lib/store";
 
 import type { CreateLogInput } from "@/db/schema";
@@ -53,7 +53,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [uploadingFiles, setUploadingFiles] = useState<Array<{ name: string; size: number }>>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  
+
   const skipSaveRef = useRef(false);
   const activeLogKeyRef = useRef<string>("new");
   const { drafts, setDraft, clearDraft } = useTimeLogDraftStore();
@@ -87,10 +87,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     if (isOpen && (!lastIsOpen || (initialId !== lastInitialLogId))) {
       setLastIsOpen(true);
       setLastInitialLogId(initialId);
-      
+
       const currentKey = initialId || "new";
       activeLogKeyRef.current = currentKey;
-      
+
       // determine the draft
       const draft = drafts[currentKey];
       if (draft) {
@@ -106,16 +106,16 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
       } else {
         setTitle(initialLog?.title || "");
         setDescription(initialLog?.description || "");
-        
+
         const start = initialLog ? new Date(initialLog.start_time) : new Date(Date.now() - 60 * 60 * 1000);
         const end = initialLog ? new Date(initialLog.end_time) : new Date();
         const offset = start.getTimezoneOffset() * 60000;
         setStartTime(new Date(start.getTime() - offset).toISOString().slice(0, 16));
         setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
-        
+
         setProjectId(initialLog?.project_id || "");
         setSelectedTasks(initialLog?.tasks || []);
-        
+
         if (initialLog?.evidence) {
           setEvidenceList(
             initialLog.evidence.map((ev: any) => ({
@@ -253,7 +253,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         setIsDeleting(false);
       }
     }
-    
+
     setEvidenceList((prev) => {
       const copy = [...prev];
       const removed = copy.splice(index, 1)[0];
@@ -360,9 +360,9 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   return (
     <DragDropContext onDragEnd={handleDragEnd}>
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-zinc-950/45 dark:bg-black/75 backdrop-blur-sm animate-in fade-in duration-200">
-        
+
         <div className="relative w-full max-w-7xl h-[90vh] max-h-[950px] flex flex-col bg-surface dark:bg-[#131315] border border-outline-variant rounded-xl shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200">
-          
+
           {/* Header */}
           <div className="flex items-center justify-between px-unit-6 py-unit-4 border-b border-outline-variant bg-surface-container-lowest select-none shrink-0">
             <div className="flex items-center gap-unit-3">
@@ -382,11 +382,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
               <button
                 type="button"
                 onClick={() => setIsPublic(!isPublic)}
-                className={`p-2 rounded-lg border transition-all cursor-pointer relative group flex items-center justify-center gap-1.5 text-xs font-semibold ${
-                  isPublic 
-                    ? "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20" 
+                className={`p-2 rounded-lg border transition-all cursor-pointer relative group flex items-center justify-center gap-1.5 text-xs font-semibold ${isPublic
+                    ? "bg-primary/10 border-primary/20 text-primary hover:bg-primary/20"
                     : "bg-surface-container border-outline-variant text-outline hover:text-on-surface"
-                }`}
+                  }`}
                 aria-label={isPublic ? "Public Log" : "Private Log"}
               >
                 {isPublic ? (
@@ -402,8 +401,8 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 )}
                 {/* Tooltip */}
                 <span className="absolute right-0 top-full mt-2 hidden group-hover:block bg-zinc-900 text-white text-[9px] px-2 py-1 rounded shadow-lg whitespace-nowrap z-50">
-                  {isPublic 
-                    ? "Anyone with the link can view this log details" 
+                  {isPublic
+                    ? "Anyone with the link can view this log details"
                     : "Only organization/team members can view this log"}
                 </span>
               </button>
@@ -416,10 +415,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
               </button>
             </div>
           </div>
-    
+
           {/* Horizontal Split Body */}
           <div className="flex-1 flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden min-h-0 bg-surface">
-            
+
             {/* Left Column: Log Details Form */}
             <div className="w-full lg:w-1/2 lg:overflow-y-auto px-4 py-4 sm:px-unit-6 sm:py-unit-6 space-y-6 sm:space-y-8 border-b lg:border-b-0 lg:border-r border-outline-variant/60 custom-scrollbar flex flex-col shrink-0">
               <form id="time-log-form" onSubmit={handleSubmit} className="space-y-7 flex-1">
@@ -429,7 +428,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                     <span className="font-semibold leading-relaxed">{error}</span>
                   </div>
                 )}
-    
+
                 {/* Core Details */}
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -469,7 +468,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                       </select>
                     </div>
                   </div>
-    
+
                   <div className="space-y-1.5">
                     <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block font-sans">
                       Detailed Work Description (Optional, Markdown supported)
@@ -482,7 +481,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                     />
                   </div>
                 </div>
-    
+
                 {/* Time Window */}
                 <div className="p-5 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl space-y-4">
                   <h4 className="text-[9px] font-extrabold uppercase text-outline tracking-wider flex items-center gap-1.5 select-none">
@@ -529,11 +528,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                       <div
                         ref={provided.innerRef}
                         {...provided.droppableProps}
-                        className={`border border-dashed rounded-xl p-3.5 min-h-[90px] flex flex-col justify-center transition-all duration-200 ${
-                          snapshot.isDraggingOver
+                        className={`border border-dashed rounded-xl p-3.5 min-h-[90px] flex flex-col justify-center transition-all duration-200 ${snapshot.isDraggingOver
                             ? "border-primary bg-primary/[3%] shadow-inner"
                             : "border-outline-variant bg-surface-container-low/30"
-                        }`}
+                          }`}
                       >
                         {selectedTasks.length === 0 ? (
                           <div className="text-center text-outline py-2 select-none">
@@ -569,13 +567,13 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                     )}
                   </Droppable>
                 </div>
-    
+
                 {/* Evidence Upload */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
                     Attach Screen Evidence Proof (Optional)
                   </Label>
-                  
+
                   <div
                     onClick={() => !isUploading && fileInputRef.current?.click()}
                     onDragOver={(e) => e.preventDefault()}
@@ -612,7 +610,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                       )}
                     </div>
                   </div>
-      
+
                   {(evidenceList.length > 0 || uploadingFiles.length > 0) && (
                     <div className="grid grid-cols-4 gap-2 pt-1">
                       {evidenceList.map((ev, idx) => (
@@ -634,7 +632,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                               }}
                             />
                           ) : (
-                            <div 
+                            <div
                               className="h-full w-full flex flex-col items-center justify-center bg-surface-container-high/40 p-2 text-center text-on-surface select-none cursor-pointer"
                               onClick={() => {
                                 if (ev.fileUrl) window.open(ev.fileUrl, "_blank");
@@ -673,7 +671,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 </div>
               </form>
             </div>
-    
+
             {/* Right Column: Kanban board */}
             <div className="w-full lg:w-1/2 flex flex-col bg-surface-container-lowest/40 p-4 sm:p-unit-6 min-h-[450px] lg:min-h-0 overflow-hidden shrink-0 lg:shrink">
               <div className="flex items-center justify-between mb-5 shrink-0">
@@ -686,7 +684,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   </span>
                 )}
               </div>
-     
+
               {!projectId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
                   <Folder className="h-8 w-8 text-outline/65 mb-2 animate-bounce" />
@@ -716,15 +714,14 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                           {col.tasks.length}
                         </span>
                       </div>
-    
+
                       <Droppable droppableId={col.id}>
                         {(provided, snapshot) => (
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`flex-1 space-y-1.5 overflow-y-auto custom-scrollbar p-0.5 rounded-lg min-h-[100px] transition-colors ${
-                              snapshot.isDraggingOver ? "bg-primary/5" : ""
-                            }`}
+                            className={`flex-1 space-y-1.5 overflow-y-auto custom-scrollbar p-0.5 rounded-lg min-h-[100px] transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""
+                              }`}
                           >
                             {col.tasks.map((task, index) => {
                               const isLinked = selectedTasks.includes(task.id);
@@ -736,23 +733,20 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                                       {...providedDraggable.draggableProps}
                                       {...providedDraggable.dragHandleProps}
                                       onClick={() => toggleTask(task.id)}
-                                      className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${
-                                        isLinked
+                                      className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${isLinked
                                           ? "border-primary bg-primary/[4%] shadow-sm"
                                           : "bg-surface-container border-outline-variant"
-                                      } ${
-                                        snapshotDraggable.isDragging ? "shadow-md scale-[0.98] border-primary" : ""
-                                      }`}
+                                        } ${snapshotDraggable.isDragging ? "shadow-md scale-[0.98] border-primary" : ""
+                                        }`}
                                     >
                                       <div className="flex justify-between items-start gap-1">
                                         <p className={`text-[10.5px] font-semibold leading-snug text-on-surface break-words ${col.id === 'done' ? 'line-through decoration-outline/40 opacity-70' : ''}`}>
                                           {task.title}
                                         </p>
-                                        <div className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-all ${
-                                          isLinked 
-                                            ? 'bg-primary border-primary text-on-primary' 
+                                        <div className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-all ${isLinked
+                                            ? 'bg-primary border-primary text-on-primary'
                                             : 'border-outline bg-surface-container-lowest'
-                                        }`}>
+                                          }`}>
                                           {isLinked && <Check className="h-2 w-2 stroke-[3.5]" />}
                                         </div>
                                       </div>
@@ -775,9 +769,9 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 </div>
               )}
             </div>
-    
+
           </div>
-    
+
           {/* Footer */}
           <div className="px-unit-6 py-unit-4 border-t border-outline-variant flex items-center justify-end gap-3 bg-surface-container-lowest shrink-0">
             {isTimerStop && onDiscard && (
@@ -857,7 +851,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
               {loading ? "Saving..." : initialLog ? "Apply Update" : "Save Log Entry"}
             </Button>
           </div>
-    
+
         </div>
       </div>
     </DragDropContext>

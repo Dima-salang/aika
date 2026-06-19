@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 

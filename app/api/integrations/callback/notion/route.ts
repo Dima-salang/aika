@@ -5,7 +5,7 @@ import { env } from "@/env/env";
 import { db } from "@/db";
 import { eq } from "drizzle-orm";
 import { Client, CreateDatabaseParameters, isFullDatabase } from "@notionhq/client";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
                 const titleProp = props.title || props.Name;
                 return titleProp?.title?.[0]?.plain_text;
             };
-            
+
             existingWorkspacePage = dbSearch.results.find(
                 (r) => r.object === "page" && getPageTitle(r) === "Aika Workspace"
             );

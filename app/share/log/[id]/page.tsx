@@ -6,8 +6,8 @@ import { FileText, ExternalLink, ArrowLeft, ShieldAlert } from "lucide-react";
 import { renderMarkdown } from "@/utils/markdown";
 import { isImageUrl } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
-import { ImageViewer } from "@/components/image-viewer";
-import { getProjectColorBadge, getTaskColorBadge } from "@/components/time-log-card";
+import { ImageViewer } from "@/components/ui-components/image-viewer";
+import { getProjectColorBadge, getTaskColorBadge } from "@/components/timer/time-log-card";
 import { getLogDurationSeconds } from "@/utils/time";
 
 export default function SharedLogPage() {

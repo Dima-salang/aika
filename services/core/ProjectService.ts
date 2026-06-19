@@ -8,7 +8,7 @@ import {
   PaginationInput,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, desc, SQL } from "drizzle-orm";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import { z } from "zod";
 
 const listProjectsFilterSchema = projectFilterZodSchema.optional();

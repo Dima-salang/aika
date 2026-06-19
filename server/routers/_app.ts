@@ -5,7 +5,7 @@ import { tokenInputZodSchema, tokenAndUserIdInputZodSchema, userIdInputZodSchema
 import { TRPCError } from "@trpc/server";
 import { db } from "@/db";
 import { eq, and, or } from "drizzle-orm";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 
 // Router Imports
 import { adminRouter } from "./admin";
@@ -19,11 +19,11 @@ import { notificationsRouter } from "./notifications";
 
 // Service Imports
 
-import { InvitationService } from "@/services/InvitationService";
-import { OrganizationService } from "@/services/OrganizationService";
-import { TeamService } from "@/services/TeamService";
-import { AuditService } from "@/services/AuditService";
-import { NotificationService } from "@/services/NotificationService";
+import { InvitationService } from "@/services/core/InvitationService";
+import { OrganizationService } from "@/services/auth/OrganizationService";
+import { TeamService } from "@/services/auth/TeamService";
+import { AuditService } from "@/services/core/AuditService";
+import { NotificationService } from "@/services/core/NotificationService";
 
 const auditService = new AuditService();
 const notificationService = new NotificationService();

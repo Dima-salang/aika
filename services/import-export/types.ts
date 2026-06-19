@@ -1,4 +1,4 @@
-import { DetailedTimeLog } from "@/services/LogService";
+import { DetailedTimeLog } from "@/services/core/LogService";
 import { z } from "zod";
 
 export interface ImportedLog {

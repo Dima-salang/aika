@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { MemberWorkloadItem } from "@/services/ReportService";
+import { MemberWorkloadItem } from "@/services/core/ReportService";
 
 interface WorkloadTableProps {
   workload: MemberWorkloadItem[];

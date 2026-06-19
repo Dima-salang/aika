@@ -2,7 +2,7 @@ import { router, publicProcedure } from "../trpc";
 import { z } from "zod";
 import { getPersonalReportInputZodSchema, getTeamReportInputZodSchema } from "@/db/schema";
 import { handleDbError } from "@/utils/db-errors";
-import { ReportService } from "@/services/ReportService";
+import { ReportService } from "@/services/core/ReportService";
 
 const reportService = new ReportService();
 

@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { TaskService } from "../TaskService";
+import { TaskService } from "../core/TaskService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { tasksSqlite } from "@/db/schema";

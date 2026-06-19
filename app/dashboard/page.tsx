@@ -5,22 +5,22 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/components/providers/auth-provider";
 import { signOut } from "@/lib/auth-client";
 import { trpc } from "@/utils/trpc";
-import { TimeLogDialog } from "@/components/time-log-dialog";
-import { TimeLogsList } from "@/components/time-logs-list";
+import { TimeLogDialog } from "@/components/timer/time-log-dialog";
+import { TimeLogsList } from "@/components/timer/time-logs-list";
 import { Sidebar } from "@/components/layout/sidebar";
-import { TimerSidebar } from "@/components/timer-sidebar";
+import { TimerSidebar } from "@/components/timer/timer-sidebar";
 import { Header } from "@/components/layout/header";
-import { Heatmap } from "@/components/heatmap";
-import { WeeklyChart } from "@/components/weekly-chart";
-import { ProjectsTasksTab } from "@/components/projects-tasks-tab";
-import { DashboardView } from "@/components/dashboard-view";
-import { DetailViewDialog } from "@/components/detail-view-dialog";
+import { Heatmap } from "@/components/ui-components/heatmap";
+import { WeeklyChart } from "@/components/ui-components/weekly-chart";
+import { ProjectsTasksTab } from "@/components/dashboard/projects-tasks-tab";
+import { DashboardView } from "@/components/dashboard/dashboard-view";
+import { DetailViewDialog } from "@/components/timer/detail-view-dialog";
 import { TeamSpaceView } from "@/components/team/team-space-view";
 import { ReportsView } from "@/components/reports/reports-view";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ProfileTab } from "@/components/profile-tab";
-import { OrgTab } from "@/components/org-tab";
-import { ShortcutsHelpDialog } from "@/components/shortcuts-help-dialog";
+import { ProfileTab } from "@/components/dashboard/profile-tab";
+import { OrgTab } from "@/components/dashboard/org-tab";
+import { ShortcutsHelpDialog } from "@/components/ui-components/shortcuts-help-dialog";
 import { toast } from "sonner";
 import { useConfirmStore, useTimeLogDraftStore } from "@/lib/store";
 
@@ -464,7 +464,7 @@ export default function Dashboard() {
     try {
       const shareUrl = `${window.location.origin}/share/log/${log.id}`;
       await navigator.clipboard.writeText(shareUrl);
-      
+
       if (!log.is_public) {
         log.is_public = true;
         await updateLogMutation.mutateAsync({

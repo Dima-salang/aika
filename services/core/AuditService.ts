@@ -1,7 +1,7 @@
 import { db, DBInstance } from "@/db";
 import { eq } from "drizzle-orm";
-import { tables } from "./tables";
-import { AuditLog, AuditLogSqlite, auditLogZodSchema } from "@/db/schema";
+import { tables } from "@/db/tables";
+import { AuditLog, AuditLogSqlite } from "@/db/schema";
 import { z } from "zod";
 
 const createAuditLogSchema = z.object({

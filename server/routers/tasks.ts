@@ -6,7 +6,7 @@ import {
   updateTaskRouterInputZodSchema,
   idInputZodSchema,
 } from "@/db/schema";
-import { TaskService } from "@/services/TaskService";
+import { TaskService } from "@/services/core/TaskService";
 import { handleDbError } from "@/utils/db-errors";
 
 const taskService = new TaskService();

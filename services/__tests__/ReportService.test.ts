@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { ReportService } from "../ReportService";
+import { ReportService } from "../core/ReportService";
 import { clearDatabase, db } from "./db-helper";
 import {
   userSqlite,
@@ -77,7 +77,7 @@ describe("ReportService", () => {
 
       const dist = reportService.aggregateProjectDistribution(logs as any);
       expect(dist.length).toBe(2);
-      
+
       const alpha = dist.find((p) => p.projectName === "Project Alpha");
       const beta = dist.find((p) => p.projectName === "Project Beta");
 

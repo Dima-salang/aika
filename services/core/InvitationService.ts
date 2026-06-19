@@ -11,9 +11,9 @@ import { eq, and, isNull } from "drizzle-orm";
 import crypto from "crypto";
 import { AuditService } from "./AuditService";
 import { NotificationService } from "./NotificationService";
-import { OrganizationService } from "./OrganizationService";
-import { TeamService } from "./TeamService";
-import { tables } from "./tables";
+import { OrganizationService } from "../auth/OrganizationService";
+import { TeamService } from "../auth/TeamService";
+import { tables } from "../../db/tables";
 import { z } from "zod";
 
 

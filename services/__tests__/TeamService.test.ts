@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { TeamService } from "../TeamService";
+import { TeamService } from "../auth/TeamService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { teamsSqlite, teamMembersSqlite, userSqlite, organizationSqlite } from "@/db/schema";

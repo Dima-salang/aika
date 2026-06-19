@@ -1,6 +1,6 @@
 import { Client } from "@notionhq/client";
 import { db, DBInstance } from "@/db";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 import { eq } from "drizzle-orm";
 import { formatDuration } from "@/utils/time";
 

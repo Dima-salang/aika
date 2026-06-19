@@ -9,7 +9,7 @@ import {
   PaginationInput,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray, desc, SQL } from "drizzle-orm";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 import { z } from "zod";
 
 const listTasksFilterSchema = taskFilterZodSchema.optional();

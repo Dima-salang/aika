@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { ReportSummaryKPIs } from "@/services/ReportService";
+import { ReportSummaryKPIs } from "@/services/core/ReportService";
 
 interface MetricCardsProps {
   kpis: ReportSummaryKPIs;

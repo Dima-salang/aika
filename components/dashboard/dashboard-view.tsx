@@ -1,12 +1,12 @@
 "use client";
 
 import React, { useMemo } from "react";
-import { DashboardHeader } from "./dashboard/dashboard-header";
-import { CurrentlyTracking } from "./dashboard/currently-tracking";
-import { WeeklyOverview } from "./dashboard/weekly-overview";
-import { RecentActivities } from "./dashboard/recent-activities";
-import { ProjectBreakdown } from "./dashboard/project-breakdown";
-import { InsightsCards } from "./dashboard/insights-cards";
+import { DashboardHeader } from "./dashboard-header";
+import { CurrentlyTracking } from "./currently-tracking";
+import { WeeklyOverview } from "./weekly-overview";
+import { RecentActivities } from "./recent-activities";
+import { ProjectBreakdown } from "./project-breakdown";
+import { InsightsCards } from "./insights-cards";
 import { getLogDurationSeconds, calculateDurationHours } from "@/utils/time";
 
 interface DashboardViewProps {
@@ -37,7 +37,7 @@ export function DashboardView({
   onSelectLog,
   startPending = false,
   stopPending = false,
- }: DashboardViewProps) {
+}: DashboardViewProps) {
   // 1. Current Date
   const formattedDate = useMemo(() => {
     return new Date().toLocaleDateString(undefined, {

@@ -9,7 +9,7 @@ import {
   updateTeamInputZodSchema,
 } from "@/db/schema";
 import { eq, and, isNull, isNotNull, inArray, SQL } from "drizzle-orm";
-import { tables } from "./tables";
+import { tables } from "../../db/tables";
 import { z } from "zod";
 
 const addTeamMemberSchema = z.object({
@@ -107,16 +107,16 @@ export class TeamService {
     // check if the team member already exists
     const existingMember = await this.verifyTeamMember(parsed.teamId, parsed.userId, tx);
     if (existingMember) {
-        // set deleted_at to null to reactivate the member if they were soft-deleted
-        const [reactivated] = await tx
-            .update(table)
-            .set({
-                deleted_at: null,
-            })
-            .where(eq(table.id, id))
-            .returning();
+      // set deleted_at to null to reactivate the member if they were soft-deleted
+      const [reactivated] = await tx
+        .update(table)
+        .set({
+          deleted_at: null,
+        })
+        .where(eq(table.id, id))
+        .returning();
 
-        return reactivated;
+      return reactivated;
     }
     const [res] = await tx
       .insert(table)

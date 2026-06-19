@@ -24,21 +24,21 @@ import {
   updateUserMembershipsInputZodSchema,
 } from "@/db/schema";
 import { db } from "@/db";
-import { tables } from "@/services/tables";
+import { tables } from "@/db/tables";
 import { eq, and, or, inArray } from "drizzle-orm";
 import { handleDbError } from "@/utils/db-errors";
 
 // Service Imports
-import { AuditService } from "@/services/AuditService";
-import { OrganizationService } from "@/services/OrganizationService";
-import { TeamService } from "@/services/TeamService";
-import { NotificationService } from "@/services/NotificationService";
-import { TaskService } from "@/services/TaskService";
-import { UserService } from "@/services/UserService";
-import { ProjectService } from "@/services/ProjectService";
-import { LogService } from "@/services/LogService";
-import { InvitationService } from "@/services/InvitationService";
-import { StorageService } from "@/services/StorageService";
+import { AuditService } from "@/services/core/AuditService";
+import { OrganizationService } from "@/services/auth/OrganizationService";
+import { TeamService } from "@/services/auth/TeamService";
+import { NotificationService } from "@/services/core/NotificationService";
+import { TaskService } from "@/services/core/TaskService";
+import { UserService } from "@/services/auth/UserService";
+import { ProjectService } from "@/services/core/ProjectService";
+import { LogService } from "@/services/core/LogService";
+import { InvitationService } from "@/services/core/InvitationService";
+import { StorageService } from "@/services/integrations/StorageService";
 
 // Instantiate services
 const auditService = new AuditService();

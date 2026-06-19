@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { OrganizationService } from "../OrganizationService";
+import { OrganizationService } from "../auth/OrganizationService";
 import { clearDatabase } from "./db-helper";
 import { db } from "./db-helper";
 import { organizationSqlite, memberSqlite } from "@/db/schema";
