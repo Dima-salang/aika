@@ -937,6 +937,7 @@ export class LogService {
     const teamMembersTable = tables.teamMembers;
 
     const conditions = [
+      eq(timeLogsTable.team_id, teamId),
       inArray(timeLogsTable.user_id, memberUserIds),
       isNull(timeLogsTable.deleted_at),
     ];
