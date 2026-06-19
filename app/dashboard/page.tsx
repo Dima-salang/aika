@@ -22,7 +22,7 @@ import { ProfileTab } from "@/components/profile-tab";
 import { OrgTab } from "@/components/org-tab";
 import { ShortcutsHelpDialog } from "@/components/shortcuts-help-dialog";
 import { toast } from "sonner";
-import { useConfirmStore } from "@/lib/store";
+import { useConfirmStore, useTimeLogDraftStore } from "@/lib/store";
 
 export default function Dashboard() {
   const router = useRouter();
@@ -218,6 +218,7 @@ export default function Dashboard() {
     if (!userId) return;
     if (confirm("Are you sure you want to discard this clock-in session? All untracked time will be lost.")) {
       await discardTimerMutation.mutateAsync({ userId });
+      useTimeLogDraftStore.getState().clearDraft(editingLog?.id || "new");
       setIsDialogOpen(false);
     }
   };
