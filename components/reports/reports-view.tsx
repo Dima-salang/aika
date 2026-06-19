@@ -6,11 +6,15 @@ import { calculateDurationHours } from "@/utils/time";
 import { ReportFilters } from "./report-filters";
 import { MetricCards } from "./metric-cards";
 import { ProjectDistributionChart } from "./project-distribution-chart";
+import { MemberDistributionChart } from "./member-distribution-chart";
+import { TimelineChart } from "./timeline-chart";
 import { ReportsLogsTable } from "./reports-logs-table";
 import { WorkloadTable } from "./workload-table";
+import { DetailViewDialog } from "../timer/detail-view-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip } from "recharts";
 import { Heatmap } from "@/components/ui-components/heatmap";
+import { DetailedReportLog } from "@/services/core/ReportService";
 
 interface ReportsViewProps {
   activeOrg: any;
@@ -28,6 +32,8 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
   const [teamReportId, setTeamReportId] = useState("");
   const [activeSubTab, setActiveSubTab] = useState<"personal" | "team">("personal");
   const [groupBy, setGroupBy] = useState<"day" | "week" | "month" | "year">("day");
+  const [memberFilter, setMemberFilter] = useState("all");
+  const [selectedLog, setSelectedLog] = useState<DetailedReportLog | null>(null);
 
   // Automatically update Group By scale when selected range changes
   React.useEffect(() => {
@@ -49,6 +55,11 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
     }
   }, [startDate, endDate]);
 
+  // Reset member filter when switching teams or view mode
+  React.useEffect(() => {
+    setMemberFilter("all");
+  }, [teamReportId, activeSubTab]);
+
   // Fetch list of user's teams in active Org
   const { data: userTeams } = trpc.getUserTeams.useQuery(
     { userId, organizationId: orgId },
@@ -60,10 +71,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
   const isOrgAdmin = activeOrg?.role === "admin" || activeOrg?.role === "owner" || activeOrg?.role === "system_admin";
   const managedTeamIds = useMemo(() => {
     if (!userTeams) return new Set<string>();
-    // If teamMember record shows 'leader'
-    // Note: The trpc.getUserTeams query returns teams the user belongs to.
-    // In aika, a user's role per team is checked. Let's see if we can check team roles or if we can request managed profile.
-    return new Set<string>(userTeams.map((t) => t.id)); // For simplicity, check teams they belong to or query manager profile
+    return new Set<string>(userTeams.map((t) => t.id));
   }, [userTeams]);
 
   // tRPC query to get managed profile (tells us managedOrgs and managedTeams where user is leader)
@@ -128,9 +136,60 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
     } as any;
   }, [personalReport, teamReport, activeSubTab]);
 
+  // Filter logs by selected member if team view
+  const filteredReport = useMemo(() => {
+    if (!activeReport) return null;
+    if (activeSubTab === "personal" || memberFilter === "all") {
+      return activeReport;
+    }
+
+    const filteredLogs = activeReport.logs.filter((log: any) => log.userId === memberFilter);
+
+    const totalSeconds = filteredLogs.reduce((acc: number, log: any) => acc + log.duration, 0);
+    const totalHours = calculateDurationHours(totalSeconds);
+    const totalSessions = filteredLogs.length;
+    const averageSessionHours = totalSessions > 0 ? totalHours / totalSessions : 0;
+    const activeProjects = new Set(filteredLogs.map((l: any) => l.projectName).filter(Boolean)).size;
+
+    const kpis = {
+      totalHours: Number(totalHours.toFixed(2)),
+      totalSessions,
+      averageSessionHours: Number(averageSessionHours.toFixed(2)),
+      activeProjects,
+    };
+
+    const projectMap = new Map<string, { name: string; seconds: number }>();
+    let totalProjSeconds = 0;
+    filteredLogs.forEach((log: any) => {
+      totalProjSeconds += log.duration;
+      const projName = log.projectName || "No Project";
+      const current = projectMap.get(projName) || { name: projName, seconds: 0 };
+      current.seconds += log.duration;
+      projectMap.set(projName, current);
+    });
+
+    const projectDistribution = Array.from(projectMap.values()).map((p) => {
+      const hours = calculateDurationHours(p.seconds);
+      const percentage = totalProjSeconds > 0 ? (p.seconds / totalProjSeconds) * 100 : 0;
+      return {
+        projectId: null,
+        projectName: p.name,
+        hours: Number(hours.toFixed(2)),
+        percentage: Number(percentage.toFixed(2)),
+      };
+    }).sort((a, b) => b.hours - a.hours);
+
+    return {
+      ...activeReport,
+      kpis,
+      projectDistribution,
+      logs: filteredLogs,
+    };
+  }, [activeReport, memberFilter, activeSubTab]);
+
   const aggregatedChartData = useMemo(() => {
-    if (!activeReport || !activeReport.logs) return [];
-    const logs = activeReport.logs;
+    if (!filteredReport || !filteredReport.logs) return [];
+    const logs = filteredReport.logs;
     const map = new Map<string, { label: string; tooltipLabel: string; hours: number; sortKey: string }>();
 
     // Pre-populate keys if custom range is selected to prevent gaps
@@ -214,16 +273,37 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
         tooltipLabel: item.tooltipLabel,
         hours: Number(item.hours.toFixed(2)),
       }));
-  }, [activeReport, groupBy, startDate, endDate]);
+  }, [filteredReport, groupBy, startDate, endDate]);
+
+  const dialogLog = useMemo(() => {
+    if (!selectedLog) return null;
+    return {
+      id: selectedLog.id,
+      title: selectedLog.title,
+      description: selectedLog.description,
+      start_time: selectedLog.startTime,
+      end_time: selectedLog.endTime,
+      duration: selectedLog.duration,
+      is_public: (selectedLog as any).is_public || false,
+      project_id: selectedLog.projectName,
+      tasks: selectedLog.taskTitles.map((t) => ({ id: t, title: t })),
+      evidence: selectedLog.evidenceUrls.map((url) => ({ file_url: url, file_name: "evidence", mime_type: "image/jpeg" })),
+    };
+  }, [selectedLog]);
+
+  const dialogProjects = useMemo(() => {
+    if (!selectedLog || !selectedLog.projectName) return [];
+    return [{ id: selectedLog.projectName, name: selectedLog.projectName }];
+  }, [selectedLog]);
 
   // CSV Export Action
   const handleExportCSV = () => {
-    if (!activeReport || activeReport.logs.length === 0) return;
+    if (!filteredReport || filteredReport.logs.length === 0) return;
 
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Date,Time,User,User Email,Title,Description,Project,Duration (Hrs),Evidence Links\n";
 
-    activeReport.logs.forEach((log: any) => {
+    filteredReport.logs.forEach((log: any) => {
       const date = new Date(log.startTime).toLocaleDateString();
       const time = `${new Date(log.startTime).toLocaleTimeString()} - ${new Date(log.endTime).toLocaleTimeString()}`;
       const name = `"${log.userName.replace(/"/g, '""')}"`;
@@ -310,7 +390,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
       </div>
       {/* Activity Heatmap */}
       <div className="print:hidden w-full">
-        <Heatmap logs={activeReport?.logs || []} className="max-w-none" weeksToShow={53} />
+        <Heatmap logs={filteredReport?.logs || []} className="max-w-none" weeksToShow={53} />
       </div>
 
       {/* Filter panel */}
@@ -330,6 +410,13 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
           showTeamSelect={true}
           groupBy={groupBy}
           setGroupBy={setGroupBy}
+          memberFilter={memberFilter}
+          setMemberFilter={setMemberFilter}
+          members={
+            activeSubTab === "team" && activeReport && "workload" in activeReport
+              ? activeReport.workload.map((w: any) => ({ userId: w.userId, userName: w.userName }))
+              : undefined
+          }
         />
       </div>
 
@@ -348,7 +435,7 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
           </div>
           <Skeleton className="h-80 rounded-xl" />
         </div>
-      ) : activeReport ? (
+      ) : filteredReport ? (
         <div className="space-y-6 print:space-y-4">
 
           {/* Printable Header */}
@@ -362,15 +449,12 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
             </p>
           </div>
 
-
           {/* Metric KPI cards */}
-          <MetricCards kpis={activeReport.kpis} />
+          <MetricCards kpis={filteredReport.kpis} />
 
-          {/* Charts Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 print:grid-cols-1">
-
-            {/* Daily Hours Bar Chart */}
-            <div className="glass-card rounded-xl p-6 bg-surface-container-low text-on-surface border border-outline-variant lg:col-span-2 flex flex-col justify-between h-[280px]">
+          {/* Daily Hour Distribution Row */}
+          <div className="grid grid-cols-1 gap-6">
+            <div className="glass-card rounded-xl p-6 bg-surface-container-low text-on-surface border border-outline-variant flex flex-col justify-between h-[280px]">
               <div>
                 <h4 className="text-[10px] uppercase font-bold text-outline tracking-wider">
                   Daily Hour Distribution
@@ -426,18 +510,37 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
                 </div>
               )}
             </div>
-
-            {/* Project Distribution pie segment chart */}
-            <ProjectDistributionChart distribution={activeReport.projectDistribution} />
           </div>
 
+          {/* Distribution Charts Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Project Distribution pie segment chart */}
+            <div className={activeSubTab === "personal" ? "md:col-span-2" : ""}>
+              <ProjectDistributionChart distribution={filteredReport.projectDistribution} />
+            </div>
+
+            {/* Member Distribution Chart (Team report only) */}
+            {activeSubTab === "team" && activeReport && "workload" in activeReport && (
+              <MemberDistributionChart workload={activeReport.workload} />
+            )}
+          </div>
+
+          {/* Timeline Chart (Dynamic date range columns & Lanes) */}
+          <TimelineChart
+            logs={filteredReport.logs}
+            startDate={startDate}
+            endDate={endDate}
+            isTeam={activeSubTab === "team"}
+            onLogClick={setSelectedLog}
+          />
+
           {/* Workload Table (Visible only in Team Subtab) */}
-          {activeSubTab === "team" && "workload" in activeReport && (
+          {activeSubTab === "team" && activeReport && "workload" in activeReport && (
             <WorkloadTable workload={activeReport.workload} />
           )}
 
           {/* Detailed logs table */}
-          <ReportsLogsTable logs={activeReport.logs} />
+          <ReportsLogsTable logs={filteredReport.logs} />
         </div>
       ) : (
         <div className="glass-card rounded-xl p-8 bg-surface-container-low text-on-surface border border-outline-variant text-center">
@@ -446,6 +549,14 @@ export function ReportsView({ activeOrg, session }: ReportsViewProps) {
           <p className="text-body-sm text-outline mt-1">Select filters above to load the analytics dashboard.</p>
         </div>
       )}
+
+      <DetailViewDialog
+        isOpen={!!selectedLog}
+        onClose={() => setSelectedLog(null)}
+        selectedLog={dialogLog}
+        projects={dialogProjects}
+        tasks={dialogLog?.tasks || []}
+      />
     </div>
   );
 }
