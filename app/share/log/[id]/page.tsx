@@ -8,7 +8,7 @@ import { isImageUrl } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { ImageViewer } from "@/components/ui-components/image-viewer";
 import { getProjectColorBadge, getTaskColorBadge } from "@/components/timer/time-log-card";
-import { getLogDurationSeconds } from "@/utils/time";
+import { getLogDurationSeconds, formatDuration } from "@/utils/time";
 
 export default function SharedLogPage() {
   const params = useParams();
@@ -130,7 +130,7 @@ export default function SharedLogPage() {
             <div className="flex justify-between items-center text-xs font-semibold">
               <span className="text-outline uppercase text-[10px] tracking-wider">Duration</span>
               <span className="bg-primary/10 text-primary border border-primary/20 px-2.5 py-0.5 rounded font-bold text-body-sm">
-                {getLogDurationSeconds(log)}
+                {formatDuration(getLogDurationSeconds(log))}
               </span>
             </div>
             <div className="grid grid-cols-2 gap-4 border-t border-outline-variant/30 pt-3 text-xs select-none">
