@@ -77,18 +77,19 @@ export function LandingPage() {
 
       {/* Main Content */}
       <main className="w-full flex flex-col items-center z-10 relative">
-        {/* Massive Aika Hero - Fumadocs Style Card */}
-        <div className="w-full max-w-7xl px-4 sm:px-6 pt-8 pb-12">
-          <div className="relative w-full rounded-[2rem] border border-white/5 bg-[#0c0a09] overflow-hidden shadow-2xl min-h-[480px] flex items-center">
-            {/* Dither Background Visualizer on the right side */}
-            <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
-              {/* Linear gradient mask to fade the canvas smoothly into the dark background on the left */}
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
-              <HeroDither />
-            </div>
+        {/* Massive Aika Hero - Full Viewport */}
+        <div className="relative w-full min-h-[calc(100vh-3.5rem)] bg-[#0c0a09] overflow-hidden flex items-center border-b border-white/5">
+          {/* Dither Background Visualizer on the right side */}
+          <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
+            {/* Linear gradient mask to fade the canvas smoothly into the dark background on the left */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
+            <HeroDither />
+          </div>
 
+          {/* Centered Content Container */}
+          <div className="w-full max-w-7xl mx-auto px-6 relative z-20">
             {/* Left Side Content */}
-            <div className="relative z-20 w-full max-w-2xl px-8 py-16 sm:px-12 md:px-16 flex flex-col items-start text-left space-y-6">
+            <div className="w-full max-w-2xl py-16 flex flex-col items-start text-left space-y-6">
               {/* Title / Brand */}
               <h1 className="text-[18vw] xs:text-[15vw] sm:text-[12vw] lg:text-[7.5rem] font-black leading-[0.85] text-white tracking-tighter select-none animate-blur-fade-in">
                 Aika
@@ -180,17 +181,16 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* How It Works - Card Style with WorkflowDither */}
-        <section className="w-full max-w-7xl px-4 sm:px-6 py-24 mx-auto reveal-on-scroll">
-          <div className="relative w-full rounded-[2rem] border border-white/5 bg-[#0c0a09] overflow-hidden shadow-2xl min-h-[480px] flex items-center">
-            {/* Dither Background Visualizer on the right/center */}
-            <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
-              <WorkflowDither />
-            </div>
+        <section className="relative w-full bg-[#0c0a09] border-y border-white/5 py-24 overflow-hidden reveal-on-scroll">
+          {/* Dither Background Visualizer on the right/center */}
+          <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
+            <WorkflowDither />
+          </div>
 
+          <div className="relative w-full max-w-7xl mx-auto px-6 min-h-[480px] flex items-center">
             {/* Left Content Area */}
-            <div className="relative z-20 w-full max-w-2xl px-8 py-16 sm:px-12 md:px-16 flex flex-col items-start text-left">
+            <div className="relative z-20 w-full max-w-2xl py-16 flex flex-col items-start text-left">
               <h2 className="text-4xl sm:text-5xl font-black text-white mb-12">
                 Simple workflow
               </h2>
