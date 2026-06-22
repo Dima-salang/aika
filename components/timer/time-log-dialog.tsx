@@ -114,7 +114,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         setEndTime(new Date(end.getTime() - offset).toISOString().slice(0, 16));
 
         setProjectId(initialLog?.project_id || "");
-        setSelectedTasks(initialLog?.tasks || []);
+        setSelectedTasks((initialLog?.tasks || []).map((t: any) => typeof t === "string" ? t : t.id));
 
         if (initialLog?.evidence) {
           setEvidenceList(
