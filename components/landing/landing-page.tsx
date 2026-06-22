@@ -1,8 +1,9 @@
 "use client";
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { calculateDurationHours } from "@/utils/time";
-import { Play, Clock, TrendingUp, Users, CheckCircle, Zap, ArrowRight, ArrowUpRight, Sparkles, LayoutDashboard, FolderKanban, BarChart3 } from "lucide-react";
+import { Clock, TrendingUp, Users, Zap, ArrowRight, ArrowUpRight} from "lucide-react";
+import { HeroDither } from "./hero-dither";
+import { WorkflowDither } from "./workflow-dither";
 
 export function LandingPage() {
   const [scrollY, setScrollY] = useState(0);
@@ -76,39 +77,45 @@ export function LandingPage() {
 
       {/* Main Content */}
       <main className="w-full flex flex-col items-center z-10 relative">
-        {/* Massive Aika Hero Two-Column Layout */}
-        <div className="w-full max-w-7xl px-6 pt-16 pb-12 md:pt-24 md:pb-20">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-8 items-center">
-            {/* Left Column: Branding and CTA */}
-            <div className="lg:col-span-6 space-y-8 text-left">
-
-              <h1 className="text-[18vw] xs:text-[15vw] sm:text-[12vw] lg:text-[10rem] font-black leading-[0.85] text-on-surface tracking-tighter select-none">
-                <span className="inline-block animate-blur-fade-in bg-gradient-to-r from-on-surface via-on-surface to-on-surface bg-clip-text text-transparent drop-shadow-sm">
-                  Aika
-                </span>
-              </h1>
-
-              <p className="text-xl sm:text-2xl text-on-surface/70 font-light leading-relaxed max-w-lg animate-fade-in-delayed">
-                Time tracking that gets out of your way. Designed to help you focus.
-              </p>
-
-              <div className="flex flex-col sm:flex-row gap-4 pt-2 animate-fade-in-delayed">
-                <Link href="/auth">
-                  <button className="group px-8 py-3.5 bg-on-surface text-background font-semibold rounded-lg hover:opacity-90 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center shadow-lg shadow-on-surface/10">
-                    Start Tracking <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
-                  </button>
-                </Link>
-                <a href="#features" className="w-full sm:w-auto">
-                  <button className="w-full sm:w-auto px-8 py-3.5 border border-on-surface/25 text-on-surface font-semibold rounded-lg hover:border-on-surface/50 hover:bg-on-surface/5 transition-all hover:scale-105 active:scale-95 text-center">
-                    Explore Features
-                  </button>
-                </a>
-              </div>
+        {/* Massive Aika Hero - Fumadocs Style Card */}
+        <div className="w-full max-w-7xl px-4 sm:px-6 pt-8 pb-12">
+          <div className="relative w-full rounded-[2rem] border border-white/5 bg-[#0c0a09] overflow-hidden shadow-2xl min-h-[480px] flex items-center">
+            {/* Dither Background Visualizer on the right side */}
+            <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
+              {/* Linear gradient mask to fade the canvas smoothly into the dark background on the left */}
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
+              <HeroDither />
             </div>
 
-            {/* Right Column: Premium Time Visualizer */}
-            <div className="lg:col-span-6 relative w-full flex justify-center lg:justify-end animate-fade-in-delayed">
-              <TimeVisualizer />
+            {/* Left Side Content */}
+            <div className="relative z-20 w-full max-w-2xl px-8 py-16 sm:px-12 md:px-16 flex flex-col items-start text-left space-y-6">
+              {/* Title / Brand */}
+              <h1 className="text-[18vw] xs:text-[15vw] sm:text-[12vw] lg:text-[7.5rem] font-black leading-[0.85] text-white tracking-tighter select-none animate-blur-fade-in">
+                Aika
+              </h1>
+
+              {/* Sub-headline */}
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight animate-fade-in-delayed">
+                Track your <span className="text-yellow-400">time.</span>
+              </h2>
+
+              <p className="text-lg text-white/70 font-light leading-relaxed max-w-lg animate-fade-in-delayed">
+                Time tracking that gets out of your way. Minimal, and designed to help you focus.
+              </p>
+
+              {/* CTAs */}
+              <div className="flex flex-wrap gap-4 pt-2 animate-fade-in-delayed">
+                <Link href="/auth">
+                  <button className="px-6 py-2.5 bg-[#fdfe92] text-black font-semibold rounded-full hover:opacity-90 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center shadow-lg shadow-yellow-400/10">
+                    Getting Started <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+                <Link href="/auth">
+                  <button className="px-6 py-2.5 bg-white/10 text-white border border-white/10 hover:bg-white/15 font-semibold rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center">
+                    Sign In
+                  </button>
+                </Link>
+              </div>
             </div>
           </div>
         </div>
@@ -173,43 +180,54 @@ export function LandingPage() {
           </div>
         </section>
 
-        {/* How It Works - Simple Linear Style */}
-        <section className="w-full max-w-6xl px-6 py-24 mx-auto border-t border-on-surface/10 reveal-on-scroll">
-          <h2 className="text-4xl font-black text-on-surface mb-16 text-center">
-            Simple workflow
-          </h2>
+        {/* How It Works - Card Style with WorkflowDither */}
+        <section className="w-full max-w-7xl px-4 sm:px-6 py-24 mx-auto reveal-on-scroll">
+          <div className="relative w-full rounded-[2rem] border border-white/5 bg-[#0c0a09] overflow-hidden shadow-2xl min-h-[480px] flex items-center">
+            {/* Dither Background Visualizer on the right/center */}
+            <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
+              <WorkflowDither />
+            </div>
 
-          <div className="space-y-8">
-            {[
-              {
-                number: "01",
-                title: "Start",
-                description: "Click Clock In. Instant tracking begins.",
-              },
-              {
-                number: "02",
-                title: "Track",
-                description: "Watch your time accumulate. Stop whenever you're ready.",
-              },
-              {
-                number: "03",
-                title: "Analyze",
-                description: "View reports and charts of where your time went each week.",
-              },
-            ].map((step, i) => (
-              <div key={i} className="flex gap-8 md:gap-12">
-                <div className="flex flex-col items-center">
-                  <div className="w-12 h-12 rounded-full border-2 border-on-surface/30 flex items-center justify-center font-black text-on-surface/60">
-                    {step.number}
+            {/* Left Content Area */}
+            <div className="relative z-20 w-full max-w-2xl px-8 py-16 sm:px-12 md:px-16 flex flex-col items-start text-left">
+              <h2 className="text-4xl sm:text-5xl font-black text-white mb-12">
+                Simple workflow
+              </h2>
+
+              <div className="space-y-8 w-full">
+                {[
+                  {
+                    number: "01",
+                    title: "Start",
+                    description: "Click Clock In. Instant tracking begins.",
+                  },
+                  {
+                    number: "02",
+                    title: "Track",
+                    description: "Watch your time accumulate. Stop whenever you're ready.",
+                  },
+                  {
+                    number: "03",
+                    title: "Analyze",
+                    description: "View reports and charts of where your time went each week.",
+                  },
+                ].map((step, i) => (
+                  <div key={i} className="flex gap-6 items-start">
+                    <div className="flex flex-col items-center">
+                      <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center font-bold text-white/80 text-sm">
+                        {step.number}
+                      </div>
+                      {i < 2 && <div className="w-px h-12 bg-white/10 mt-2" />}
+                    </div>
+                    <div className="pt-1">
+                      <h3 className="text-xl font-bold text-white mb-1.5">{step.title}</h3>
+                      <p className="text-white/60 text-sm max-w-md">{step.description}</p>
+                    </div>
                   </div>
-                  {i < 2 && <div className="w-1 h-24 bg-on-surface/10 mt-4" />}
-                </div>
-                <div className="pb-8 pt-1">
-                  <h3 className="text-2xl font-bold text-on-surface mb-3">{step.title}</h3>
-                  <p className="text-lg text-on-surface/60 max-w-md">{step.description}</p>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
           </div>
         </section>
 
@@ -351,40 +369,4 @@ export function LandingPage() {
   );
 }
 
-function TimeVisualizer() {
-  return (
-    <div className="relative w-full aspect-square max-w-[360px] md:max-w-[400px] flex items-center justify-center select-none">
-      {/* Outer ambient glow */}
-      <div className="absolute inset-0 bg-primary/10 dark:bg-primary/5 rounded-full blur-[60px] animate-pulse" style={{ animationDuration: "5s" }} />
 
-      {/* Rotating Ring 1 */}
-      <div className="absolute w-[90%] h-[90%] rounded-full border border-dashed border-on-surface/10 dark:border-white/5 animate-spin" style={{ animationDuration: "45s" }} />
-
-      {/* Rotating Ring 2 */}
-      <div className="absolute w-[75%] h-[75%] rounded-full border border-on-surface/5 dark:border-white/10 animate-spin" style={{ animationDuration: "30s", animationDirection: "reverse" }} />
-
-      {/* Glassmorphic main timepiece body */}
-      <div className="absolute w-[60%] h-[60%] rounded-full bg-white/40 dark:bg-white/5 backdrop-blur-2xl border border-white/30 dark:border-white/10 shadow-2xl flex items-center justify-center overflow-hidden">
-        {/* Inner dynamic radial glow */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(73,75,214,0.15)_0%,transparent_70%)] pointer-events-none" />
-
-        {/* Center glowing node */}
-        <div className="w-3.5 h-3.5 rounded-full bg-primary shadow-lg shadow-primary/50 relative z-10">
-          <div className="absolute inset-0 rounded-full bg-primary animate-ping opacity-75" />
-        </div>
-
-        {/* Elegant hands */}
-        <div className="absolute w-0.5 h-[26%] bg-primary/80 origin-bottom bottom-1/2 rounded-full animate-spin" style={{ animationDuration: "60s" }} />
-        <div className="absolute w-0.5 h-[20%] bg-on-surface/30 dark:bg-white/30 origin-bottom bottom-1/2 rounded-full animate-spin" style={{ animationDuration: "720s" }} />
-      </div>
-
-      {/* Orbiting particle indicators */}
-      <div className="absolute w-full h-full animate-spin" style={{ animationDuration: "16s" }}>
-        <div className="absolute top-6 left-6 w-2 h-2 rounded-full bg-primary/60 blur-[1px]" />
-      </div>
-      <div className="absolute w-full h-full animate-spin" style={{ animationDuration: "24s", animationDirection: "reverse" }}>
-        <div className="absolute bottom-10 right-10 w-2.5 h-2.5 rounded-full bg-primary/30 blur-[1px]" />
-      </div>
-    </div>
-  );
-}
