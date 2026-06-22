@@ -24,7 +24,7 @@ export function CurrentlyTracking({
   stopPending = false,
 }: CurrentlyTrackingProps) {
   return (
-    <div className="col-span-12 lg:col-span-4 bg-surface-container-low border border-outline-variant p-unit-4 rounded-lg flex flex-col justify-between relative overflow-hidden group">
+    <div className="col-span-12 lg:col-span-4 bg-surface-container border border-outline-variant p-unit-4 rounded-lg flex flex-col justify-between relative overflow-hidden group">
       {runningTimer && (
         <div className="absolute top-0 right-0 p-4">
           <div className="w-2 h-2 rounded-full bg-primary animate-pulse"></div>
