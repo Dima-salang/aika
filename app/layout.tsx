@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Share_Tech_Mono } from "next/font/google";
+import { Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { RootProvider } from "fumadocs-ui/provider/next";
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-});
 
 const shareTechMono = Share_Tech_Mono({
   weight: "400",
@@ -32,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${shareTechMono.variable} h-full antialiased`}
+      className={`${shareTechMono.variable} h-full antialiased`}
     >
       <head>
         <script
