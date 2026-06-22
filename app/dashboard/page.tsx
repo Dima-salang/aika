@@ -536,7 +536,7 @@ export default function Dashboard() {
   });
 
   return (
-    <div className="relative min-h-screen w-full flex bg-surface-container-lowest text-on-surface overflow-hidden font-sans">
+    <div className="relative min-h-screen w-full flex bg-sidebar text-on-surface overflow-hidden font-sans">
       <Sidebar
         activeTab={activeTab}
         setActiveTab={handleSetActiveTab}
@@ -549,8 +549,8 @@ export default function Dashboard() {
         onCloseMobile={() => setIsMobileSidebarOpen(false)}
       />
 
-      <div className="flex-1 flex overflow-hidden h-screen w-full">
-        <main className="flex-1 flex flex-col bg-surface-container-lowest overflow-hidden h-screen">
+      <div className="flex-1 flex p-3 gap-3 overflow-hidden h-screen w-full bg-sidebar">
+        <main className="flex-1 flex flex-col bg-surface border border-outline-variant rounded-2xl overflow-hidden h-full shadow-sm">
           <Header
             searchQuery={searchQuery}
             setSearchQuery={setSearchQuery}
