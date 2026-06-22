@@ -15,7 +15,7 @@ interface ProjectBreakdownProps {
 
 export function ProjectBreakdown({ projectBreakdown = [], thisWeekHours }: ProjectBreakdownProps) {
   return (
-    <div className="col-span-12 lg:col-span-4 bg-surface-container-low border border-outline-variant p-unit-4 rounded-lg flex flex-col justify-between">
+    <div className="col-span-12 lg:col-span-4 bg-surface-container border border-outline-variant p-unit-4 rounded-lg flex flex-col justify-between">
       <div>
         <span className="font-label-md text-label-md text-on-surface mb-unit-6 block select-none">
           Project Breakdown

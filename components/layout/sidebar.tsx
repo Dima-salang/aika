@@ -122,7 +122,7 @@ export function Sidebar({
       )}
 
       <aside
-        className={`h-screen fixed lg:sticky left-0 top-0 bg-surface-container-low dark:bg-surface-dim border-r border-outline-variant flex flex-col gap-unit-2 shrink-0 transition-transform duration-300 z-50 ${
+        className={`h-screen fixed lg:sticky left-0 top-0 bg-surface-container-low dark:bg-surface-dim flex flex-col gap-unit-2 shrink-0 transition-transform duration-300 z-50 ${
           isOpenMobile ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         } ${collapsed ? "w-16 p-unit-2" : "w-64 p-unit-4"}`}
         aria-label="Primary Navigation"

@@ -127,7 +127,7 @@ export function ActivityLogItem({
         <div className="h-1 w-1 rounded-full bg-outline group-hover:bg-primary transition-colors" />
       </div>
 
-      <div className="bg-surface-container-low border border-outline-variant rounded-xl p-4 hover:border-outline hover:shadow-sm transition-all space-y-3.5 cursor-pointer">
+      <div className="bg-surface-container-low rounded-xl p-4 hover:border-outline hover:shadow-sm transition-all space-y-3.5 cursor-pointer">
         
         {/* Header (User profile details or compact time display) */}
         <div className="flex items-center justify-between gap-4 flex-wrap">

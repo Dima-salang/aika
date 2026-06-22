@@ -366,9 +366,6 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
           {/* Header */}
           <div className="flex items-center justify-between px-unit-6 py-unit-4 border-b border-outline-variant bg-surface-container-lowest select-none shrink-0">
             <div className="flex items-center gap-unit-3">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center">
-                <Sparkles className="h-5 w-5" />
-              </div>
               <div>
                 <h2 className="text-body-lg font-headline-sm font-bold text-on-surface">
                   {initialLog ? "Edit Time Log" : "Log Work Session"}
@@ -431,25 +428,19 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
 
                 {/* Core Details */}
                 <div className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <div className="md:col-span-2 space-y-1.5">
-                      <Label htmlFor="log-title" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
-                        Task Title
-                      </Label>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
+                    <div className="md:col-span-2 space-y-1">
                       <Input
                         id="log-title"
                         type="text"
-                        className="bg-surface-container-low border-outline-variant text-xs rounded-lg h-9"
-                        placeholder="e.g., UI Refinements & Glassmorphism Updates"
+                        className="bg-transparent dark:bg-transparent border-none text-base font-semibold placeholder:text-outline/65 px-0 h-auto focus-visible:border-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 shadow-none outline-none focus:bg-transparent dark:focus:bg-transparent"
+                        placeholder="Log title..."
                         value={title}
                         onChange={(e) => setTitle(e.target.value)}
                         required
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="log-project" className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
-                        Project
-                      </Label>
+                    <div className="space-y-1">
                       <select
                         id="log-project"
                         value={projectId}
@@ -457,11 +448,11 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                           setProjectId(e.target.value);
                           setSelectedTasks([]); // Clear linked tasks when project changes
                         }}
-                        className="w-full h-9 px-3 py-1.5 text-xs rounded-lg border border-outline-variant bg-surface-container-low text-on-surface focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer transition-colors"
+                        className="w-full bg-transparent border-none text-xs text-on-surface-variant font-medium px-0 py-1 focus:outline-none focus:ring-0 cursor-pointer"
                       >
-                        <option value="" className="bg-surface">No Project</option>
+                        <option value="" className="bg-[#131315]">No Project</option>
                         {projects.map((proj) => (
-                          <option key={proj.id} value={proj.id} className="bg-surface">
+                          <option key={proj.id} value={proj.id} className="bg-[#131315]">
                             {proj.name}
                           </option>
                         ))}
@@ -470,47 +461,37 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   </div>
 
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block font-sans">
-                      Detailed Work Description (Optional, Markdown supported)
-                    </Label>
                     <RichTextEditor
                       key={initialLog?.id || "new"}
                       value={description}
                       onChange={(val) => setDescription(val)}
-                      placeholder="e.g., Implemented smooth micro-animations and color token sync on the main dashboard cards to enhance overall aesthetics..."
+                      placeholder="Write a description, a task brief, or collect ideas..."
                     />
                   </div>
                 </div>
 
                 {/* Time Window */}
-                <div className="p-5 bg-surface-container-low/40 border border-outline-variant/60 rounded-xl space-y-4">
-                  <h4 className="text-[9px] font-extrabold uppercase text-outline tracking-wider flex items-center gap-1.5 select-none">
-                    <Clock className="h-3.5 w-3.5 text-primary" /> Logged Time Interval
-                  </h4>
+                <div className="pt-2 border-t border-outline-variant/30 space-y-4">
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="log-start" className="text-[10px] font-bold text-on-surface-variant block">
-                        Start Date & Time
-                      </Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-outline uppercase tracking-wider w-16 shrink-0">Start</span>
                       <Input
                         id="log-start"
                         type="datetime-local"
                         value={startTime}
                         onChange={(e) => setStartTime(e.target.value)}
-                        className="bg-surface-container-low border-outline-variant text-xs rounded-lg h-9 font-mono-timer"
+                        className="bg-transparent border-none text-xs font-mono-timer px-0 h-auto focus-visible:border-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 shadow-none text-on-surface"
                         required
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="log-end" className="text-[10px] font-bold text-on-surface-variant block">
-                        End Date & Time
-                      </Label>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold text-outline uppercase tracking-wider w-16 shrink-0">End</span>
                       <Input
                         id="log-end"
                         type="datetime-local"
                         value={endTime}
                         onChange={(e) => setEndTime(e.target.value)}
-                        className="bg-surface-container-low border-outline-variant text-xs rounded-lg h-9 font-mono-timer"
+                        className="bg-transparent border-none text-xs font-mono-timer px-0 h-auto focus-visible:border-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 shadow-none text-on-surface"
                         required
                       />
                     </div>

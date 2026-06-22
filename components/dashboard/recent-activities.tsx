@@ -25,8 +25,8 @@ export function RecentActivities({ recentActivities = [], projects = [], onSelec
   };
 
   return (
-    <div className="col-span-12 lg:col-span-8 bg-surface-container-low border border-outline-variant rounded-lg overflow-hidden flex flex-col">
-      <div className="px-unit-4 py-unit-3 border-b border-outline-variant flex justify-between items-center bg-surface-container-low/80 select-none">
+    <div className="col-span-12 lg:col-span-8 bg-surface-container border border-outline-variant rounded-lg overflow-hidden flex flex-col">
+      <div className="px-unit-4 py-unit-3 border-b border-outline-variant flex justify-between items-center bg-surface-container/80 select-none">
         <span className="font-label-md text-label-md text-on-surface">Recent Activities</span>
         <button className="text-primary font-label-md text-[11px] hover:underline cursor-pointer">
           View All

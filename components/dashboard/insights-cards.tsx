@@ -11,7 +11,7 @@ export function InsightsCards({ efficiency, streak, goalText }: InsightsCardsPro
   return (
     <div className="grid grid-cols-12 gap-unit-4 mb-unit-8 select-none">
       
-      <div className="col-span-12 md:col-span-4 h-24 bg-surface-container-low border border-outline-variant rounded-lg p-unit-4 flex items-center gap-unit-4">
+      <div className="col-span-12 md:col-span-4 h-24 bg-surface-container border border-outline-variant rounded-lg p-unit-4 flex items-center gap-unit-4">
         <div className="p-3 bg-primary/10 rounded-full text-primary flex items-center justify-center">
           <TrendingUp className="h-4 w-4" />
         </div>
@@ -21,7 +21,7 @@ export function InsightsCards({ efficiency, streak, goalText }: InsightsCardsPro
         </div>
       </div>
 
-      <div className="col-span-12 md:col-span-4 h-24 bg-surface-container-low border border-outline-variant rounded-lg p-unit-4 flex items-center gap-unit-4">
+      <div className="col-span-12 md:col-span-4 h-24 bg-surface-container border border-outline-variant rounded-lg p-unit-4 flex items-center gap-unit-4">
         <div className="p-3 bg-secondary-container/30 rounded-full text-secondary flex items-center justify-center">
           <CalendarDays className="h-4 w-4" />
         </div>
@@ -31,7 +31,7 @@ export function InsightsCards({ efficiency, streak, goalText }: InsightsCardsPro
         </div>
       </div>
 
-      <div className="col-span-12 md:col-span-4 h-24 bg-surface-container-low border border-outline-variant rounded-lg p-unit-4 flex items-center gap-unit-4">
+      <div className="col-span-12 md:col-span-4 h-24 bg-surface-container border border-outline-variant rounded-lg p-unit-4 flex items-center gap-unit-4">
         <div className="p-3 bg-primary-container/20 rounded-full text-primary flex items-center justify-center">
           <Target className="h-4 w-4" />
         </div>

@@ -523,7 +523,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
       <div className={
         isFullscreen
           ? "fixed inset-0 z-[100] bg-surface/95 dark:bg-[#0a0a0c]/98 backdrop-blur-md p-6 flex flex-col h-screen w-screen animate-in fade-in duration-200"
-          : "relative border border-outline-variant bg-surface-container-low rounded-lg focus-within:ring-1 focus-within:ring-primary min-h-[140px] p-3 transition-all flex flex-col"
+          : "relative bg-transparent min-h-[140px] focus-within:ring-0 p-0 transition-all flex flex-col"
       }>
         <ToolbarPlugin isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen} />
 

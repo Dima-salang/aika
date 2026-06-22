@@ -1,13 +1,8 @@
 import type { Metadata } from "next";
-import { Space_Grotesk, Share_Tech_Mono } from "next/font/google";
+import { Share_Tech_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/app/providers";
 import { RootProvider } from "fumadocs-ui/provider/next";
-
-const spaceGrotesk = Space_Grotesk({
-  variable: "--font-space-grotesk",
-  subsets: ["latin"],
-});
 
 const shareTechMono = Share_Tech_Mono({
   weight: "400",
@@ -32,7 +27,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${spaceGrotesk.variable} ${shareTechMono.variable} h-full antialiased`}
+      className={`${shareTechMono.variable} h-full antialiased`}
     >
       <head>
         <script
@@ -49,7 +44,7 @@ export default function RootLayout({
             `,
           }}
         />
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet"/>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
         <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
       </head>
       <body className="min-h-screen flex flex-col w-full bg-background text-foreground antialiased font-sans">

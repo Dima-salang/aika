@@ -272,7 +272,7 @@ export function TimeLogsList({
 
                 {viewMode === "list" ? (
                   /* Precision high-density timeline stream layout consistent with feed but compact */
-                  <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant pb-2">
+                  <div className="space-y-6 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant/40 dark:before:bg-outline/20 pb-2">
                     {/* Timeline-style Day Header */}
                     <div className="relative pl-12 flex items-center justify-between gap-4">
                       <div className="absolute left-[11px] top-1.5 h-4 w-4 rounded-full border-2 border-outline-variant bg-surface flex items-center justify-center">

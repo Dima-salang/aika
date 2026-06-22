@@ -273,13 +273,13 @@ export function TeamTimelineFeed({
             </div>
           </div>
         ) : groupedTimeline.length > 0 ? (
-          <div className="space-y-8 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant">
+          <div className="space-y-8 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-px before:bg-outline-variant/40 dark:before:bg-outline/20">
             {groupedTimeline.map(([dayLabel, logs]) => (
               <div key={dayLabel} className="space-y-4">
 
                 {/* Day Header Badge */}
                 <div className="relative pl-12">
-                  <div className="absolute left-[11px] top-1.5 h-4 w-4 rounded-full border-2 border-outline-variant bg-surface flex items-center justify-center">
+                  <div className="absolute left-[11px] top-1.5 h-4 w-4 rounded-full border-2 border-outline-variant bg-surface-low flex items-center justify-center">
                     <div className="h-1.5 w-1.5 rounded-full bg-primary" />
                   </div>
                   <span className="text-[11px] font-extrabold text-primary bg-primary/10 border border-primary/20 px-2 py-0.5 rounded uppercase tracking-wider">

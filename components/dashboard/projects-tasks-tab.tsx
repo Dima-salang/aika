@@ -287,7 +287,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     <div className="flex flex-col lg:flex-row h-[calc(100vh-3rem)] overflow-hidden w-full">
       
       {/* Left Pane: Project List */}
-      <section className="w-full lg:w-60 border-r border-outline-variant flex flex-col bg-surface-container-lowest shrink-0" aria-label="Project Scope Catalog">
+      <section className="w-full lg:w-60 border-r border-outline-variant flex flex-col bg-surface-container-low shrink-0" aria-label="Project Scope Catalog">
         <div className="p-unit-3 flex justify-between items-center border-b border-outline-variant/30">
           <h2 className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
             <FolderDot className="h-3.5 w-3.5 text-primary" /> Projects
@@ -906,28 +906,26 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                 </div>
               )}
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-outline uppercase block" htmlFor="form-title">Task Title</label>
+              <div className="space-y-1">
                 <input 
                   type="text" 
                   id="form-title"
                   required
                   value={taskTitle}
                   onChange={e => setTaskTitle(e.target.value)}
-                  placeholder="e.g. Refactor API endpoints"
-                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 text-xs text-on-surface focus:outline-none focus:border-primary font-medium"
+                  placeholder="Task title..."
+                  className="w-full bg-transparent border-none px-0 py-1 text-base font-semibold text-on-surface focus:outline-none focus:ring-0 font-medium placeholder:text-outline/65"
                 />
               </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[10px] font-bold text-outline uppercase block" htmlFor="form-desc">Task Description</label>
+              <div className="space-y-1">
                 <textarea 
                   rows={3}
                   id="form-desc"
                   value={taskDesc}
                   onChange={e => setTaskDesc(e.target.value)}
-                  placeholder="Analyze DB leaks, connections and transaction lock locks..."
-                  className="w-full bg-surface-container-low border border-outline-variant rounded-lg p-2.5 text-xs text-on-surface focus:outline-none focus:border-primary font-medium resize-none"
+                  placeholder="Add a description, a task brief, or collect ideas..."
+                  className="w-full bg-transparent border-none px-0 py-1 text-xs text-on-surface focus:outline-none focus:ring-0 font-medium resize-none placeholder:text-outline/65"
                 />
               </div>
 

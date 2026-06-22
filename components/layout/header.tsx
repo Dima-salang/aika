@@ -134,7 +134,7 @@ export function Header({
   const hasSearch = activeTab === "dashboard" || activeTab === "logs";
 
   return (
-    <header className="h-16 w-full sticky top-0 z-40 bg-surface dark:bg-surface-dim border-b border-outline-variant flex justify-between items-center px-4 md:px-unit-6 shrink-0 gap-2">
+    <header className="h-16 w-full sticky top-0 z-40 bg-surface dark:bg-surface border-b border-outline-variant flex justify-between items-center px-4 md:px-unit-6 shrink-0 gap-2">
       <div className="flex items-center gap-2 md:gap-unit-4 flex-1 min-w-0">
         {/* Mobile Hamburger menu */}
         <button
