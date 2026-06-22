@@ -231,7 +231,7 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-surface-container-lowest h-screen overflow-hidden">
+    <div className="flex-1 flex flex-col bg-surface-container-low h-screen overflow-hidden">
       
       {/* Header with Selector */}
       <header className="p-unit-6 border-b border-outline-variant flex flex-col sm:flex-row sm:items-center justify-between gap-unit-3 shrink-0">
