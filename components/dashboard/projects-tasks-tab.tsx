@@ -162,6 +162,17 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     return () => window.removeEventListener("aika-new-task", handleGlobalNewTask);
   }, [projects, userId]);
 
+  React.useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsNewTaskOpen(false);
+        setIsNewProjectOpen(false);
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, []);
+
   const handleEditTask = (task: any) => {
     setEditingTaskId(task.id);
     setTaskTitle(task.title);
@@ -884,8 +895,17 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
       {/* Task Modal Dialogue Dialog */}
       {isNewTaskOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" role="dialog" aria-modal="true" aria-labelledby="dialog-title">
-          <div className="bg-surface border border-outline-variant rounded-xl w-full max-w-md p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-200">
+        <div 
+          onClick={() => setIsNewTaskOpen(false)}
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
+          role="dialog" 
+          aria-modal="true" 
+          aria-labelledby="dialog-title"
+        >
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="bg-surface border border-outline-variant rounded-xl w-full max-w-md p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-200"
+          >
             <div className="flex justify-between items-center border-b border-outline-variant/30 pb-2">
               <h3 className="text-headline-sm font-bold text-on-surface" id="dialog-title">
                 {editingTaskId ? "Edit Task Backlog Properties" : "Create New Backlog Task"}
