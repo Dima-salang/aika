@@ -111,7 +111,10 @@ export function Heatmap({ logs, className = "max-w-xl", weeksToShow = 12 }: Heat
       </div>
 
       <div className="w-full overflow-x-auto custom-scrollbar -mx-4 px-4 sm:-mx-0 sm:px-0">
-        <div className="flex flex-col flex-1 justify-center min-w-[760px] pb-2">
+        <div 
+          className="flex flex-col flex-1 justify-center pb-2"
+          style={{ minWidth: weeksToShow > 20 ? "720px" : "auto" }}
+        >
           {/* Month Headings Row */}
           <div className="flex pl-7 w-full text-[10px] text-outline select-none mb-1">
             {monthLabels.map((label, idx) => (
