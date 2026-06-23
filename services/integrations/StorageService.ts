@@ -224,6 +224,29 @@ export class SupabaseStorageProvider implements StorageProvider {
 export class StorageService {
   private static instance: StorageService | null = null;
 
+  private static getHostname(fileUrl: string): string | null {
+    try {
+      return new URL(fileUrl).hostname.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  private static isCloudinaryUrl(fileUrl: string): boolean {
+    const host = this.getHostname(fileUrl);
+    return !!host && (host === "cloudinary.com" || host.endsWith(".cloudinary.com"));
+  }
+
+  private static isSupabaseUrl(fileUrl: string): boolean {
+    const host = this.getHostname(fileUrl);
+    return !!host && (
+      host === "supabase.co" ||
+      host.endsWith(".supabase.co") ||
+      host === "supabase-storage.co" ||
+      host.endsWith(".supabase-storage.co")
+    );
+  }
+
   constructor(
     private cloudinaryProvider: StorageProvider = new CloudinaryStorageProvider(),
     private supabaseProvider: StorageProvider = new SupabaseStorageProvider()
@@ -251,9 +274,9 @@ export class StorageService {
 
   async delete(fileUrl: string): Promise<void> {
     try {
-      if (fileUrl.includes("cloudinary.com")) {
+      if (StorageService.isCloudinaryUrl(fileUrl)) {
         await this.cloudinaryProvider.delete(fileUrl);
-      } else if (fileUrl.includes("supabase.co") || fileUrl.includes("supabase-storage.co")) {
+      } else if (StorageService.isSupabaseUrl(fileUrl)) {
         await this.supabaseProvider.delete(fileUrl);
       }
     } catch (err) {
@@ -264,8 +287,8 @@ export class StorageService {
 
   async deleteBatch(fileUrls: string[]): Promise<void> {
     try {
-      const cloudinaryUrls = fileUrls.filter(url => url.includes("cloudinary.com"));
-      const supabaseUrls = fileUrls.filter(url => url.includes("supabase.co") || url.includes("supabase-storage.co"));
+      const cloudinaryUrls = fileUrls.filter(url => StorageService.isCloudinaryUrl(url));
+      const supabaseUrls = fileUrls.filter(url => StorageService.isSupabaseUrl(url));
 
       const deletePromises: Promise<any>[] = [];
 
