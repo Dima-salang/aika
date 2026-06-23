@@ -46,6 +46,8 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
 
   // Query paginated logs for the user if authorized
   const isAuthorized = profileDetails?.canViewPrivateData ?? false;
+  const currentTab = isAuthorized ? activeSubTab : "info";
+
   const {
     data: paginatedLogsData,
     fetchNextPage: fetchNextLogsPage,
@@ -64,7 +66,7 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
       limit: 10,
     },
     {
-      enabled: isAuthorized && activeSubTab === "logs",
+      enabled: isAuthorized && currentTab === "logs",
       getNextPageParam: (lastPage) => lastPage?.nextCursor,
     }
   );
@@ -72,11 +74,11 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
   // Fetch projects and tasks to populate filters and detail views
   const { data: projects } = trpc.getProjects.useQuery(
     { organizationId, teamId: null },
-    { enabled: isAuthorized && activeSubTab === "logs" }
+    { enabled: isAuthorized && currentTab === "logs" }
   );
   const { data: tasks } = trpc.getTasks.useQuery(
     { userId: viewingUserId },
-    { enabled: isAuthorized && activeSubTab === "logs" }
+    { enabled: isAuthorized && currentTab === "logs" }
   );
 
   const disconnectNotionMutation = trpc.disconnectNotion.useMutation({
@@ -226,7 +228,7 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
       {/* Tab Panels */}
       <div className="space-y-6">
         {/* Panel 1: Account Info & Integrations */}
-        {activeSubTab === "info" && (
+        {currentTab === "info" && (
           <div className="glass-card rounded-xl p-6 bg-surface-container-low text-on-surface border border-outline-variant space-y-6 animate-in fade-in duration-200">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-body-sm">
               <div className="space-y-1.5">
@@ -337,7 +339,7 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
         )}
 
         {/* Panel 2: Time Logs List */}
-        {activeSubTab === "logs" && isAuthorized && (
+        {currentTab === "logs" && isAuthorized && (
           <div className="space-y-4 animate-in fade-in duration-200">
             <TimeLogsList
               logsByDay={paginatedLogsByDay}
@@ -378,7 +380,7 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
         )}
 
         {/* Panel 3: Document Evidence Gallery */}
-        {activeSubTab === "evidence" && isAuthorized && (
+        {currentTab === "evidence" && isAuthorized && (
           <div className="glass-card rounded-xl p-6 bg-surface-container-low text-on-surface border border-outline-variant space-y-4 animate-in fade-in duration-200">
             <div>
               <h4 className="text-body-md font-extrabold flex items-center gap-2 text-on-surface">
