@@ -34,6 +34,7 @@ export default function Dashboard() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingLog, setEditingLog] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports">("dashboard");
+  const [selectedProfileUserId, setSelectedProfileUserId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [logFilterProjectId, setLogFilterProjectId] = useState<string>("all");
   const [logFilterStartDate, setLogFilterStartDate] = useState<string>("");
@@ -77,7 +78,7 @@ export default function Dashboard() {
     data: paginatedLogsData,
     fetchNextPage: fetchNextLogsPage,
     hasNextPage: hasNextLogsPage,
-    isFetchingNextPage: isFetchingNextLogsPage,
+    isFetchingNextPage: isFetchingNextPage,
     isLoading: loadingPaginatedLogs,
     refetch: refetchPaginatedLogs,
   } = trpc.getUserLogsInfinite.useInfiniteQuery(
@@ -127,10 +128,14 @@ export default function Dashboard() {
   }, []);
 
   // Update localStorage helper
-  const handleSetActiveTab = (tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports") => {
+  const handleSetActiveTab = (
+    tab: "dashboard" | "logs" | "profile" | "org" | "projects" | "team" | "reports",
+    targetUserId: string | null = null
+  ) => {
     localStorage.setItem("aika-active-tab", tab);
     setActiveTab(tab);
     setIsMobileSidebarOpen(false); // Close sidebar on mobile after choosing a tab
+    setSelectedProfileUserId(targetUserId);
   };
 
   const prevOrgIdRef = useRef<string | null>(null);
@@ -598,6 +603,9 @@ export default function Dashboard() {
                 setIsDetailOpen(true);
               }}
               onShareLog={handleShareLog}
+              onSelectUser={(uId) => {
+                handleSetActiveTab("profile", uId);
+              }}
             />
           ) : activeTab === "reports" ? (
             <ReportsView activeOrg={activeOrg} session={session} />
@@ -654,7 +662,7 @@ export default function Dashboard() {
                       isLoading={loadingPaginatedLogs}
                       fetchNextPage={fetchNextLogsPage}
                       hasNextPage={hasNextLogsPage}
-                      isFetchingNextPage={isFetchingNextLogsPage}
+                      isFetchingNextPage={isFetchingNextPage}
                       selectedProjectId={logFilterProjectId}
                       setSelectedProjectId={setLogFilterProjectId}
                       startDateFilter={logFilterStartDate}
@@ -679,7 +687,22 @@ export default function Dashboard() {
                 </div>
               )}
 
-              {activeTab === "profile" && <ProfileTab />}
+              {activeTab === "profile" && (
+                <ProfileTab 
+                  targetUserId={selectedProfileUserId || session.user.id} 
+                  onSelectLog={(log) => {
+                    setDetailLog(log);
+                    setDetailTask(null);
+                    setIsDetailOpen(true);
+                  }}
+                  onEdit={(log) => {
+                    setEditingLog(log);
+                    setIsDialogOpen(true);
+                  }}
+                  onDelete={handleDeleteLog}
+                  onShare={handleShareLog}
+                />
+              )}
               {activeTab === "org" && <OrgTab />}
             </section>
           )}
