@@ -8,6 +8,7 @@ interface TeamMembersTableProps {
   membersLoading: boolean;
   onRemoveMember?: (userId: string, name: string) => void;
   isRemoving?: boolean;
+  onSelectUser?: (userId: string) => void;
 }
 
 export function TeamMembersTable({
@@ -15,6 +16,7 @@ export function TeamMembersTable({
   membersLoading,
   onRemoveMember,
   isRemoving,
+  onSelectUser,
 }: TeamMembersTableProps) {
   const teamLeaders = members.filter((m) => m.role === "leader");
   const teamMembersList = members.filter((m) => m.role === "member");
@@ -46,7 +48,10 @@ export function TeamMembersTable({
                 {teamMembersList.map((m) => (
                   <tr key={m.id} className="hover:bg-surface-container-low/50">
                     <td className="p-3">
-                      <div className="flex items-center gap-2">
+                      <div 
+                        className={`flex items-center gap-2 ${onSelectUser ? "cursor-pointer hover:underline text-primary transition-all" : ""}`}
+                        onClick={() => onSelectUser?.(m.userId)}
+                      >
                         {m.userImage ? (
                           <img src={m.userImage} alt={m.userName} className="h-6 w-6 rounded-full" />
                         ) : (
@@ -54,7 +59,7 @@ export function TeamMembersTable({
                             {m.userName.charAt(0)}
                           </div>
                         )}
-                        <span className="font-bold text-on-surface">{m.userName}</span>
+                        <span className="font-bold">{m.userName}</span>
                       </div>
                     </td>
                     <td className="p-3 text-on-surface-variant font-mono-timer">{m.userEmail}</td>
@@ -110,7 +115,10 @@ export function TeamMembersTable({
                 {teamLeaders.map((m) => (
                   <tr key={m.id} className="hover:bg-surface-container-low/50">
                     <td className="p-3">
-                      <div className="flex items-center gap-2">
+                      <div 
+                        className={`flex items-center gap-2 ${onSelectUser ? "cursor-pointer hover:underline text-primary transition-all" : ""}`}
+                        onClick={() => onSelectUser?.(m.userId)}
+                      >
                         {m.userImage ? (
                           <img src={m.userImage} alt={m.userName} className="h-6 w-6 rounded-full" />
                         ) : (
@@ -118,7 +126,7 @@ export function TeamMembersTable({
                             {m.userName.charAt(0)}
                           </div>
                         )}
-                        <span className="font-bold text-on-surface">{m.userName}</span>
+                        <span className="font-bold">{m.userName}</span>
                       </div>
                     </td>
                     <td className="p-3 text-on-surface-variant font-mono-timer">{m.userEmail}</td>
