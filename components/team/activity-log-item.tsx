@@ -41,6 +41,7 @@ export interface ActivityLogItemData {
   userEmail?: string;
   userImage?: string | null;
   userRole?: string;
+  user_id?: string;
   duration?: number;
   is_public?: boolean;
 }
@@ -54,6 +55,7 @@ interface ActivityLogItemProps {
   onDelete?: (logId: string) => void;
   onSelect?: (log: any) => void;
   onShare?: (log: any) => void;
+  onSelectUser?: (userId: string) => void;
 }
 
 // Harmonious color palettes matching the tracker & feed pages
@@ -98,7 +100,8 @@ export function ActivityLogItem({
   onEdit,
   onDelete,
   onSelect,
-  onShare
+  onShare,
+  onSelectUser
 }: ActivityLogItemProps) {
   const durationSeconds = getLogDurationSeconds(log);
   const durationFormatted = formatDuration(durationSeconds);
@@ -132,7 +135,15 @@ export function ActivityLogItem({
         {/* Header (User profile details or compact time display) */}
         <div className="flex items-center justify-between gap-4 flex-wrap">
           {showUser && log.userName ? (
-            <div className="flex items-center gap-2.5">
+            <div 
+              className={`flex items-center gap-2.5 ${onSelectUser && log.user_id ? "cursor-pointer hover:underline text-primary transition-all" : ""}`}
+              onClick={(e) => {
+                if (onSelectUser && log.user_id) {
+                  e.stopPropagation();
+                  onSelectUser(log.user_id);
+                }
+              }}
+            >
               {log.userImage ? (
                 <img src={log.userImage} alt={log.userName} className="h-7 w-7 rounded-full border border-outline-variant" />
               ) : (
