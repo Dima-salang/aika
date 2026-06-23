@@ -4,7 +4,7 @@ import { z } from "zod";
 import { tokenInputZodSchema, tokenAndUserIdInputZodSchema, userIdInputZodSchema } from "@/db/schema";
 import { TRPCError } from "@trpc/server";
 import { db } from "@/db";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, isNull, inArray, desc } from "drizzle-orm";
 import { tables } from "@/db/tables";
 
 // Router Imports
@@ -146,6 +146,133 @@ const baseRouter = router({
       return {
         managedOrgs,
         managedTeams,
+      };
+    }),
+
+  getUserProfileDetails: publicProcedure
+    .input(z.object({ userId: z.string(), callerId: z.string() }))
+    .query(async ({ input }) => {
+      const userTable = tables.user;
+      const memberTable = tables.member;
+      const teamMembersTable = tables.teamMembers;
+
+      const isSelf = input.userId === input.callerId;
+
+      const [targetUser, callerUser, orgLink, teamLink] = await Promise.all([
+        // get target user
+        db
+          .select()
+          .from(userTable)
+          .where(and(eq(userTable.id, input.userId), isNull(userTable.deleted_at)))
+          .limit(1)
+          .then((r) => r[0]),
+        // get caller user
+        db
+          .select()
+          .from(userTable)
+          .where(eq(userTable.id, input.callerId))
+          .limit(1)
+          .then((r) => r[0]),
+        // check if caller is org admin or owner
+        isSelf
+          ? Promise.resolve(null)
+          : db
+              .select({ id: memberTable.id })
+              .from(memberTable)
+              .where(
+                and(
+                  eq(memberTable.userId, input.userId),
+                  inArray(
+                    memberTable.organizationId,
+                    db
+                      .select({ orgId: memberTable.organizationId })
+                      .from(memberTable)
+                      .where(
+                        and(
+                          eq(memberTable.userId, input.callerId),
+                          or(eq(memberTable.role, "admin"), eq(memberTable.role, "owner"))
+                        )
+                      )
+                  )
+                )
+              )
+              .limit(1)
+              .then((r) => r[0]),
+        // check if caller is team leader
+        isSelf
+          ? Promise.resolve(null)
+          : db
+              .select({ id: teamMembersTable.id })
+              .from(teamMembersTable)
+              .where(
+                and(
+                  eq(teamMembersTable.user_id, input.userId),
+                  isNull(teamMembersTable.deleted_at),
+                  inArray(
+                    teamMembersTable.team_id,
+                    db
+                      .select({ teamId: teamMembersTable.team_id })
+                      .from(teamMembersTable)
+                      .where(
+                        and(
+                          eq(teamMembersTable.user_id, input.callerId),
+                          eq(teamMembersTable.role, "leader"),
+                          isNull(teamMembersTable.deleted_at)
+                        )
+                      )
+                  )
+                )
+              )
+              .limit(1)
+              .then((r) => r[0]),
+      ]);
+
+      if (!targetUser) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+      }
+
+      const isSysAdmin = callerUser?.is_admin === true;
+      const canViewPrivateData = isSelf || isSysAdmin || !!orgLink || !!teamLink;
+
+      // get user evidence if allowed
+      let evidence: any[] = [];
+      if (canViewPrivateData) {
+        const docTable = tables.documentEvidences;
+        const logTable = tables.timeLogs;
+        evidence = await db
+          .select({
+            id: docTable.id,
+            time_log_id: docTable.time_log_id,
+            file_url: docTable.file_url,
+            file_name: docTable.file_name,
+            file_size: docTable.file_size,
+            created_at: docTable.created_at,
+            mime_type: docTable.mime_type,
+            time_log_title: logTable.title,
+            time_log_description: logTable.description,
+          })
+          .from(docTable)
+          .innerJoin(logTable, eq(docTable.time_log_id, logTable.id))
+          .where(
+            and(
+              eq(logTable.user_id, input.userId),
+              isNull(docTable.deleted_at),
+              isNull(logTable.deleted_at)
+            )
+          )
+          .orderBy(desc(docTable.created_at));
+      }
+
+      return {
+        user: {
+          id: targetUser.id,
+          name: targetUser.name,
+          email: targetUser.email,
+          image: targetUser.image,
+          createdAt: targetUser.createdAt,
+        },
+        canViewPrivateData,
+        evidence,
       };
     }),
 
