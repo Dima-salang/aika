@@ -1,6 +1,6 @@
 import { db, DBInstance } from "@/db";
 import { tables } from "../../db/tables";
-import { eq, and, isNull, inArray, gte, lte, sum } from "drizzle-orm";
+import { eq, and, isNull, inArray, gte, lte, sum, desc } from "drizzle-orm";
 import { z } from "zod";
 import { TimeLog, TimeLogSqlite } from "@/db/schema";
 import { calculateDurationHours } from "@/utils/time";
@@ -367,7 +367,7 @@ export class ReportService {
       .select()
       .from(logTable)
       .where(and(...conditions))
-      .orderBy(logTable.start_time);
+      .orderBy(desc(logTable.start_time));
 
     const [durationResult] = await tx
       .select({ totalSeconds: sum(logTable.duration) })
@@ -420,7 +420,7 @@ export class ReportService {
       .select()
       .from(logTable)
       .where(and(...conditions))
-      .orderBy(logTable.start_time);
+      .orderBy(desc(logTable.start_time));
 
     const [durationResult] = await tx
       .select({ totalSeconds: sum(logTable.duration) })

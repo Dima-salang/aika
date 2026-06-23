@@ -844,6 +844,9 @@ export class LogService {
 
     let query = db.select().from(table).where(and(...conditions)).$dynamic();
 
+    // query descending by start_time
+    query = query.orderBy(desc(table.start_time));
+
     if (limit) {
       query = query.limit(limit);
     }
