@@ -101,7 +101,7 @@ export function TimelineChart({ logs, startDate, endDate, isTeam, onLogClick }: 
         <div className="min-w-full w-max">
           {/* Header Row: Dates */}
           <div className="flex border-b border-outline-variant/60 bg-surface-container/40 pt-24">
-            <div className="w-48 shrink-0 p-3 text-[10px] font-bold text-outline uppercase tracking-wider border-r border-outline-variant/40 flex items-end">
+            <div className="w-48 shrink-0 p-3 text-[10px] font-bold text-outline uppercase tracking-wider border-r border-outline-variant/40 flex items-end sticky left-0 z-10 bg-surface-container/95 backdrop-blur-sm">
               {isTeam ? "Team Member" : "Project"}
             </div>
             <div className="flex-grow flex divide-x divide-outline-variant/30 items-end">
@@ -118,7 +118,7 @@ export function TimelineChart({ logs, startDate, endDate, isTeam, onLogClick }: 
             {lanes.map((lane, index) => (
               <div key={index} className="flex hover:bg-surface-container/10 transition-colors">
                 {/* Lane Name */}
-                <div className="w-48 shrink-0 p-3 text-xs font-bold text-on-surface border-r border-outline-variant/40 truncate flex items-center bg-surface-container-lowest/50">
+                <div className="w-48 shrink-0 p-3 text-xs font-bold text-on-surface border-r border-outline-variant/40 truncate flex items-center bg-surface-container-low sticky left-0 z-10">
                   {lane.name}
                 </div>
                 
