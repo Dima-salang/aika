@@ -7,6 +7,11 @@ import { renderMarkdown } from "@/utils/markdown";
 
 export function ImageViewer() {
   const { isOpen, images, currentIndex, close, next, prev } = useImageViewer();
+  const [isOverlayMinimized, setIsOverlayMinimized] = React.useState(false);
+
+  useEffect(() => {
+    setIsOverlayMinimized(false);
+  }, [currentIndex, isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -159,17 +164,37 @@ export function ImageViewer() {
           className="absolute bottom-6 left-6 max-w-[90%] sm:max-w-md p-4 rounded-2xl bg-black/75 border border-zinc-800/50 backdrop-blur-md text-white shadow-2xl z-20 flex flex-col gap-1.5 animate-in fade-in slide-in-from-bottom-4 duration-300"
           onClick={(e) => e.stopPropagation()}
         >
-          {currentImage.title && (
-            <div className="text-sm font-extrabold tracking-tight text-zinc-100 flex items-center gap-1.5 [&_p]:m-0 [&_a]:text-primary hover:[&_a]:underline">
-              <span className="material-symbols-outlined text-[16px] text-primary shrink-0">schedule</span>
-              {renderMarkdown(currentImage.title)}
+          <div className="flex items-center justify-between gap-4">
+            {currentImage.title ? (
+              <div className="text-sm font-extrabold tracking-tight text-zinc-100 flex items-center gap-1.5 [&_p]:m-0 [&_a]:text-primary hover:[&_a]:underline">
+                <span className="material-symbols-outlined text-[16px] text-primary shrink-0">schedule</span>
+                {renderMarkdown(currentImage.title)}
+              </div>
+            ) : (
+              <div className="text-sm font-extrabold tracking-tight text-zinc-400">Linked Time Log</div>
+            )}
+            {currentImage.description && (
+              <button
+                onClick={() => setIsOverlayMinimized(!isOverlayMinimized)}
+                className="text-[10px] text-primary hover:text-primary-hover hover:underline font-bold shrink-0 cursor-pointer flex items-center gap-0.5"
+              >
+                {isOverlayMinimized ? "Expand" : "Minimize"}
+              </button>
+            )}
+          </div>
+          <div 
+            className={`grid transition-all duration-300 ease-in-out ${
+              isOverlayMinimized ? "grid-rows-[0fr] opacity-0" : "grid-rows-[1fr] opacity-100 mt-1.5"
+            }`}
+          >
+            <div className="overflow-hidden">
+              {currentImage.description && (
+                <div className="text-[11px] text-zinc-300 leading-relaxed font-medium [&_p]:m-0 [&_a]:text-primary hover:[&_a]:underline">
+                  {renderMarkdown(currentImage.description)}
+                </div>
+              )}
             </div>
-          )}
-          {currentImage.description && (
-            <div className="text-[11px] text-zinc-300 leading-relaxed font-medium [&_p]:m-0 [&_a]:text-primary hover:[&_a]:underline">
-              {renderMarkdown(currentImage.description)}
-            </div>
-          )}
+          </div>
         </div>
       )}
 
