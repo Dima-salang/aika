@@ -420,10 +420,9 @@ export class LogService {
           await tx.insert(tables.documentEvidences).values(evidenceEntries);
         }
 
-        // Delete deleted files from physical storage provider(s)
-        for (const file of deletedFiles) {
-          await this.storageService.delete(file.file_url);
-        }
+        // delete files from storage providers
+        const file_urls = deletedFiles.map((file) => file.file_url);
+        await this.storageService.deleteBatch(file_urls);
       }
 
       // Record Audit Log
@@ -1087,6 +1086,9 @@ export class LogService {
       if (timeLogValues.length > 0) {
         Promise.all(
           timeLogValues.map((log) =>
+            // TODO: batch notify observers
+            // since it might lead to api rate limits
+            // we might want to use a queue
             this.notifyObservers("create", log.id, userId).catch((err) => {
               console.error(`Observer notification failed for log ${log.id}:`, err);
             })
