@@ -22,6 +22,8 @@ export function AuthCard() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   
   // UI States
   const [error, setError] = useState<string | null>(null);
@@ -71,6 +73,13 @@ export function AuthCard() {
     setError(null);
     setErrorDesc(null);
     setLoading(true);
+
+    if (mode === "signup" && password !== confirmPassword) {
+      setError("Passwords do not match.");
+      setErrorDesc("Please ensure both password fields are identical.");
+      setLoading(false);
+      return;
+    }
 
     try {
       if (mode === "signup") {
@@ -217,6 +226,38 @@ export function AuthCard() {
               </button>
             </div>
           </div>
+
+          {mode === "signup" && (
+            <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+              <Label htmlFor="confirmPassword" className="text-xs uppercase tracking-wider font-extrabold text-on-surface-variant/80 flex items-center gap-2">
+                <Key className="h-4.5 w-4.5 text-outline" /> Confirm Password
+              </Label>
+              <div className="relative">
+                <Input
+                  id="confirmPassword"
+                  type={showConfirmPassword ? "text" : "password"}
+                  placeholder="••••••••"
+                  className={`bg-transparent border-0 border-b ${confirmPassword && password !== confirmPassword ? 'border-error hover:border-error/80 focus-visible:border-error' : 'border-outline-variant/60 hover:border-on-surface/50 focus-visible:border-primary'} text-sm h-12 pr-12 focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none`}
+                  required
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-1 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors duration-200 cursor-pointer"
+                  title={showConfirmPassword ? "Hide password" : "Show password"}
+                >
+                  {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                </button>
+              </div>
+              {confirmPassword && password !== confirmPassword && (
+                <p className="text-[11px] font-bold text-error animate-in fade-in duration-200 pl-1">
+                  Passwords do not match
+                </p>
+              )}
+            </div>
+          )}
           
           <Button
             type="submit"
@@ -291,6 +332,8 @@ export function AuthCard() {
               setMode(mode === "signin" ? "signup" : "signin");
               setError(null);
               setErrorDesc(null);
+              setPassword("");
+              setConfirmPassword("");
             }}
             className="font-extrabold text-on-surface underline hover:no-underline transition-all cursor-pointer"
           >
