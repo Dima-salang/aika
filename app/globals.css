@@ -330,13 +330,15 @@
 
 /* Dynamically styled Sonner Toasts based on active theme tokens */
 [data-sonner-toast] {
-  background-color: var(--surface) !important;
+  background-color: var(--surface-container-high) !important;
   color: var(--on-surface) !important;
-  border-color: var(--outline-variant) !important;
+  border: 1.5px solid var(--outline) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.15) !important;
 }
 
 .dark [data-sonner-toast] {
-  background-color: var(--surface-container-low) !important;
+  background-color: var(--surface-container-highest) !important;
   color: var(--on-surface) !important;
-  border-color: var(--outline-variant) !important;
+  border: 1.5px solid var(--outline) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4) !important;
 }
