@@ -53,6 +53,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [uploadingFiles, setUploadingFiles] = useState<Array<{ name: string; size: number }>>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   const skipSaveRef = useRef(false);
   const activeLogKeyRef = useRef<string>("new");
@@ -181,6 +182,31 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        titleInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen]);
+
+  const handleFormKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (e.target instanceof HTMLElement) {
+        const tagName = e.target.tagName.toLowerCase();
+        const isMultiline = tagName === "textarea" || e.target.isContentEditable;
+        
+        if (!isMultiline || isCmdOrCtrl) {
+          if (tagName !== "button" && tagName !== "select") {
+            e.preventDefault();
+            handleSubmit(e);
+          }
+        }
+      }
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -435,7 +461,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
 
             {/* Left Column: Log Details Form */}
             <div className="w-full lg:w-1/2 lg:overflow-y-auto px-4 py-4 sm:px-unit-6 sm:py-unit-6 space-y-6 sm:space-y-8 border-b lg:border-b-0 lg:border-r border-outline-variant/60 custom-scrollbar flex flex-col shrink-0">
-              <form id="time-log-form" onSubmit={handleSubmit} className="space-y-7 flex-1">
+              <form id="time-log-form" onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="space-y-7 flex-1">
                 {error && (
                   <div className="p-3.5 rounded-lg bg-error-container border border-error/20 text-error text-xs flex items-start gap-2.5 animate-in slide-in-from-top-2">
                     <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
@@ -448,6 +474,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-end">
                     <div className="md:col-span-2 space-y-1">
                       <Input
+                        ref={titleInputRef}
                         id="log-title"
                         type="text"
                         className="bg-transparent dark:bg-transparent border-none text-base font-semibold placeholder:text-outline/65 px-0 h-auto focus-visible:border-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:outline-none focus:ring-0 shadow-none outline-none focus:bg-transparent dark:focus:bg-transparent"

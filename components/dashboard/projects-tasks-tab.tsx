@@ -143,6 +143,9 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   const [draggingTaskId, setDraggingTaskId] = useState<string | null>(null);
   const [activeDropCol, setActiveDropCol] = useState<string | null>(null);
 
+  const taskTitleInputRef = React.useRef<HTMLInputElement>(null);
+  const projectNameInputRef = React.useRef<HTMLInputElement>(null);
+
   const resetTaskForm = () => {
     setTaskTitle("");
     setTaskDesc("");
@@ -172,6 +175,60 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, []);
+
+  React.useEffect(() => {
+    if (isNewTaskOpen) {
+      setTimeout(() => {
+        taskTitleInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isNewTaskOpen]);
+
+  React.useEffect(() => {
+    if (isNewProjectOpen) {
+      setTimeout(() => {
+        projectNameInputRef.current?.focus();
+      }, 50);
+    }
+  }, [isNewProjectOpen]);
+
+  const handleTaskFormKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      const isCmdOrCtrl = e.metaKey || e.ctrlKey;
+      if (e.target instanceof HTMLElement) {
+        const tagName = e.target.tagName.toLowerCase();
+        const isMultiline = tagName === "textarea" || e.target.isContentEditable;
+        
+        if (!isMultiline || isCmdOrCtrl) {
+          if (tagName !== "button" && tagName !== "select") {
+            e.preventDefault();
+            handleTaskSubmit(e);
+          }
+        }
+      }
+    }
+  };
+
+  const handleProjectSubmit = async () => {
+    if (!newProjectName.trim()) {
+      toast.warning("Project name cannot be empty.");
+      return;
+    }
+    await createProject.mutateAsync({
+      name: newProjectName,
+      description: newProjectDesc,
+      organization_id: organizationId,
+      team_id: activeTeamId,
+      userId
+    });
+  };
+
+  const handleProjectKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleProjectSubmit();
+    }
+  };
 
   const handleEditTask = (task: any) => {
     setEditingTaskId(task.id);
@@ -319,10 +376,12 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
             <div className="space-y-1">
               <label className="text-[9px] uppercase font-bold text-outline">Project Name</label>
               <input 
+                ref={projectNameInputRef}
                 type="text" 
                 placeholder="e.g. Mobile Application"
                 value={newProjectName}
                 onChange={e => setNewProjectName(e.target.value)}
+                onKeyDown={handleProjectKeyDown}
                 className="w-full bg-surface-container-lowest border border-outline-variant rounded p-1 text-[11px] text-on-surface focus:outline-none focus:border-primary"
               />
             </div>
@@ -333,6 +392,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                 placeholder="Brief details..."
                 value={newProjectDesc}
                 onChange={e => setNewProjectDesc(e.target.value)}
+                onKeyDown={handleProjectKeyDown}
                 className="w-full bg-surface-container-lowest border border-outline-variant rounded p-1 text-[11px] text-on-surface focus:outline-none focus:border-primary"
               />
             </div>
@@ -344,20 +404,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                 Cancel
               </button>
               <button 
-                onClick={async () => {
-                  if (!newProjectName.trim()) {
-                    toast.warning("Project name cannot be empty.");
-                    return;
-                  }
-                  await createProject.mutateAsync({
-                    name: newProjectName,
-                    description: newProjectDesc,
-                    organization_id: organizationId,
-                    team_id: activeTeamId,
-                    userId
-                  });
-
-                }}
+                onClick={handleProjectSubmit}
                 disabled={createProject.isPending}
                 className="px-2 py-0.5 text-[10px] font-bold bg-primary text-on-primary rounded hover:brightness-105 flex items-center gap-1"
               >
@@ -919,7 +966,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               </button>
             </div>
 
-            <form onSubmit={handleTaskSubmit} className="space-y-4">
+            <form onSubmit={handleTaskSubmit} onKeyDown={handleTaskFormKeyDown} className="space-y-4">
               {formError && (
                 <div className="p-3 text-xs bg-error-container/30 border border-error-container text-error rounded-lg font-semibold" role="alert">
                   {formError}
@@ -928,6 +975,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
               <div className="space-y-1">
                 <input 
+                  ref={taskTitleInputRef}
                   type="text" 
                   id="form-title"
                   required

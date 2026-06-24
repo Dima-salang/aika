@@ -16,10 +16,30 @@ import {
 export function ConfirmDialog() {
   const [mounted, setMounted] = useState(false);
   const { open, title, description, onConfirm, hideConfirm } = useConfirmStore();
+  const confirmBtnRef = React.useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => {
+        confirmBtnRef.current?.focus();
+      }, 50);
+
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === "Enter") {
+          e.preventDefault();
+          if (onConfirm) onConfirm();
+          hideConfirm();
+        }
+      };
+
+      window.addEventListener("keydown", handleKeyDown);
+      return () => window.removeEventListener("keydown", handleKeyDown);
+    }
+  }, [open, onConfirm, hideConfirm]);
 
   if (!mounted) return null;
 
@@ -42,6 +62,7 @@ export function ConfirmDialog() {
             Cancel
           </AlertDialogCancel>
           <AlertDialogAction
+            ref={confirmBtnRef}
             onClick={() => {
               if (onConfirm) onConfirm();
               hideConfirm();

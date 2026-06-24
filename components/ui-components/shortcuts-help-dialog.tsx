@@ -1,4 +1,4 @@
-"use client";
+import React, { useEffect, useRef } from "react";
 
 interface ShortcutsHelpDialogProps {
   isOpen: boolean;
@@ -6,6 +6,16 @@ interface ShortcutsHelpDialogProps {
 }
 
 export function ShortcutsHelpDialog({ isOpen, onClose }: ShortcutsHelpDialogProps) {
+  const closeBtnRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        closeBtnRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen]);
+
   if (!isOpen) return null;
 
   return (
@@ -22,11 +32,12 @@ export function ShortcutsHelpDialog({ isOpen, onClose }: ShortcutsHelpDialogProp
         <div className="flex justify-between items-center border-b border-outline-variant/30 pb-3">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-primary text-2xl">keyboard</span>
-            <h3 className="text-headline-sm font-extrabold text-on-surface">Power User Keyboard Shortcuts</h3>
+            <h3 className="text-headline-sm font-extrabold text-on-surface">Keyboard Shortcuts</h3>
           </div>
           <button
+            ref={closeBtnRef}
             onClick={onClose}
-            className="text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none"
+            className="text-on-surface-variant hover:text-on-surface transition-colors focus:outline-none focus:ring-2 focus:ring-primary rounded-full p-0.5"
             aria-label="Close"
           >
             <span className="material-symbols-outlined">close</span>
@@ -34,7 +45,7 @@ export function ShortcutsHelpDialog({ isOpen, onClose }: ShortcutsHelpDialogProp
         </div>
 
         <div className="space-y-4 text-xs">
-          <p className="text-outline font-medium">Use these premium hotkeys to navigate Aika instantly like a pro developer.</p>
+          <p className="text-outline font-medium">Use these hotkeys to navigate Aika instantly.</p>
 
           <div className="grid grid-cols-1 gap-3">
             {/* Actions category */}
@@ -75,13 +86,13 @@ export function ShortcutsHelpDialog({ isOpen, onClose }: ShortcutsHelpDialogProp
                 </div>
 
                 <div className="flex justify-between items-center bg-surface-container-low p-2 rounded-lg border border-outline-variant/40">
-                  <span className="text-on-surface font-semibold">Instantiate New Deliverable Task</span>
+                  <span className="text-on-surface font-semibold">New Task</span>
                   <div className="flex items-center gap-1">
                     <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">Alt</kbd>
                     <span className="text-outline text-[10px]">+</span>
-                    <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">C</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">U</kbd>
                     <span className="text-outline text-[10px]">or</span>
-                    <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">C</kbd>
+                    <kbd className="px-1.5 py-0.5 bg-surface-container-high border border-outline-variant text-[10px] font-bold rounded">U</kbd>
                   </div>
                 </div>
               </div>
