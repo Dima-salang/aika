@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 
-export function HeroDither() {
+export function AuthDither() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -42,25 +42,25 @@ export function HeroDither() {
         return 0.0;
       }
 
-      float liquidPattern(vec2 p, float time) {
-        float v1 = sin(p.x * 2.2 + time * 1.2);
-        float v2 = sin(p.y * 1.8 + time * 1.0);
-        float v3 = sin((p.x + p.y) * 1.5 + time * 0.8);
-        float v4 = sin(length(p) * 2.0 - time * 0.6);
+      float plasmaPattern(vec2 p, float time) {
+        float v1 = sin(p.x * 1.5 + time * 0.9);
+        float v2 = sin(p.y * 1.5 - time * 0.7);
+        float v3 = sin(length(p) * 2.5 + time * 0.5);
+        float v4 = sin(p.x + p.y + time);
         return (v1 + v2 + v3 + v4) / 4.0 * 0.5 + 0.5;
       }
 
       void main() {
         vec2 uv = gl_FragCoord.xy / u_resolution.xy;
-        vec2 p = uv * 8.0 - vec2(4.0);
+        vec2 p = uv * 6.0 - vec2(3.0);
         p.x *= u_resolution.x / u_resolution.y;
 
-        p.y += sin(p.x * 1.5 + u_time * 1.2) * 0.4;
-        p.x += cos(p.y * 1.2 + u_time * 1.0) * 0.3;
+        p.y += sin(p.x * 2.0 + u_time * 0.8) * 0.3;
+        p.x += cos(p.y * 1.5 + u_time * 0.6) * 0.2;
 
-        float intensity = liquidPattern(p, u_time);
+        float intensity = plasmaPattern(p, u_time);
 
-        vec2 pixelCoord = floor(gl_FragCoord.xy / 2.5);
+        vec2 pixelCoord = floor(gl_FragCoord.xy / 2.0);
         float threshold = getBayerValue(pixelCoord);
 
         float activeState = intensity > threshold ? 1.0 : 0.0;
@@ -68,11 +68,11 @@ export function HeroDither() {
         vec3 bg;
         vec3 accent;
         if (u_dark > 0.5) {
-          bg = vec3(0.047, 0.039, 0.035); // Warm charcoal-brown bg
-          accent = vec3(0.92, 0.91, 0.67); // Pastel yellow
+          bg = vec3(0.059, 0.059, 0.07); // Dark theme matching #0f0f12
+          accent = vec3(0.47, 0.43, 0.94); // Premium Indigo/Violet active nodes
         } else {
-          bg = vec3(0.98, 0.98, 0.96); // Warm pale gray
-          accent = vec3(0.72, 0.68, 0.35); // Gold/amber dither elements
+          bg = vec3(0.97, 0.97, 0.98); // Light theme matching bg-surface-container-low
+          accent = vec3(0.38, 0.34, 0.82); // Soft deeper indigo for readable contrast in light mode
         }
 
         vec3 finalColor = mix(bg, accent, activeState);
@@ -136,9 +136,9 @@ export function HeroDither() {
       gl.viewport(0, 0, canvas.width, canvas.height);
       const isDark = document.documentElement.classList.contains("dark");
       if (isDark) {
-        gl.clearColor(0.047, 0.039, 0.035, 1.0);
+        gl.clearColor(0.059, 0.059, 0.07, 1.0);
       } else {
-        gl.clearColor(0.98, 0.98, 0.96, 1.0);
+        gl.clearColor(0.97, 0.97, 0.98, 1.0);
       }
       gl.clear(gl.COLOR_BUFFER_BIT);
 
