@@ -25,6 +25,8 @@ export function DetailViewDialog({
   tasks = [],
   onShareLog,
 }: DetailViewDialogProps) {
+  const dismissBtnRef = React.useRef<HTMLButtonElement>(null);
+
   React.useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -33,6 +35,9 @@ export function DetailViewDialog({
     };
     if (isOpen) {
       window.addEventListener("keydown", handleKeyDown);
+      setTimeout(() => {
+        dismissBtnRef.current?.focus();
+      }, 50);
     }
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [isOpen, onClose]);
@@ -324,6 +329,7 @@ export function DetailViewDialog({
         {/* Footer */}
         <div className="px-unit-6 py-unit-4 border-t border-outline-variant flex items-center justify-end bg-surface-container-lowest">
           <button
+            ref={dismissBtnRef}
             onClick={onClose}
             className="rounded-lg text-xs font-semibold px-4 py-2 border border-outline-variant hover:bg-surface-container-high text-on-surface transition-colors cursor-pointer select-none"
           >

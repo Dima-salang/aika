@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Upload, Download, FileSpreadsheet, AlertCircle, CheckCircle2, Loader2, Info, Eye } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ExcelStrategy } from "@/services/import-export/ExcelStrategy";
@@ -37,8 +37,34 @@ export function ImportExportDialog({
   const [isParsing, setIsParsing] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const dropzoneRef = useRef<HTMLDivElement>(null);
 
   const importLogsMutation = trpc.importLogs.useMutation();
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => {
+        dropzoneRef.current?.focus();
+      }, 50);
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (isOpen && e.key === "Enter") {
+        if (parsedResult && parsedResult.logs.length > 0 && !isSubmitting) {
+          const activeTag = document.activeElement?.tagName.toLowerCase();
+          if (activeTag !== "button") {
+            e.preventDefault();
+            handleConfirmImport();
+          }
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, parsedResult, isSubmitting]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
@@ -225,8 +251,16 @@ export function ImportExportDialog({
                 className="hidden"
               />
               <div
-                onClick={() => fileInputRef.current?.click()}
-                className="border-2 border-dashed border-outline-variant hover:border-primary rounded-xl p-5 text-center cursor-pointer transition-colors bg-surface-container-lowest hover:bg-primary/5 flex flex-col items-center gap-2"
+                ref={dropzoneRef}
+                tabIndex={0}
+                onClick={() => !isParsing && fileInputRef.current?.click()}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    if (!isParsing) fileInputRef.current?.click();
+                  }
+                }}
+                className="border-2 border-dashed border-outline-variant hover:border-primary rounded-xl p-5 text-center cursor-pointer transition-colors bg-surface-container-lowest hover:bg-primary/5 flex flex-col items-center gap-2 outline-none focus-visible:ring-2 focus-visible:ring-primary"
               >
                 {isParsing ? (
                   <Loader2 className="h-7 w-7 animate-spin text-primary" />
