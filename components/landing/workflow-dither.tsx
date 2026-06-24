@@ -23,6 +23,7 @@ export function WorkflowDither() {
       precision highp float;
       uniform float u_time;
       uniform vec2 u_resolution;
+      uniform float u_dark;
 
       // Simple pseudo-random hash for stippling noise
       float hash(vec2 p) {
@@ -69,11 +70,17 @@ export function WorkflowDither() {
         // High-contrast Bayer check
         float activeState = intensity > threshold ? 1.0 : 0.0;
 
-        // Void Black and Ghostly Pale Silver-Gold
-        vec3 voidBlack = vec3(0.008, 0.006, 0.006);
-        vec3 silverGold = vec3(0.92, 0.91, 0.85);
+        vec3 bg;
+        vec3 accent;
+        if (u_dark > 0.5) {
+          bg = vec3(0.008, 0.006, 0.006); // Void Black
+          accent = vec3(0.92, 0.91, 0.85); // Silver Gold
+        } else {
+          bg = vec3(0.98, 0.98, 0.98); // Off-White
+          accent = vec3(0.62, 0.60, 0.52); // Soft Silver-Gold/Bronze
+        }
 
-        vec3 finalColor = mix(voidBlack, silverGold, activeState);
+        vec3 finalColor = mix(bg, accent, activeState);
         gl_FragColor = vec4(finalColor, 1.0);
       }
     `;
@@ -104,6 +111,7 @@ export function WorkflowDither() {
     const positionAttributeLocation = gl.getAttribLocation(program, "position");
     const timeUniformLocation = gl.getUniformLocation(program, "u_time");
     const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+    const darkUniformLocation = gl.getUniformLocation(program, "u_dark");
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -121,7 +129,7 @@ export function WorkflowDither() {
     let startTime = Date.now();
 
     const render = () => {
-      const time = (Date.now() - startTime) * 0.0003; // Radiate slightly faster
+      const time = (Date.now() - startTime) * 0.0003; // Radiate slowly
 
       const displayWidth = canvas.clientWidth;
       const displayHeight = canvas.clientHeight;
@@ -131,7 +139,12 @@ export function WorkflowDither() {
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.clearColor(0.047, 0.039, 0.035, 1.0);
+      const isDark = document.documentElement.classList.contains("dark");
+      if (isDark) {
+        gl.clearColor(0.008, 0.006, 0.006, 1.0);
+      } else {
+        gl.clearColor(0.98, 0.98, 0.98, 1.0);
+      }
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.useProgram(program);
@@ -142,6 +155,7 @@ export function WorkflowDither() {
 
       gl.uniform1f(timeUniformLocation, time);
       gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
+      gl.uniform1f(darkUniformLocation, isDark ? 1.0 : 0.0);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 

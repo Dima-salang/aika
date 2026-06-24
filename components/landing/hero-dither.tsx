@@ -23,6 +23,7 @@ export function HeroDither() {
       precision highp float;
       uniform float u_time;
       uniform vec2 u_resolution;
+      uniform float u_dark;
 
       float getBayerValue(vec2 p) {
         int x = int(mod(p.x, 4.0));
@@ -64,10 +65,17 @@ export function HeroDither() {
 
         float activeState = intensity > threshold ? 1.0 : 0.0;
 
-        vec3 deepBlack = vec3(0.047, 0.039, 0.035);
-        vec3 pastelYellow = vec3(0.92, 0.91, 0.67);
+        vec3 bg;
+        vec3 accent;
+        if (u_dark > 0.5) {
+          bg = vec3(0.047, 0.039, 0.035); // Warm charcoal-brown bg
+          accent = vec3(0.92, 0.91, 0.67); // Pastel yellow
+        } else {
+          bg = vec3(0.98, 0.98, 0.96); // Warm pale gray
+          accent = vec3(0.72, 0.68, 0.35); // Gold/amber dither elements
+        }
 
-        vec3 finalColor = mix(deepBlack, pastelYellow, activeState);
+        vec3 finalColor = mix(bg, accent, activeState);
         gl_FragColor = vec4(finalColor, 1.0);
       }
     `;
@@ -98,6 +106,7 @@ export function HeroDither() {
     const positionAttributeLocation = gl.getAttribLocation(program, "position");
     const timeUniformLocation = gl.getUniformLocation(program, "u_time");
     const resolutionUniformLocation = gl.getUniformLocation(program, "u_resolution");
+    const darkUniformLocation = gl.getUniformLocation(program, "u_dark");
 
     const positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
@@ -125,7 +134,12 @@ export function HeroDither() {
       }
 
       gl.viewport(0, 0, canvas.width, canvas.height);
-      gl.clearColor(0.047, 0.039, 0.035, 1.0);
+      const isDark = document.documentElement.classList.contains("dark");
+      if (isDark) {
+        gl.clearColor(0.047, 0.039, 0.035, 1.0);
+      } else {
+        gl.clearColor(0.98, 0.98, 0.96, 1.0);
+      }
       gl.clear(gl.COLOR_BUFFER_BIT);
 
       gl.useProgram(program);
@@ -136,6 +150,7 @@ export function HeroDither() {
 
       gl.uniform1f(timeUniformLocation, time);
       gl.uniform2f(resolutionUniformLocation, canvas.width, canvas.height);
+      gl.uniform1f(darkUniformLocation, isDark ? 1.0 : 0.0);
 
       gl.drawArrays(gl.TRIANGLES, 0, 6);
 
