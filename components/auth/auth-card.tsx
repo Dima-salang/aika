@@ -2,7 +2,6 @@
 
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -33,7 +32,6 @@ export function AuthCard() {
     const errorParam = searchParams.get("error");
     const descParam = searchParams.get("description") || searchParams.get("error_description");
     if (errorParam) {
-      // Map error types to human readable, premium statements
       let readableError = errorParam;
       if (
         errorParam.toLowerCase().includes("cancel") || 
@@ -63,7 +61,6 @@ export function AuthCard() {
         duration: 6000,
       });
 
-      // Clear query params to keep the url bar clean
       const newUrl = window.location.pathname + (redirect !== "/" ? `?redirect=${encodeURIComponent(redirect)}` : "");
       window.history.replaceState({}, "", newUrl);
     }
@@ -136,44 +133,44 @@ export function AuthCard() {
   };
 
   return (
-    <Card className="w-full max-w-lg overflow-hidden border border-outline-variant/20 bg-surface-container-lowest/80 dark:bg-[#131315]/80 backdrop-blur-md shadow-[0_4px_30px_rgba(0,0,0,0.08)] rounded-2xl">
-      <CardHeader className="space-y-1.5 text-center pb-6 pt-8">
-        <CardTitle className="text-3xl font-black tracking-tight text-on-surface">
-          {mode === "signin" ? "Welcome Back!" : "Create an Account"}
-        </CardTitle>
-        <CardDescription className="text-xs text-on-surface-variant font-semibold">
+    <div className="w-full max-w-xl space-y-8 px-4 sm:px-0">
+      <div className="space-y-3 text-center sm:text-left">
+        <h1 className="text-4xl sm:text-5xl font-black tracking-tight text-on-surface select-none">
+          {mode === "signin" ? "Welcome Back" : "Create Account"}
+        </h1>
+        <p className="text-sm text-on-surface-variant font-medium leading-relaxed">
           {mode === "signin"
-            ? "Sign in to view and log your work hours"
-            : "Sign up now to start tracking your time"}
-        </CardDescription>
-      </CardHeader>
+            ? "Sign in to log your study/work hours and track tasks."
+            : "Sign up now to start tracking your time."}
+        </p>
+      </div>
       
-      <CardContent className="space-y-5 px-8 pb-8">
+      <div className="space-y-6">
         {error && (
-          <Alert variant="destructive" className="rounded-xl border border-error/20 bg-error/5 text-error flex items-start gap-3 p-3.5 animate-in slide-in-from-top-1 duration-200">
-            <AlertCircle className="h-4.5 w-4.5 shrink-0 mt-0.5" />
+          <Alert variant="destructive" className="rounded-xl border border-error/20 bg-error/5 text-error flex items-start gap-3 p-4 animate-in slide-in-from-top-1 duration-200">
+            <AlertCircle className="h-5 w-5 shrink-0 mt-0.5" />
             <div>
               <AlertTitle className="font-extrabold text-xs tracking-wider uppercase mb-0.5">{error}</AlertTitle>
               {errorDesc ? (
-                <AlertDescription className="text-[11px] font-medium leading-relaxed opacity-90">{errorDesc}</AlertDescription>
+                <AlertDescription className="text-xs font-medium leading-relaxed opacity-90">{errorDesc}</AlertDescription>
               ) : (
-                <AlertDescription className="text-[11px] font-medium leading-relaxed opacity-90">Please try signing in again using your credentials or a social provider.</AlertDescription>
+                <AlertDescription className="text-xs font-medium leading-relaxed opacity-90">Please try signing in again using your credentials or a social provider.</AlertDescription>
               )}
             </div>
           </Alert>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-6">
           {mode === "signup" && (
-            <div className="space-y-1 animate-in slide-in-from-top-1 duration-200">
-              <Label htmlFor="name" className="text-[10px] uppercase tracking-wider font-extrabold text-on-surface-variant flex items-center gap-1.5">
-                <UserCircle className="h-4 w-4 text-outline" /> Full Name
+            <div className="space-y-2 animate-in slide-in-from-top-1 duration-200">
+              <Label htmlFor="name" className="text-xs uppercase tracking-wider font-extrabold text-on-surface-variant/80 flex items-center gap-2">
+                <UserCircle className="h-4.5 w-4.5 text-outline" /> Full Name
               </Label>
               <Input
                 id="name"
                 type="text"
                 placeholder="e.g. John Doe"
-                className="bg-transparent border-0 border-b border-outline-variant/60 hover:border-on-surface/50 text-on-surface rounded-none text-xs h-10.5 focus-visible:border-primary focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none"
+                className="bg-transparent border-0 border-b border-outline-variant/60 hover:border-on-surface/50 text-sm h-12 focus-visible:border-primary focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none"
                 required
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -181,31 +178,31 @@ export function AuthCard() {
             </div>
           )}
           
-          <div className="space-y-1">
-            <Label htmlFor="email" className="text-[10px] uppercase tracking-wider font-extrabold text-on-surface-variant flex items-center gap-1.5">
-              <Mail className="h-4 w-4 text-outline" /> Email address
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-xs uppercase tracking-wider font-extrabold text-on-surface-variant/80 flex items-center gap-2">
+              <Mail className="h-4.5 w-4.5 text-outline" /> Email address
             </Label>
             <Input
               id="email"
               type="email"
               placeholder="name@example.com"
-              className="bg-transparent border-0 border-b border-outline-variant/60 hover:border-on-surface/50 text-on-surface rounded-none text-xs h-10.5 focus-visible:border-primary focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none"
+              className="bg-transparent border-0 border-b border-outline-variant/60 hover:border-on-surface/50 text-sm h-12 focus-visible:border-primary focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
-          <div className="space-y-1">
-            <Label htmlFor="password" className="text-[10px] uppercase tracking-wider font-extrabold text-on-surface-variant flex items-center gap-1.5">
-              <Key className="h-4 w-4 text-outline" /> Password
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-xs uppercase tracking-wider font-extrabold text-on-surface-variant/80 flex items-center gap-2">
+              <Key className="h-4.5 w-4.5 text-outline" /> Password
             </Label>
             <div className="relative">
               <Input
                 id="password"
                 type={showPassword ? "text" : "password"}
                 placeholder="••••••••"
-                className="bg-transparent border-0 border-b border-outline-variant/60 hover:border-on-surface/50 text-on-surface rounded-none text-xs h-10.5 pr-10 focus-visible:border-primary focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none"
+                className="bg-transparent border-0 border-b border-outline-variant/60 hover:border-on-surface/50 text-sm h-12 pr-12 focus-visible:border-primary focus-visible:ring-0 placeholder:text-on-surface-variant/40 px-0 transition-all duration-300 ease-out outline-none focus:outline-none"
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -216,19 +213,19 @@ export function AuthCard() {
                 className="absolute right-1 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface transition-colors duration-200 cursor-pointer"
                 title={showPassword ? "Hide password" : "Show password"}
               >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
               </button>
             </div>
           </div>
           
           <Button
             type="submit"
-            className="w-full bg-primary hover:bg-primary/95 hover:-translate-y-[1px] hover:shadow-xl hover:shadow-primary/10 active:translate-y-0 active:scale-[0.98] text-on-primary rounded-xl font-bold text-xs h-10.5 shadow-lg shadow-primary/20 transition-all duration-300 ease-out cursor-pointer"
+            className="w-full bg-primary hover:bg-primary/95 hover:-translate-y-[1px] hover:shadow-xl hover:shadow-primary/10 active:translate-y-0 active:scale-[0.98] text-on-primary rounded-xl font-bold text-sm h-12 shadow-lg shadow-primary/20 transition-all duration-300 ease-out cursor-pointer mt-2"
             disabled={loading}
           >
             {loading ? (
               <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                 Please wait...
               </>
             ) : mode === "signin" ? (
@@ -239,21 +236,21 @@ export function AuthCard() {
           </Button>
         </form>
 
-        <div className="relative flex py-2 items-center">
+        <div className="relative flex py-3 items-center">
           <div className="flex-grow border-t border-outline-variant/10"></div>
-          <span className="flex-shrink mx-4 text-[9px] text-outline uppercase tracking-widest font-black">
+          <span className="flex-shrink mx-4 text-[10px] text-outline uppercase tracking-widest font-black">
             or continue with
           </span>
           <div className="flex-grow border-t border-outline-variant/10"></div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-2 gap-4">
           <Button
             variant="outline"
             onClick={() => handleSocialSignIn("google")}
-            className="rounded-xl border border-outline-variant/30 text-xs font-bold bg-surface-container-high/60 hover:bg-surface-container-highest/90 dark:bg-[#1a1a1f]/60 dark:hover:bg-[#25252b]/90 hover:border-outline hover:-translate-y-[1px] hover:shadow-md text-on-surface transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer h-10.5"
+            className="rounded-xl border border-outline-variant/30 text-sm font-bold bg-surface-container-high/60 hover:bg-surface-container-highest/90 dark:bg-[#1a1a1f]/60 dark:hover:bg-[#25252b]/90 hover:border-outline hover:-translate-y-[1px] hover:shadow-md text-on-surface transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer h-12"
           >
-            <svg className="h-4 w-4 shrink-0" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24">
               <path
                 fill="#EA4335"
                 d="M12 5.04c1.64 0 3.12.56 4.28 1.67l3.2-3.2C17.52 1.58 14.96 1 12 1 7.35 1 3.4 3.65 1.48 7.5l3.84 2.98C6.24 7.22 8.88 5.04 12 5.04z"
@@ -276,18 +273,18 @@ export function AuthCard() {
           <Button
             variant="outline"
             onClick={() => handleSocialSignIn("github")}
-            className="rounded-xl border border-outline-variant/30 text-xs font-bold bg-surface-container-high/60 hover:bg-surface-container-highest/90 dark:bg-[#1a1a1f]/60 dark:hover:bg-[#25252b]/90 hover:border-outline hover:-translate-y-[1px] hover:shadow-md text-on-surface transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer h-10.5"
+            className="rounded-xl border border-outline-variant/30 text-sm font-bold bg-surface-container-high/60 hover:bg-surface-container-highest/90 dark:bg-[#1a1a1f]/60 dark:hover:bg-[#25252b]/90 hover:border-outline hover:-translate-y-[1px] hover:shadow-md text-on-surface transition-all duration-300 ease-out active:translate-y-0 active:scale-[0.98] flex items-center justify-center gap-2 cursor-pointer h-12"
           >
-            <svg className="h-4 w-4 shrink-0 fill-current" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 shrink-0 fill-current" viewBox="0 0 24 24">
               <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.477 2 12c0 4.42 2.865 8.17 6.839 9.49.5.092.682-.217.682-.482 0-.237-.008-.866-.013-1.7-2.782.603-3.369-1.34-3.369-1.34-.454-1.156-1.11-1.464-1.11-1.464-.908-.62.069-.608.069-.608 1.003.07 1.531 1.03 1.531 1.03.892 1.529 2.341 1.087 2.91.831.092-.646.35-1.086.636-1.336-2.22-.253-4.555-1.11-4.555-4.943 0-1.091.39-1.984 1.029-2.683-.103-.253-.446-1.27.098-2.647 0 0 .84-.269 2.75 1.025A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.294 2.747-1.025 2.747-1.025.546 1.377.203 2.394.1 2.646.64.699 1.026 1.592 1.026 2.683 0 3.842-2.337 4.687-4.565 4.935.359.309.678.919.678 1.852 0 1.336-.012 2.415-.012 2.743 0 .267.18.579.688.481C19.137 20.167 22 16.418 22 12c0-5.523-4.477-10-10-10z" />
             </svg>
             GitHub
           </Button>
         </div>
-      </CardContent>
+      </div>
       
-      <CardFooter className="justify-center border-t border-outline-variant/10 bg-surface-container-low/20 dark:bg-[#131315]/20 p-4">
-        <p className="text-xs text-outline font-medium">
+      <div className="pt-6 text-center sm:text-left border-t border-outline-variant/10">
+        <p className="text-sm text-outline font-medium">
           {mode === "signin" ? "Don't have an account? " : "Already have an account? "}
           <button
             onClick={() => {
@@ -300,7 +297,7 @@ export function AuthCard() {
             {mode === "signin" ? "Register here" : "Sign in here"}
           </button>
         </p>
-      </CardFooter>
-    </Card>
+      </div>
+    </div>
   );
 }
