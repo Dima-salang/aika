@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState, Suspense } from "react";
 import { AuthCard } from "@/components/auth/auth-card";
+import { AuthDither } from "@/components/auth/auth-dither";
 import Image from "next/image";
 import { Sun, Moon, Loader2 } from "lucide-react";
 
@@ -27,15 +28,9 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="relative min-h-screen w-full flex flex-col items-center justify-center bg-background text-foreground dark:bg-[#0a0a0c] dark:text-on-surface p-4 md:p-8 overflow-hidden font-sans">
-      {/* Decorative Grid Mesh Background */}
-      <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-outline-variant)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-outline-variant)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1f1f23_1px,transparent_1px),linear-gradient(to_bottom,#1f1f23_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)] opacity-[0.15] dark:opacity-25 pointer-events-none" />
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2 bg-background text-foreground dark:bg-[#0a0a0c] dark:text-on-surface overflow-hidden font-sans">
       
-      {/* Decorative Neon Blurs */}
-      <div className="absolute top-[-10%] left-[20%] w-[400px] h-[400px] bg-primary/5 dark:bg-primary/10 rounded-full blur-[120px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] right-[10%] w-[350px] h-[350px] bg-tertiary/5 dark:bg-tertiary/10 rounded-full blur-[100px] pointer-events-none" />
-
-      {/* Theme Toggler (Top Right) */}
+      {/* Theme Toggler */}
       <div className="absolute top-6 right-6 z-20">
         <button
           onClick={toggleTheme}
@@ -46,30 +41,47 @@ export default function AuthPage() {
         </button>
       </div>
 
-      <div className="z-10 w-full flex flex-col items-center gap-6">
-        <div className="flex flex-col items-center gap-2">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center font-bold text-on-primary">
-              A
+      {/* Left Column: Auth Card Form */}
+      <div className="relative flex flex-col items-center justify-center p-6 md:p-12 z-10">
+        {/* Decorative Grid Mesh Background for Left Column only */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,var(--color-outline-variant)_1px,transparent_1px),linear-gradient(to_bottom,var(--color-outline-variant)_1px,transparent_1px)] dark:bg-[linear-gradient(to_right,#1f1f23_1px,transparent_1px),linear-gradient(to_bottom,#1f1f23_1px,transparent_1px)] bg-[size:4rem_4rem] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_50%,#000_70%,transparent_100%)] opacity-[0.15] dark:opacity-25 pointer-events-none" />
+
+        <div className="w-full max-w-md space-y-6 z-10">
+          <div className="flex flex-col items-center gap-2">
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-primary flex items-center justify-center font-bold text-on-primary">
+                A
+              </div>
+              <span className="font-heading font-extrabold tracking-tight text-lg text-on-surface">
+                Aika
+              </span>
             </div>
-            <span className="font-heading font-extrabold tracking-tight text-lg text-on-surface">
-              Aika
-            </span>
+            <p className="text-[10px] font-bold tracking-widest text-outline uppercase mt-1">
+              Simple Time Tracker
+            </p>
           </div>
-          <p className="text-[10px] font-bold tracking-widest text-outline uppercase mt-1">
-            Time & Task Orchestration
-          </p>
+
+          <Suspense fallback={
+            <div className="w-full border border-outline-variant/10 bg-surface-container-lowest/60 dark:bg-[#131315]/60 backdrop-blur-md shadow-md rounded-2xl p-8 flex flex-col items-center justify-center space-y-4 h-[350px]">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-xs font-medium text-outline">Loading...</p>
+            </div>
+          }>
+            <AuthCard />
+          </Suspense>
+        </div>
+      </div>
+
+      {/* Right Column: Dithered graphic panel (Hidden on mobile) */}
+      <div className="hidden md:flex relative flex-col items-center justify-center bg-surface-container-low dark:bg-[#0f0f12] border-l border-outline-variant/30 overflow-hidden">
+        
+        {/* WebGL AuthDither component overlay */}
+        <div className="absolute inset-0 pointer-events-none opacity-40 dark:opacity-60">
+          <AuthDither />
         </div>
 
-        <Suspense fallback={
-          <div className="w-full max-w-md border border-outline-variant/10 bg-surface-container-lowest/60 dark:bg-[#131315]/60 backdrop-blur-md shadow-md rounded-2xl p-8 flex flex-col items-center justify-center space-y-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-xs font-medium text-outline">Loading authentication portal...</p>
-          </div>
-        }>
-          <AuthCard />
-        </Suspense>
       </div>
+
     </div>
   );
 }
