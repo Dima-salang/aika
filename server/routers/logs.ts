@@ -18,11 +18,17 @@ import { AuditService } from "@/services/core/AuditService";
 import { TaskService } from "@/services/core/TaskService";
 import { LogService, DetailedTimeLog } from "@/services/core/LogService";
 import { StorageService } from "@/services/integrations/StorageService";
+import { NotionTimeLogObserver } from "@/services/core/NotionTimeLogObserver";
 
 const auditService = new AuditService();
 const taskService = new TaskService();
 const storageService = StorageService.getInstance();
-const logService = new LogService(auditService, taskService, storageService);
+const logService = new LogService(
+  auditService,
+  taskService,
+  storageService,
+  [new NotionTimeLogObserver()]
+);
 
 export const logsRouter = router({
   getLog: publicProcedure

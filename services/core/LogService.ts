@@ -1,6 +1,7 @@
 import { db, DBInstance, runTransaction } from "@/db";
-import { notionService } from "@/services/integrations/NotionService";
 import { calculateDurationSeconds } from "@/utils/time";
+import { TimeLogObserver } from "./TimeLogObserver";
+import { TimeLogHydrator } from "./TimeLogHydrator";
 import {
   NewTimeLog,
   newTimeLogZodSchema,
@@ -59,15 +60,7 @@ export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_
   duration: number;
 }
 
-const NotionLogPropertiesSchema = z.object({
-  title: z.string(),
-  description: z.string(),
-  start_time: z.string(),
-  end_time: z.string(),
-  duration: z.number(),
-});
 
-export type NotionTimeLogProperties = z.infer<typeof NotionLogPropertiesSchema>;
 
 export interface TimelineLog {
   id: string;
@@ -95,15 +88,40 @@ export class LogService {
   private auditService: AuditService;
   private taskService: TaskService;
   private storageService: StorageService;
+  private observers: TimeLogObserver[];
 
   constructor(
     auditService: AuditService,
     taskService: TaskService,
     storageService: StorageService,
+    observers: TimeLogObserver[] = []
   ) {
     this.auditService = auditService;
     this.taskService = taskService;
     this.storageService = storageService;
+    this.observers = observers;
+  }
+
+  private async notifyObservers(
+    action: "create" | "update" | "delete",
+    logId: string,
+    userId: string,
+    updatedFields?: string[],
+    tx?: DBInstance
+  ): Promise<void> {
+    for (const observer of this.observers) {
+      try {
+        if (action === "create") {
+          await observer.onLogCreated(logId, userId, tx);
+        } else if (action === "update") {
+          await observer.onLogUpdated(logId, userId, updatedFields, tx);
+        } else if (action === "delete") {
+          await observer.onLogDeleted(logId, userId, tx);
+        }
+      } catch (err) {
+        console.error(`Observer error for action ${action} on log ${logId}:`, err);
+      }
+    }
   }
 
   /**
@@ -263,8 +281,7 @@ export class LogService {
       await execute(outerTx) :
       await runTransaction(execute);
 
-    // sync with notion db
-    await notionService.syncLog("create", successfulLogId!, parsedInput.userId);
+    await this.notifyObservers("create", successfulLogId!, parsedInput.userId);
 
     return returnedLog;
   }
@@ -426,15 +443,9 @@ export class LogService {
     };
     const updatedLog = await execute(db);
 
-
-    // determine if notion update is required
-    // check if the updated fields has one of the notion properties
     const incomingFields = Object.keys(parsedInput);
-    const requiresNotionUpdate = incomingFields.some(field => field in NotionLogPropertiesSchema.keyof());
+    await this.notifyObservers("update", updatedLog.id, userId, incomingFields);
 
-    if (requiresNotionUpdate) {
-      await notionService.syncLog("update", updatedLog.id, userId);
-    }
     return updatedLog;
   }
 
@@ -474,7 +485,7 @@ export class LogService {
       );
     };
     await execute(db);
-    await notionService.syncLog("delete", logId, userId);
+    await this.notifyObservers("delete", logId, userId);
     return true;
   }
 
@@ -645,20 +656,13 @@ export class LogService {
       .where(and(eq(tables.timeLogs.id, logId), isNull(tables.timeLogs.deleted_at)));
     if (!log) return null;
 
-    const tasksList = await tx
-      .select()
-      .from(tables.timeLogTasks)
-      .where(eq(tables.timeLogTasks.time_log_id, logId));
-
-    const evidenceList = await tx
-      .select()
-      .from(tables.documentEvidences)
-      .where(and(eq(tables.documentEvidences.time_log_id, logId), isNull(tables.documentEvidences.deleted_at)));
+    const hydration = await TimeLogHydrator.hydrateRelations([logId], tx);
+    const rel = hydration[logId] || { tasks: [], evidence: [] };
 
     return {
       ...log,
-      tasks: tasksList.map((t) => t.task_id),
-      evidence: evidenceList,
+      tasks: rel.tasks.map((t) => t.id),
+      evidence: rel.evidence,
     };
   }
 
@@ -761,49 +765,16 @@ export class LogService {
     }
 
     const logIds = logs.map((l) => l.id);
+    const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
 
-    // Fetch evidence in a single query
-    const evidenceTable = tables.documentEvidences;
-    const evidenceList = await tx
-      .select()
-      .from(evidenceTable)
-      .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
-
-    // Fetch tasks in a single query
-    const tasksJoinTable = tables.timeLogTasks;
-    const tasksTable = tables.tasks;
-    const tasksList = await tx
-      .select({
-        time_log_id: tasksJoinTable.time_log_id,
-        task_id: tasksJoinTable.task_id,
-        taskTitle: tasksTable.title,
-      })
-      .from(tasksJoinTable)
-      .innerJoin(tasksTable, eq(tasksJoinTable.task_id, tasksTable.id))
-      .where(inArray(tasksJoinTable.time_log_id, logIds));
-
-    // Map evidence and tasks in memory
-    const evidenceMap: Record<string, any[]> = {};
-    evidenceList.forEach((ev) => {
-      if (!evidenceMap[ev.time_log_id]) {
-        evidenceMap[ev.time_log_id] = [];
-      }
-      evidenceMap[ev.time_log_id].push(ev);
-    });
-
-    const tasksMap: Record<string, string[]> = {};
-    tasksList.forEach((t) => {
-      if (!tasksMap[t.time_log_id]) {
-        tasksMap[t.time_log_id] = [];
-      }
-      tasksMap[t.time_log_id].push(t.task_id);
-    });
-
-    return logs.map((log) => ({
-      ...log,
-      tasks: tasksMap[log.id] || [],
-      evidence: evidenceMap[log.id] || [],
-    })) as DetailedTimeLog[];
+    return logs.map((log) => {
+      const rel = hydration[log.id] || { tasks: [], evidence: [] };
+      return {
+        ...log,
+        tasks: rel.tasks.map((t) => t.id),
+        evidence: rel.evidence,
+      };
+    }) as DetailedTimeLog[];
   }
 
   /**
@@ -1018,53 +989,15 @@ export class LogService {
     }
 
     const logIds = logs.map((l) => l.id);
-
-    // 2. Fetch all evidence in a single query
-    const evidenceTable = tables.documentEvidences;
-    const evidenceList = await tx
-      .select()
-      .from(evidenceTable)
-      .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
-
-    // 3. Fetch all task links in a single query
-    const tasksJoinTable = tables.timeLogTasks;
-    const tasksTable = tables.tasks;
-    const tasksList = await tx
-      .select({
-        time_log_id: tasksJoinTable.time_log_id,
-        task_id: tasksJoinTable.task_id,
-        taskTitle: tasksTable.title,
-      })
-      .from(tasksJoinTable)
-      .innerJoin(tasksTable, eq(tasksJoinTable.task_id, tasksTable.id))
-      .where(inArray(tasksJoinTable.time_log_id, logIds));
-
-    // Map evidence and tasks in memory
-    const evidenceMap: Record<string, unknown[]> = {};
-    evidenceList.forEach((ev) => {
-      if (!evidenceMap[ev.time_log_id]) {
-        evidenceMap[ev.time_log_id] = [];
-      }
-      evidenceMap[ev.time_log_id].push(ev);
-    });
-
-    const tasksMap: Record<string, Array<{ id: string; title: string }>> = {};
-    tasksList.forEach((t) => {
-      if (!tasksMap[t.time_log_id]) {
-        tasksMap[t.time_log_id] = [];
-      }
-      tasksMap[t.time_log_id].push({
-        id: t.task_id,
-        title: t.taskTitle,
-      });
-    });
+    const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
 
     // Hydrate logs in memory
     return logs.map((log) => {
+      const rel = hydration[log.id] || { tasks: [], evidence: [] };
       return {
         ...log,
-        tasks: tasksMap[log.id] || [],
-        evidence: evidenceMap[log.id] || [],
+        tasks: rel.tasks.map((t) => ({ id: t.id, title: t.title })),
+        evidence: rel.evidence,
       };
     }) as TimelineLog[];
   }
@@ -1154,8 +1087,8 @@ export class LogService {
       if (timeLogValues.length > 0) {
         Promise.all(
           timeLogValues.map((log) =>
-            notionService.syncLog("create", log.id, userId).catch((err) => {
-              console.error(`Notion sync failed for log ${log.id}:`, err);
+            this.notifyObservers("create", log.id, userId).catch((err) => {
+              console.error(`Observer notification failed for log ${log.id}:`, err);
             })
           )
         );

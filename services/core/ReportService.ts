@@ -4,6 +4,7 @@ import { eq, and, isNull, inArray, gte, lte, sum, desc } from "drizzle-orm";
 import { z } from "zod";
 import { TimeLog, TimeLogSqlite } from "@/db/schema";
 import { calculateDurationHours } from "@/utils/time";
+import { TimeLogHydrator } from "./TimeLogHydrator";
 
 export interface ReportSummaryKPIs {
   totalHours: number;
@@ -268,46 +269,17 @@ export class ReportService {
       projectMap = new Map(projects.map((p) => [p.id, p.name]));
     }
 
-    // Fetch evidence files
-    const evidenceTable = tables.documentEvidences;
-    const evidence = await tx
-      .select({ id: evidenceTable.id, time_log_id: evidenceTable.time_log_id, file_url: evidenceTable.file_url })
-      .from(evidenceTable)
-      .where(and(inArray(evidenceTable.time_log_id, logIds), isNull(evidenceTable.deleted_at)));
+    const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
 
-    const evidenceMap = new Map<string, string[]>();
-    for (const ev of evidence) {
-      const current = evidenceMap.get(ev.time_log_id) || [];
-      current.push(ev.file_url);
-      evidenceMap.set(ev.time_log_id, current);
-    }
-
-    // Fetch linked tasks
-    const timeLogTasksTable = tables.timeLogTasks;
-    const tasksTable = tables.tasks;
-
-    const linkedTasks = await tx
-      .select({
-        time_log_id: timeLogTasksTable.time_log_id,
-        id: tasksTable.id,
-        title: tasksTable.title,
-        status: tasksTable.status,
-      })
-      .from(timeLogTasksTable)
-      .innerJoin(tasksTable, eq(timeLogTasksTable.task_id, tasksTable.id))
-      .where(and(inArray(timeLogTasksTable.time_log_id, logIds), isNull(tasksTable.deleted_at)));
-
-    const logTasksMap = new Map<string, { title: string; id: string; status: string }[]>();
     const allTaskDetails: { id: string; status: string }[] = [];
-    for (const t of linkedTasks) {
-      const current = logTasksMap.get(t.time_log_id) || [];
-      current.push({ title: t.title, id: t.id, status: t.status });
-      logTasksMap.set(t.time_log_id, current);
-      allTaskDetails.push({ id: t.id, status: t.status });
-    }
-
     const hydrated: DetailedReportLog[] = rawLogs.map((log) => {
       const usr = userMap.get(log.user_id) || { name: "Unknown User", email: "" };
+      const rel = hydration[log.id] || { tasks: [], evidence: [] };
+
+      for (const t of rel.tasks) {
+        allTaskDetails.push({ id: t.id, status: t.status });
+      }
+
       return {
         id: log.id,
         userId: log.user_id,
@@ -319,8 +291,8 @@ export class ReportService {
         endTime: log.end_time,
         duration: log.duration,
         projectName: log.project_id ? projectMap.get(log.project_id) || null : null,
-        taskTitles: (logTasksMap.get(log.id) || []).map((t) => t.title),
-        evidenceUrls: evidenceMap.get(log.id) || [],
+        taskTitles: rel.tasks.map((t) => t.title),
+        evidenceUrls: rel.evidence.map((e) => e.file_url),
       };
     });
 
