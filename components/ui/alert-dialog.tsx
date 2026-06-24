@@ -141,18 +141,19 @@ function AlertDialogDescription({
   )
 }
 
-function AlertDialogAction({
-  className,
-  ...props
-}: React.ComponentProps<typeof Button>) {
-  return (
-    <Button
-      data-slot="alert-dialog-action"
-      className={cn(className)}
-      {...props}
-    />
-  )
-}
+const AlertDialogAction = React.forwardRef<HTMLButtonElement, React.ComponentProps<typeof Button>>(
+  ({ className, ...props }, ref) => {
+    return (
+      <Button
+        ref={ref}
+        data-slot="alert-dialog-action"
+        className={cn(className)}
+        {...props}
+      />
+    )
+  }
+)
+AlertDialogAction.displayName = "AlertDialogAction"
 
 function AlertDialogCancel({
   className,
