@@ -17,6 +17,7 @@ import { UserService } from "@/services/auth/UserService";
 import { OrganizationService } from "@/services/auth/OrganizationService";
 import { handleDbError } from "@/utils/db-errors";
 import { StorageService } from "@/services/integrations/StorageService";
+import { NotionTimeLogObserver } from "@/services/core/NotionTimeLogObserver";
 
 const auditService = new AuditService();
 const organizationService = new OrganizationService();
@@ -26,7 +27,12 @@ const taskService = new TaskService();
 const userService = new UserService(organizationService, teamService);
 const storageService = StorageService.getInstance();
 
-const logService = new LogService(auditService, taskService, storageService);
+const logService = new LogService(
+  auditService,
+  taskService,
+  storageService,
+  [new NotionTimeLogObserver()]
+);
 
 export const teamsRouter = router({
   getTeamTimeline: publicProcedure

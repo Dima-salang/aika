@@ -39,6 +39,7 @@ import { ProjectService } from "@/services/core/ProjectService";
 import { LogService } from "@/services/core/LogService";
 import { InvitationService } from "@/services/core/InvitationService";
 import { StorageService } from "@/services/integrations/StorageService";
+import { NotionTimeLogObserver } from "@/services/core/NotionTimeLogObserver";
 
 // Instantiate services
 const auditService = new AuditService();
@@ -50,7 +51,12 @@ const projectService = new ProjectService();
 const userService = new UserService(organizationService, teamService);
 const storageService = StorageService.getInstance();
 
-const logService = new LogService(auditService, taskService, storageService);
+const logService = new LogService(
+  auditService,
+  taskService,
+  storageService,
+  [new NotionTimeLogObserver()]
+);
 const invitationService = new InvitationService(auditService, notificationService, organizationService, teamService);
 
 interface AdminCtx {
