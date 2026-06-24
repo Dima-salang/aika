@@ -297,6 +297,8 @@ export default function Dashboard() {
 
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         handleSetActiveTab("logs");
         setTimeout(() => {
           const searchInput = document.getElementById("global-search-input");
@@ -331,6 +333,8 @@ export default function Dashboard() {
 
       if (e.key === "/") {
         e.preventDefault();
+        e.stopPropagation();
+        e.stopImmediatePropagation();
         handleSetActiveTab("logs");
         setTimeout(() => {
           const searchInput = document.getElementById("global-search-input");
@@ -388,8 +392,8 @@ export default function Dashboard() {
       }
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [runningTimer, timerProjId, timerDesc, userId]);
 
   const handleSignOut = async () => {
