@@ -78,11 +78,11 @@ export function LandingPage() {
       {/* Main Content */}
       <main className="w-full flex flex-col items-center z-10 relative">
         {/* Massive Aika Hero - Full Viewport */}
-        <div className="relative w-full min-h-[calc(100vh-3.5rem)] bg-[#0c0a09] overflow-hidden flex items-center border-b border-white/5">
-          {/* Dither Background Visualizer on the right side */}
-          <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
-            {/* Linear gradient mask to fade the canvas smoothly into the dark background on the left */}
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
+        <div className="relative w-full min-h-[calc(100vh-3.5rem)] bg-[#fafaf9] dark:bg-[#0c0a09] overflow-hidden flex items-center border-b border-on-surface/5 dark:border-white/5">
+          {/* Dither Background Visualizer on the right side - Hided on mobile view */}
+          <div className="hidden md:block absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
+            {/* Linear gradient mask to fade the canvas smoothly into the background on the left */}
+            <div className="absolute inset-0 bg-gradient-to-r from-[#fafaf9] via-[#fafaf9]/50 to-transparent dark:from-[#0c0a09] dark:via-[#0c0a09]/50 dark:to-transparent z-10" />
             <HeroDither />
           </div>
 
@@ -91,28 +91,28 @@ export function LandingPage() {
             {/* Left Side Content */}
             <div className="w-full max-w-2xl py-16 flex flex-col items-start text-left space-y-6">
               {/* Title / Brand */}
-              <h1 className="text-[18vw] xs:text-[15vw] sm:text-[12vw] lg:text-[7.5rem] font-black leading-[0.85] text-white tracking-tighter select-none animate-blur-fade-in">
+              <h1 className="text-[18vw] xs:text-[15vw] sm:text-[12vw] lg:text-[7.5rem] font-black leading-[0.85] text-on-surface dark:text-white tracking-tighter select-none animate-blur-fade-in">
                 Aika
               </h1>
 
               {/* Sub-headline */}
-              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight animate-fade-in-delayed">
-                Track your <span className="text-yellow-400">time.</span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-on-surface dark:text-white leading-tight animate-fade-in-delayed">
+                Track your <span className="text-primary dark:text-yellow-400">time.</span>
               </h2>
 
-              <p className="text-lg text-white/70 font-light leading-relaxed max-w-lg animate-fade-in-delayed">
+              <p className="text-lg text-on-surface-variant dark:text-white/70 font-light leading-relaxed max-w-lg animate-fade-in-delayed">
                 Time tracking that gets out of your way. Minimal, and designed to help you focus.
               </p>
 
               {/* CTAs */}
               <div className="flex flex-wrap gap-4 pt-2 animate-fade-in-delayed">
                 <Link href="/auth">
-                  <button className="px-6 py-2.5 bg-[#fdfe92] text-black font-semibold rounded-full hover:opacity-90 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center shadow-lg shadow-yellow-400/10">
+                  <button className="px-6 py-2.5 bg-primary dark:bg-[#fdfe92] text-on-primary dark:text-black font-semibold rounded-full hover:opacity-90 transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center shadow-lg shadow-primary/15 dark:shadow-yellow-400/10 cursor-pointer animate-fade-in-delayed">
                     Getting Started <ArrowRight className="w-4 h-4" />
                   </button>
                 </Link>
                 <Link href="/auth">
-                  <button className="px-6 py-2.5 bg-white/10 text-white border border-white/10 hover:bg-white/15 font-semibold rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center">
+                  <button className="px-6 py-2.5 bg-surface-container-high/60 dark:bg-white/10 text-on-surface dark:text-white border border-outline-variant/30 dark:border-white/10 hover:bg-surface-container-high/80 dark:hover:bg-white/15 font-semibold rounded-full transition-all hover:scale-105 active:scale-95 flex items-center gap-2 justify-center cursor-pointer">
                     Sign In
                   </button>
                 </Link>
@@ -181,17 +181,17 @@ export function LandingPage() {
           </div>
         </section>
 
-        <section className="relative w-full bg-[#0c0a09] border-y border-white/5 py-24 overflow-hidden reveal-on-scroll">
-          {/* Dither Background Visualizer on the right/center */}
-          <div className="absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-r from-[#0c0a09] via-[#0c0a09]/50 to-transparent z-10" />
+        <section className="relative w-full bg-[#fafaf9] dark:bg-[#0c0a09] border-y border-on-surface/5 dark:border-white/5 py-24 overflow-hidden reveal-on-scroll">
+          {/* Dither Background Visualizer on the right/center - Hidden on mobile view */}
+          <div className="hidden md:block absolute right-0 top-0 bottom-0 w-full md:w-2/3 pointer-events-none select-none overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-r from-[#fafaf9] via-[#fafaf9]/50 to-transparent dark:from-[#0c0a09] dark:via-[#0c0a09]/50 dark:to-transparent z-10" />
             <WorkflowDither />
           </div>
 
           <div className="relative w-full max-w-7xl mx-auto px-6 min-h-[480px] flex items-center">
             {/* Left Content Area */}
             <div className="relative z-20 w-full max-w-2xl py-16 flex flex-col items-start text-left">
-              <h2 className="text-4xl sm:text-5xl font-black text-white mb-12">
+              <h2 className="text-4xl sm:text-5xl font-black text-on-surface dark:text-white mb-12">
                 Simple workflow
               </h2>
 
@@ -215,14 +215,14 @@ export function LandingPage() {
                 ].map((step, i) => (
                   <div key={i} className="flex gap-6 items-start">
                     <div className="flex flex-col items-center">
-                      <div className="w-10 h-10 rounded-full border border-white/20 bg-white/5 flex items-center justify-center font-bold text-white/80 text-sm">
+                      <div className="w-10 h-10 rounded-full border border-on-surface/20 dark:border-white/20 bg-surface-container-high/50 dark:bg-white/5 flex items-center justify-center font-bold text-on-surface/80 dark:text-white/80 text-sm">
                         {step.number}
                       </div>
-                      {i < 2 && <div className="w-px h-12 bg-white/10 mt-2" />}
+                      {i < 2 && <div className="w-px h-12 bg-on-surface/10 dark:bg-white/10 mt-2" />}
                     </div>
                     <div className="pt-1">
-                      <h3 className="text-xl font-bold text-white mb-1.5">{step.title}</h3>
-                      <p className="text-white/60 text-sm max-w-md">{step.description}</p>
+                      <h3 className="text-xl font-bold text-on-surface dark:text-white mb-1.5">{step.title}</h3>
+                      <p className="text-on-surface-variant dark:text-white/60 text-sm max-w-md">{step.description}</p>
                     </div>
                   </div>
                 ))}
