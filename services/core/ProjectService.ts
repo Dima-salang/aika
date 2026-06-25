@@ -7,7 +7,7 @@ import {
   updateProjectInputZodSchema,
   PaginationInput,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, desc, SQL } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, desc, SQL, sql } from "drizzle-orm";
 import { tables } from "../../db/tables";
 import { z } from "zod";
 
@@ -119,11 +119,35 @@ export class ProjectService {
     pagination: PaginationInput,
     filter?: z.infer<typeof projectFilterZodSchema>,
     tx: DBInstance = db
-  ): Promise<Array<Project | ProjectSqlite>> {
+  ): Promise<Array<(Project | ProjectSqlite) & { totalDuration: number }>> {
     const parsedFilter = listProjectsFilterSchema.parse(filter);
 
     const table = tables.projects;
-    let query = tx.select().from(table).$dynamic();
+    const logTable = tables.timeLogs;
+
+    let query = tx
+      .select({
+        id: table.id,
+        name: table.name,
+        description: table.description,
+        organization_id: table.organization_id,
+        team_id: table.team_id,
+        user_id: table.user_id,
+        created_at: table.created_at,
+        updated_at: table.updated_at,
+        deleted_at: table.deleted_at,
+        totalDuration: sql<number>`coalesce(sum(${logTable.duration}), 0)`.mapWith(Number),
+      })
+      .from(table)
+      .leftJoin(
+        logTable,
+        and(
+          eq(table.id, logTable.project_id),
+          isNull(logTable.deleted_at)
+        )
+      )
+      .groupBy(table.id)
+      .$dynamic();
 
     const conditions: SQL[] = [];
     if (parsedFilter) {
@@ -156,6 +180,11 @@ export class ProjectService {
       query = query.where(and(...conditions));
     }
 
-    return await query.limit(pagination.limit ?? 10).offset(pagination.offset ?? 0).orderBy(desc(table.updated_at));
+    const results = await query
+      .limit(pagination.limit ?? 10)
+      .offset(pagination.offset ?? 0)
+      .orderBy(desc(table.updated_at));
+
+    return results as unknown as Array<(Project | ProjectSqlite) & { totalDuration: number }>;
   }
 }
