@@ -16,6 +16,11 @@ const createAuditLogSchema = z.object({
 });
 
 export class AuditService {
+  /**
+   * Creates and persists a new audit log record for tracking system events.
+   * 
+   * @throws {ZodError} If parameters fail validation schema.
+   */
   async createAuditLog(
     userId: string | null,
     event: string,
@@ -56,6 +61,9 @@ export class AuditService {
     return newLog;
   }
 
+  /**
+   * Retrieves a single audit log entry by its unique ID.
+   */
   async getAuditLogById(id: string, tx: DBInstance = db): Promise<AuditLog | AuditLogSqlite | null> {
     z.string().parse(id);
     const table = tables.auditLogs;
@@ -66,6 +74,9 @@ export class AuditService {
     return res || null;
   }
 
+  /**
+   * Lists audit logs sorted chronologically with pagination.
+   */
   async listAuditLogs(
     limit = 50,
     offset = 0,

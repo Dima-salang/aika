@@ -17,6 +17,9 @@ type ListTasksFilterSchema = z.infer<typeof listTasksFilterSchema>;
 
 
 export class TaskService {
+  /**
+   * Retrieves a single active task by its ID.
+   */
   async getTaskById(id: string, tx: DBInstance = db): Promise<Task | TaskSqlite | null> {
     z.string().parse(id);
     const table = tables.tasks;
@@ -27,6 +30,9 @@ export class TaskService {
     return res || null;
   }
 
+  /**
+   * Retrieves a list of active tasks matching the provided list of IDs.
+   */
   async getTasksByIds(ids: string[], tx: DBInstance = db): Promise<Array<Task | TaskSqlite>> {
     z.array(z.string()).parse(ids);
     if (ids.length === 0) return [];
@@ -37,6 +43,9 @@ export class TaskService {
       .where(and(inArray(table.id, ids), isNull(table.deleted_at)));
   }
 
+  /**
+   * Creates a new task.
+   */
   async createTask(
     task: z.infer<typeof newTaskZodSchema>,
     tx: DBInstance = db
@@ -54,6 +63,9 @@ export class TaskService {
     return res || null;
   }
 
+  /**
+   * Updates an existing task's metadata.
+   */
   async updateTask(
     id: string,
     data: z.infer<typeof updateTaskInputZodSchema>,
@@ -73,6 +85,9 @@ export class TaskService {
     return res || null;
   }
 
+  /**
+   * Soft-deletes a task by updating its deleted_at field.
+   */
   async deleteTask(id: string, tx: DBInstance = db): Promise<Task | TaskSqlite | null> {
     z.string().parse(id);
     const table = tables.tasks;
@@ -86,6 +101,9 @@ export class TaskService {
     return res || null;
   }
 
+  /**
+   * Retrieves a paginated list of tasks matching the specified filters.
+   */
   async listTasks(
     filter: ListTasksFilterSchema,
     pagination: PaginationInput,

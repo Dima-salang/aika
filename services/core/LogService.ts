@@ -167,7 +167,9 @@ export class LogService {
   }
 
   /**
-   * Create a new Time Log
+   * Creates a new time log, validating logic overlaps, tasks existence, and evidence limits.
+   * 
+   * @throws {Error} If time log overlaps, task links are invalid, or evidence limits are exceeded.
    */
   async createLog(
     input: CreateLogInput,
@@ -287,7 +289,9 @@ export class LogService {
   }
 
   /**
-   * Update an existing Time Log
+   * Updates an existing time log, verifying ownership and recalculating duration.
+   * 
+   * @throws {Error} If log is not found, unauthorized, overlaps, or contains invalid links.
    */
   async updateLog(
     logId: string,
@@ -449,7 +453,9 @@ export class LogService {
   }
 
   /**
-   * Soft-delete a Time Log
+   * Soft-deletes a time log after verifying the owner's authorization.
+   * 
+   * @throws {Error} If log is not found or user is unauthorized.
    */
   async deleteLog(logId: string, userId: string, ipAddress?: string, userAgent?: string): Promise<boolean> {
     z.string().parse(logId);
@@ -489,7 +495,9 @@ export class LogService {
   }
 
   /**
-   * Start running timer for a user
+   * Starts a new running timer for a user if they do not already have one active.
+   * 
+   * @throws {Error} If an active timer is already running for the user.
    */
   async startTimer(
     userId: string,
@@ -533,7 +541,9 @@ export class LogService {
   }
 
   /**
-   * Stop running timer and convert to Log
+   * Stops the active running timer, converting its accumulated duration into a saved time log.
+   * 
+   * @throws {Error} If no active running timer exists for the user.
    */
   async stopTimer(
     userId: string,
@@ -611,7 +621,7 @@ export class LogService {
   }
 
   /**
-   * Retrieve active running timer for a user
+   * Retrieves the active running timer details for a given user.
    */
   async getRunningTimer(userId: string): Promise<Timer | TimerSqlite | null> {
     z.string().parse(userId);
@@ -620,7 +630,9 @@ export class LogService {
   }
 
   /**
-   * Discard active running timer for a user
+   * Discards/deletes the running timer for a user without saving the logged time.
+   * 
+   * @throws {Error} If no active running timer is found.
    */
   async discardTimer(userId: string, ipAddress?: string, userAgent?: string): Promise<boolean> {
     z.string().parse(userId);
@@ -646,7 +658,7 @@ export class LogService {
   }
 
   /**
-   * Fetch single log by ID
+   * Fetches a single detailed time log by its ID, including tasks and evidence.
    */
   async getLogById(logId: string, tx: DBInstance = db): Promise<DetailedTimeLog | null> {
     const [log] = await tx
@@ -666,7 +678,7 @@ export class LogService {
   }
 
   /**
-   * Fetch active logs for a user with filters
+   * Retrieves filtered and paginated time logs belonging to a specific user.
    */
   async getUserLogs(
     userId: string,
@@ -777,7 +789,7 @@ export class LogService {
   }
 
   /**
-   * Fetch active logs for a team with filters
+   * Retrieves active time logs scoped to a team with filters.
    */
   async getTeamLogs(
     teamId: string,
@@ -828,6 +840,9 @@ export class LogService {
     return await query;
   }
 
+  /**
+   * Administrator method to list all time logs in the system with pagination.
+   */
   async adminListLogs(limit = 100, offset = 0, tx: DBInstance = db): Promise<Array<TimeLog | TimeLogSqlite>> {
     z.number().int().nonnegative().parse(offset);
     z.number().int().positive().parse(limit);
@@ -839,6 +854,9 @@ export class LogService {
       .offset(offset);
   }
 
+  /**
+   * Administrator method to insert a new time log directly.
+   */
   async adminCreateLog(data: Partial<NewTimeLog>, tx: DBInstance = db): Promise<TimeLog | TimeLogSqlite> {
     const table = tables.timeLogs;
     const newId = crypto.randomUUID();
@@ -854,6 +872,9 @@ export class LogService {
     return res;
   }
 
+  /**
+   * Administrator method to update any time log directly.
+   */
   async adminUpdateLog(id: string, data: Partial<NewTimeLog>, tx: DBInstance = db): Promise<TimeLog | TimeLogSqlite> {
     z.string().parse(id);
     const table = tables.timeLogs;
@@ -868,6 +889,9 @@ export class LogService {
     return res;
   }
 
+  /**
+   * Administrator method to soft-delete any time log directly.
+   */
   async adminDeleteLog(id: string, tx: DBInstance = db): Promise<TimeLog | TimeLogSqlite> {
     z.string().parse(id);
     const table = tables.timeLogs;
@@ -882,6 +906,9 @@ export class LogService {
     return res;
   }
 
+  /**
+   * Compiles the team activity timeline within a given date range and filters.
+   */
   async getTeamTimeline(
     teamId: string,
     startDate?: Date,
@@ -1001,6 +1028,9 @@ export class LogService {
     }) as TimelineLog[];
   }
 
+  /**
+   * Bulk inserts multiple time logs efficiently in a single operation.
+   */
   async bulkCreateLogs(
     userId: string,
     organizationId: string,
@@ -1102,6 +1132,9 @@ export class LogService {
     return outerTx ? await execute(outerTx) : await runTransaction(execute);
   }
 
+  /**
+   * Validates and imports time logs from an external schema.
+   */
   async importLogs(
     userId: string,
     organizationId: string,

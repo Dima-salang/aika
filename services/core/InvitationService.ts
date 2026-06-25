@@ -67,6 +67,10 @@ export class InvitationService {
   }
 
   // 1. Outbound Invitation
+  /**
+   * Invites a user to an organization and optional team via email.
+   * Creates an in-app notification if the user is already registered.
+   */
   async inviteUser(
     input: InviteUser,
     tx: DBInstance = db
@@ -125,6 +129,9 @@ export class InvitationService {
   }
 
   // 2. Generate Cryptographically Secure Join Token
+  /**
+   * Generates a secure, shareable magic link token for joining an organization.
+   */
   async generateJoinToken(
     organizationId: string,
     teamId: string | null,
@@ -176,6 +183,12 @@ export class InvitationService {
   }
 
   // 3. Apply With Token (Submit Join Request)
+  /**
+   * Submits a request to join an organization using a valid join token.
+   * Auto-approves the request if the token has autoJoin enabled.
+   * 
+   * @throws {Error} If token is invalid, expired, or usage limit is reached.
+   */
   async applyWithToken(
     tokenString: string,
     userId: string,
@@ -336,6 +349,12 @@ export class InvitationService {
   }
 
   // 4. Review Join Request (Approve/Reject)
+  /**
+   * Approves or rejects a pending organization membership join request.
+   * Adds the user to the organization (and team if specified) on approval.
+   * 
+   * @throws {Error} If request is not found or already reviewed.
+   */
   async reviewJoinRequest(
     requestId: string,
     status: "approved" | "rejected",

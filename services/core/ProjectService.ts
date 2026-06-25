@@ -14,6 +14,9 @@ import { z } from "zod";
 const listProjectsFilterSchema = projectFilterZodSchema.optional();
 
 export class ProjectService {
+  /**
+   * Retrieves a single project record by its unique ID.
+   */
   async getProject(id: string, tx: DBInstance = db): Promise<Project | ProjectSqlite | null> {
     z.string().parse(id);
     const table = tables.projects;
@@ -24,6 +27,11 @@ export class ProjectService {
     return res || null;
   }
 
+  /**
+   * Creates a new project, checking organization and team memberships constraints.
+   * 
+   * @throws {Error} If the user is not a member of the target organization or team.
+   */
   async createProject(
     project: z.infer<typeof createProjectInputZodSchema>,
     userId?: string,
@@ -83,6 +91,9 @@ export class ProjectService {
     return res || null;
   }
 
+  /**
+   * Updates an existing project's metadata.
+   */
   async updateProject(
     id: string,
     data: z.infer<typeof updateProjectInputZodSchema>,
@@ -102,6 +113,9 @@ export class ProjectService {
     return res || null;
   }
 
+  /**
+   * Soft-deletes a project by updating its deleted_at field.
+   */
   async deleteProject(id: string, tx: DBInstance = db): Promise<Project | ProjectSqlite | null> {
     z.string().parse(id);
     const table = tables.projects;
@@ -115,6 +129,9 @@ export class ProjectService {
     return res || null;
   }
 
+  /**
+   * Retrieves a paginated list of projects along with the sum of their logged hours.
+   */
   async listProjects(
     pagination: PaginationInput,
     filter?: z.infer<typeof projectFilterZodSchema>,

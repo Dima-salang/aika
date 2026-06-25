@@ -22,6 +22,9 @@ const listNotificationsFilterSchema = z.object({
 }).optional();
 
 export class NotificationService {
+  /**
+   * Creates a new notification record for a specific user.
+   */
   async createNotification(
     notification: notificationSchema,
     tx: DBInstance = db
@@ -43,6 +46,9 @@ export class NotificationService {
     return newNotif;
   }
 
+  /**
+   * Retrieves a filtered list of notifications for users, default sorted descending by creation time.
+   */
   async listNotifications(
     filter?: z.infer<typeof listNotificationsFilterSchema>,
     limit = 50,
@@ -84,6 +90,9 @@ export class NotificationService {
     return await query.limit(limit).offset(offset);
   }
 
+  /**
+   * Retrieves a specific notification record by its ID.
+   */
   async getNotificationById(id: string, tx: DBInstance = db): Promise<Notification | NotificationSqlite | null> {
     z.string().parse(id);
     const table = tables.notifications;
@@ -94,6 +103,9 @@ export class NotificationService {
     return res || null;
   }
 
+  /**
+   * Updates fields on an existing notification record.
+   */
   async updateNotification(
     id: string,
     data: Partial<Omit<Notification | NotificationSqlite, "id">>,
@@ -111,6 +123,9 @@ export class NotificationService {
     return res || null;
   }
 
+  /**
+   * Soft-deletes a notification record by updating its deleted_at field.
+   */
   async deleteNotification(id: string, tx: DBInstance = db): Promise<Notification | NotificationSqlite | null> {
     z.string().parse(id);
     const table = tables.notifications;

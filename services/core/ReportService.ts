@@ -75,6 +75,9 @@ export interface TeamReport {
 export class ReportService {
   /**
    * Reusable authorization verification helper for Team Reports.
+   * Resolves if authorized; throws otherwise.
+   * 
+   * @throws {Error} If requesting user is not a Global Admin, Org Admin, or Team Leader of the requested team.
    */
   async verifyReportAuthority(
     requestingUserId: string,
@@ -300,7 +303,7 @@ export class ReportService {
   }
 
   /**
-   * Generates type-safe Personal Report.
+   * Generates a type-safe Personal Report containing KPIs, project distributions, status details, and log lists.
    */
   async getPersonalReport(
     userId: string,
@@ -359,7 +362,10 @@ export class ReportService {
   }
 
   /**
-   * Generates type-safe Team Report.
+   * Generates a type-safe Team Report containing KPIs, project distributions, status details, workload breakdown, and log lists.
+   * Verifies the requesting user's authorization role first.
+   * 
+   * @throws {Error} If unauthorized.
    */
   async getTeamReport(
     requestingUserId: string,
