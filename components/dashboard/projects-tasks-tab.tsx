@@ -5,6 +5,7 @@ import { trpc } from "@/utils/trpc";
 import { useLayoutStore } from "@/lib/store";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import { calculateDurationHours, formatDuration } from "@/utils/time";
 import { 
   FolderDot, 
   Plus, 
@@ -54,7 +55,6 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   }, [tasks]);
 
   const { data: users } = trpc.admin.getUsers.useQuery();
-  const { data: rawLogs } = trpc.getUserLogs.useQuery({ userId, organizationId });
 
   // Mutations
   const createProject = trpc.createProject.useMutation({
@@ -336,15 +336,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   const doneTasks = projectTasks.filter((t: any) => t.status === "done");
 
   // Project Logged Time Helper
-  const getProjectTime = (projId: string) => {
-    const logs = rawLogs?.filter((l: any) => l.project_id === projId) || [];
-    const totalMs = logs.reduce((acc, log: any) => {
-      const diff = new Date(log.end_time).getTime() - new Date(log.start_time).getTime();
-      return acc + (diff > 0 ? diff : 0);
-    }, 0);
-    const hrs = Math.floor(totalMs / 3600000);
-    const mins = Math.floor((totalMs % 3600000) / 60000);
-    return `${hrs}h ${mins}m`;
+  const getProjectTime = (project: any) => {
+    return formatDuration(project.totalDuration);
   };
 
   const requestConfirmation = (title: string, description: string, onConfirm: () => void) => {
@@ -453,12 +446,12 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                     {!hasDeleted && (
                       <button 
                         onClick={(e) => {
-                          e.stopPropagation();
-                          requestConfirmation(
-                            "Archive this project scope?",
-                            "Archiving a project will remove it from the primary display list, but its logged hours are preserved.",
-                            () => deleteProject.mutateAsync({ id: project.id })
-                          );
+                           e.stopPropagation();
+                           requestConfirmation(
+                             "Archive this project scope?",
+                             "Archiving a project will remove it from the primary display list, but its logged hours are preserved.",
+                             () => deleteProject.mutateAsync({ id: project.id })
+                           );
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 transition-all inline-block focus:opacity-100"
                         title="Archive Project"
@@ -476,7 +469,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                   
                   <div className="flex items-center gap-1 text-[10px] text-on-surface-variant font-mono-timer mt-1">
                     <Clock className="h-3 w-3 text-outline" />
-                    <span>{getProjectTime(project.id)}</span>
+                    <span>{getProjectTime(project)}</span>
                   </div>
                 </div>
               );
