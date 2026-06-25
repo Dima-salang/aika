@@ -6,17 +6,17 @@ import { useLayoutStore } from "@/lib/store";
 import { toast } from "sonner";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { calculateDurationHours, formatDuration } from "@/utils/time";
-import { 
-  FolderDot, 
-  Plus, 
-  FolderPlus, 
-  Trash2, 
-  Clock, 
-  User, 
-  Filter, 
-  CheckCircle2, 
-  Play, 
-  Edit3, 
+import {
+  FolderDot,
+  Plus,
+  FolderPlus,
+  Trash2,
+  Clock,
+  User,
+  Filter,
+  CheckCircle2,
+  Play,
+  Edit3,
   Loader2,
   X,
   LayoutGrid,
@@ -41,7 +41,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   const { data: projects, refetch: refetchProjects, isLoading: loadingProjects } = trpc.getProjects.useQuery(
     { organizationId, teamId: activeTeamId }
   );
-  
+
   const { data: tasks, refetch: refetchTasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
     { userId }
   );
@@ -125,7 +125,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
   const [isNewTaskOpen, setIsNewTaskOpen] = useState(false);
   const [editingTaskId, setEditingTaskId] = useState<string | null>(null);
-  
+
   // Task form values
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
@@ -198,7 +198,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
       if (e.target instanceof HTMLElement) {
         const tagName = e.target.tagName.toLowerCase();
         const isMultiline = tagName === "textarea" || e.target.isContentEditable;
-        
+
         if (!isMultiline || isCmdOrCtrl) {
           if (tagName !== "button" && tagName !== "select") {
             e.preventDefault();
@@ -346,16 +346,16 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
   return (
     <div className="flex flex-col lg:flex-row h-[calc(100vh-3rem)] overflow-hidden w-full">
-      
+
       {/* Left Pane: Project List */}
       <section className="w-full lg:w-60 border-r border-outline-variant flex flex-col bg-surface-container-low shrink-0" aria-label="Project Scope Catalog">
         <div className="p-unit-3 flex justify-between items-center border-b border-outline-variant/30">
           <h2 className="text-[11px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
             <FolderDot className="h-3.5 w-3.5 text-primary" /> Projects
           </h2>
-          <button 
+          <button
             onClick={() => setIsNewProjectOpen(true)}
-            className="text-primary hover:bg-primary/10 p-1 rounded transition-all active:scale-95" 
+            className="text-primary hover:bg-primary/10 p-1 rounded transition-all active:scale-95"
             title="New Project"
             aria-label="Create New Project"
           >
@@ -368,9 +368,9 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
           <div className="p-unit-3 bg-surface-container-low border-b border-outline-variant/30 space-y-2 animate-in slide-in-from-top-2 duration-200">
             <div className="space-y-1">
               <label className="text-[9px] uppercase font-bold text-outline">Project Name</label>
-              <input 
+              <input
                 ref={projectNameInputRef}
-                type="text" 
+                type="text"
                 placeholder="e.g. Mobile Application"
                 value={newProjectName}
                 onChange={e => setNewProjectName(e.target.value)}
@@ -380,8 +380,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
             </div>
             <div className="space-y-1">
               <label className="text-[9px] uppercase font-bold text-outline">Description</label>
-              <input 
-                type="text" 
+              <input
+                type="text"
                 placeholder="Brief details..."
                 value={newProjectDesc}
                 onChange={e => setNewProjectDesc(e.target.value)}
@@ -390,13 +390,13 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               />
             </div>
             <div className="flex justify-end gap-1.5 pt-1">
-              <button 
+              <button
                 onClick={() => setIsNewProjectOpen(false)}
                 className="px-2 py-0.5 text-[10px] font-bold border border-outline-variant rounded hover:bg-surface-container-high text-on-surface-variant"
               >
                 Cancel
               </button>
-              <button 
+              <button
                 onClick={handleProjectSubmit}
                 disabled={createProject.isPending}
                 className="px-2 py-0.5 text-[10px] font-bold bg-primary text-on-primary rounded hover:brightness-105 flex items-center gap-1"
@@ -427,14 +427,13 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               const isSelected = project.id === currentProjectId;
               const hasDeleted = !!project.deleted_at;
               return (
-                <div 
+                <div
                   key={project.id}
                   onClick={() => setSelectedProjectId(project.id)}
-                  className={`p-unit-3 border-b border-outline-variant/10 cursor-pointer transition-all relative group flex flex-col ${
-                    isSelected 
-                      ? "bg-secondary-container/10 border-l-2 border-l-primary" 
+                  className={`p-unit-3 border-b border-outline-variant/10 cursor-pointer transition-all relative group flex flex-col ${isSelected
+                      ? "bg-secondary-container/10 border-l-2 border-l-primary"
                       : "hover:bg-surface-container-low"
-                  }`}
+                    }`}
                   role="button"
                   aria-selected={isSelected}
                   tabIndex={0}
@@ -444,14 +443,14 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                       {project.name}
                     </span>
                     {!hasDeleted && (
-                      <button 
+                      <button
                         onClick={(e) => {
-                           e.stopPropagation();
-                           requestConfirmation(
-                             "Archive this project scope?",
-                             "Archiving a project will remove it from the primary display list, but its logged hours are preserved.",
-                             () => deleteProject.mutateAsync({ id: project.id })
-                           );
+                          e.stopPropagation();
+                          requestConfirmation(
+                            "Archive this project scope?",
+                            "Archiving a project will remove it from the primary display list, but its logged hours are preserved.",
+                            () => deleteProject.mutateAsync({ id: project.id })
+                          );
                         }}
                         className="opacity-0 group-hover:opacity-100 p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 transition-all inline-block focus:opacity-100"
                         title="Archive Project"
@@ -460,13 +459,13 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                       </button>
                     )}
                   </div>
-                  
+
                   {project.description && (
                     <p className="text-[10px] text-outline truncate max-w-[160px] mt-0.5">
                       {project.description}
                     </p>
                   )}
-                  
+
                   <div className="flex items-center gap-1 text-[10px] text-on-surface-variant font-mono-timer mt-1">
                     <Clock className="h-3 w-3 text-outline" />
                     <span>{getProjectTime(project)}</span>
@@ -499,15 +498,14 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                   {currentProject.description || "Active Deliverables"}
                 </h2>
               </div>
-              
+
               <div className="flex items-center gap-2">
                 {/* View Mode Toggle */}
                 <div className="flex items-center bg-surface-container-low p-0.5 rounded-lg border border-outline-variant">
                   <button
                     onClick={() => setViewMode("kanban")}
-                    className={`p-1.5 rounded-md transition-all ${
-                      viewMode === "kanban" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"
-                    }`}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === "kanban" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"
+                      }`}
                     title="Kanban Board View"
                     aria-label="Kanban Board View"
                   >
@@ -515,9 +513,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                   </button>
                   <button
                     onClick={() => setViewMode("list")}
-                    className={`p-1.5 rounded-md transition-all ${
-                      viewMode === "list" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"
-                    }`}
+                    className={`p-1.5 rounded-md transition-all ${viewMode === "list" ? "bg-primary text-on-primary" : "text-on-surface-variant hover:text-on-surface"
+                      }`}
                     title="Tabular List View"
                     aria-label="Tabular List View"
                   >
@@ -527,7 +524,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
                 <div className="flex items-center gap-1 px-2.5 py-1 border border-outline-variant rounded-lg bg-surface-container-low text-xs">
                   <Filter className="h-3 w-3 text-outline" />
-                  <select 
+                  <select
                     value={priorityFilter}
                     onChange={e => setPriorityFilter(e.target.value)}
                     className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-[11px] text-on-surface-variant font-medium cursor-pointer"
@@ -539,7 +536,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                   </select>
                 </div>
 
-                <button 
+                <button
                   onClick={() => {
                     resetTaskForm();
                     setIsNewTaskOpen(true);
@@ -577,97 +574,94 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                               <div
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
-                                className={`flex-1 space-y-unit-2 overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-[background-color,border-color,box-shadow] duration-200 min-h-[150px] ${
-                                  snapshot.isDraggingOver
+                                className={`flex-1 space-y-unit-2 overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-[background-color,border-color,box-shadow] duration-200 min-h-[150px] ${snapshot.isDraggingOver
                                     ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)]"
                                     : "bg-surface-container-lowest/30 border-outline-variant/30"
-                                }`}
+                                  }`}
                               >
-                              {loadingTasks ? (
-                                [1, 2].map((i) => (
-                                  <div key={i} className="p-unit-3 border border-outline-variant bg-surface-container-low rounded-lg space-y-3">
-                                    <Skeleton className="h-4 w-3/4" />
-                                    <Skeleton className="h-3 w-full" />
-                                    <div className="flex items-center justify-between pt-1.5 border-t border-outline-variant/10">
-                                      <div className="flex items-center gap-1.5">
-                                        <Skeleton className="w-4 h-4 rounded-full" />
-                                        <Skeleton className="h-3 w-12" />
+                                {loadingTasks ? (
+                                  [1, 2].map((i) => (
+                                    <div key={i} className="p-unit-3 border border-outline-variant bg-surface-container-low rounded-lg space-y-3">
+                                      <Skeleton className="h-4 w-3/4" />
+                                      <Skeleton className="h-3 w-full" />
+                                      <div className="flex items-center justify-between pt-1.5 border-t border-outline-variant/10">
+                                        <div className="flex items-center gap-1.5">
+                                          <Skeleton className="w-4 h-4 rounded-full" />
+                                          <Skeleton className="h-3 w-12" />
+                                        </div>
                                       </div>
                                     </div>
-                                  </div>
-                                ))
-                              ) : (
-                                col.tasks.map((task: any, index: number) => (
-                                  <Draggable key={task.id} draggableId={task.id} index={index}>
-                                    {(providedDraggable, snapshotDraggable) => (
-                                      <div
-                                        ref={providedDraggable.innerRef}
-                                        {...providedDraggable.draggableProps}
-                                        {...providedDraggable.dragHandleProps}
-                                        onClick={() => onSelectTask?.(task)}
-                                        className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${
-                                          snapshotDraggable.isDragging
-                                            ? "border-primary bg-surface-container-high shadow-lg"
-                                            : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
-                                        }`}
-                                        style={{
-                                          ...providedDraggable.draggableProps.style,
-                                        }}
-                                        tabIndex={0}
-                                      >
-                                        <div className="flex justify-between items-start mb-unit-1">
-                                          <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''}`}>
-                                            {task.title}
-                                          </span>
-                                          <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                handleEditTask(task);
-                                              }}
-                                              className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
-                                            >
-                                              <Edit3 className="h-3 w-3" />
-                                            </button>
-                                            <button 
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                requestConfirmation(
-                                                  "Delete task permanently?",
-                                                  `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
-                                                  () => deleteTask.mutateAsync({ id: task.id })
-                                                );
-                                              }} 
-                                              className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
-                                            >
-                                              <Trash2 className="h-3 w-3" />
-                                            </button>
-                                          </div>
-                                        </div>
-                                        {task.description && (
-                                          <p className="text-[11px] text-on-surface-variant mb-unit-2 line-clamp-2">
-                                            {task.description}
-                                          </p>
-                                        )}
-                                        <div className="flex items-center justify-between pt-1.5 border-t border-outline-variant/10">
-                                          <div className="flex items-center gap-1.5">
-                                            <div className="w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center text-[8px] font-bold text-on-secondary-container border border-outline-variant">
-                                              {users?.find((u: any) => u.id === task.user_id)?.name?.slice(0, 2).toUpperCase() || "ME"}
-                                            </div>
-                                            <span className={`inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold uppercase ${
-                                              task.priority === "high" ? "bg-error-container/20 text-error" : "bg-surface-container-high text-on-surface-variant"
-                                            }`}>
-                                              {task.priority || "MEDIUM"}
+                                  ))
+                                ) : (
+                                  col.tasks.map((task: any, index: number) => (
+                                    <Draggable key={task.id} draggableId={task.id} index={index}>
+                                      {(providedDraggable, snapshotDraggable) => (
+                                        <div
+                                          ref={providedDraggable.innerRef}
+                                          {...providedDraggable.draggableProps}
+                                          {...providedDraggable.dragHandleProps}
+                                          onClick={() => onSelectTask?.(task)}
+                                          className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${snapshotDraggable.isDragging
+                                              ? "border-primary bg-surface-container-high shadow-lg"
+                                              : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                            }`}
+                                          style={{
+                                            ...providedDraggable.draggableProps.style,
+                                          }}
+                                          tabIndex={0}
+                                        >
+                                          <div className="flex justify-between items-start mb-unit-1">
+                                            <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''}`}>
+                                              {task.title}
                                             </span>
+                                            <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleEditTask(task);
+                                                }}
+                                                className="p-0.5 hover:bg-surface-container-high rounded text-outline hover:text-on-surface cursor-pointer"
+                                              >
+                                                <Edit3 className="h-3 w-3" />
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  requestConfirmation(
+                                                    "Delete task permanently?",
+                                                    `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
+                                                    () => deleteTask.mutateAsync({ id: task.id })
+                                                  );
+                                                }}
+                                                className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
+                                              >
+                                                <Trash2 className="h-3 w-3" />
+                                              </button>
+                                            </div>
+                                          </div>
+                                          {task.description && (
+                                            <p className="text-[11px] text-on-surface-variant mb-unit-2 line-clamp-2">
+                                              {task.description}
+                                            </p>
+                                          )}
+                                          <div className="flex items-center justify-between pt-1.5 border-t border-outline-variant/10">
+                                            <div className="flex items-center gap-1.5">
+                                              <div className="w-4 h-4 rounded-full bg-secondary-container flex items-center justify-center text-[8px] font-bold text-on-secondary-container border border-outline-variant">
+                                                {users?.find((u: any) => u.id === task.user_id)?.name?.slice(0, 2).toUpperCase() || "ME"}
+                                              </div>
+                                              <span className={`inline-flex items-center px-1 py-0.5 rounded text-[8px] font-bold uppercase ${task.priority === "high" ? "bg-error-container/20 text-error" : "bg-surface-container-high text-on-surface-variant"
+                                                }`}>
+                                                {task.priority || "MEDIUM"}
+                                              </span>
+                                            </div>
                                           </div>
                                         </div>
-                                      </div>
-                                    )}
-                                  </Draggable>
-                                ))
-                              )}
-                              {provided.placeholder}
-                              {!loadingTasks && col.tasks.length === 0 && (
+                                      )}
+                                    </Draggable>
+                                  ))
+                                )}
+                                {provided.placeholder}
+                                {!loadingTasks && col.tasks.length === 0 && (
                                   <div className="h-full flex items-center justify-center text-outline text-[10px] text-center p-6 select-none">
                                     Drop tasks here
                                   </div>
@@ -696,9 +690,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                           <div
                             ref={provided.innerRef}
                             {...provided.droppableProps}
-                            className={`flex-1 overflow-x-auto flex gap-unit-3 pb-unit-1 custom-scrollbar items-center p-1 rounded-xl transition-[background-color,border-color] duration-200 ${
-                              snapshot.isDraggingOver ? "bg-primary/5 border border-primary/20" : ""
-                            }`}
+                            className={`flex-1 overflow-x-auto flex gap-unit-3 pb-unit-1 custom-scrollbar items-center p-1 rounded-xl transition-[background-color,border-color] duration-200 ${snapshot.isDraggingOver ? "bg-primary/5 border border-primary/20" : ""
+                              }`}
                           >
                             {loadingTasks ? (
                               [1, 2].map((i) => (
@@ -720,11 +713,10 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                       {...providedDraggable.draggableProps}
                                       {...providedDraggable.dragHandleProps}
                                       onClick={() => onSelectTask?.(task)}
-                                      className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${
-                                        snapshotDraggable.isDragging
+                                      className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${snapshotDraggable.isDragging
                                           ? "border-primary bg-surface-container-high shadow-lg"
                                           : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
-                                      }`}
+                                        }`}
                                       style={{
                                         ...providedDraggable.draggableProps.style,
                                       }}
@@ -744,7 +736,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                           >
                                             <Edit3 className="h-3 w-3" />
                                           </button>
-                                          <button 
+                                          <button
                                             onClick={(e) => {
                                               e.stopPropagation();
                                               requestConfirmation(
@@ -752,7 +744,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                                 `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
                                                 () => deleteTask.mutateAsync({ id: task.id })
                                               );
-                                            }} 
+                                            }}
                                             className="p-0.5 hover:bg-error-container/20 rounded text-outline hover:text-red-400 cursor-pointer"
                                           >
                                             <Trash2 className="h-3 w-3" />
@@ -842,18 +834,16 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                 </div>
                               </td>
                               <td className="p-unit-3">
-                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${
-                                  task.status === "done" ? "bg-green-500/15 text-green-400" :
-                                  task.status === "in_progress" ? "bg-primary/20 text-primary" :
-                                  task.status === "backlog" ? "bg-surface-container-highest text-outline" : "bg-secondary-container/20 text-on-secondary-container"
-                                }`}>
+                                <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${task.status === "done" ? "bg-green-500/15 text-green-400" :
+                                    task.status === "in_progress" ? "bg-primary/20 text-primary" :
+                                      task.status === "backlog" ? "bg-surface-container-highest text-outline" : "bg-secondary-container/20 text-on-secondary-container"
+                                  }`}>
                                   {task.status}
                                 </span>
                               </td>
                               <td className="p-unit-3">
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
-                                  task.priority === "high" ? "bg-error-container/20 text-error" : "bg-surface-container-high text-on-surface-variant"
-                                }`}>
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${task.priority === "high" ? "bg-error-container/20 text-error" : "bg-surface-container-high text-on-surface-variant"
+                                  }`}>
                                   {task.priority || "MEDIUM"}
                                 </span>
                               </td>
@@ -879,7 +869,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                   >
                                     <Edit3 className="h-3.5 w-3.5" />
                                   </button>
-                                  <button 
+                                  <button
                                     onClick={(e) => {
                                       e.stopPropagation();
                                       requestConfirmation(
@@ -887,7 +877,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                         `Are you sure you want to delete "${task.title}"? This cannot be undone.`,
                                         () => deleteTask.mutateAsync({ id: task.id })
                                       );
-                                    }} 
+                                    }}
                                     className="p-1 hover:bg-error-container/20 rounded text-outline hover:text-red-400"
                                     aria-label="Delete Task"
                                   >
@@ -914,10 +904,10 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               {/* Collapsed Metric Footer */}
               <div className="px-unit-4 py-unit-2 bg-surface-container-low border-t border-outline-variant flex items-center justify-between text-xs shrink-0 font-medium">
                 <span className="text-on-surface-variant flex items-center gap-1">
-                  <Clock className="h-3.5 w-3.5 text-primary" /> Active scope tracked time
+                  <Clock className="h-3.5 w-3.5 text-primary" /> Active project tracked time
                 </span>
                 <span className="font-mono-timer font-bold text-primary bg-primary/10 px-2 py-0.5 rounded">
-                  {getProjectTime(currentProjectId)}
+                  {getProjectTime(currentProject)}
                 </span>
               </div>
             </div>
@@ -935,14 +925,14 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
       {/* Task Modal Dialogue Dialog */}
       {isNewTaskOpen && (
-        <div 
+        <div
           onClick={() => setIsNewTaskOpen(false)}
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200" 
-          role="dialog" 
-          aria-modal="true" 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+          role="dialog"
+          aria-modal="true"
           aria-labelledby="dialog-title"
         >
-          <div 
+          <div
             onClick={(e) => e.stopPropagation()}
             className="bg-surface border border-outline-variant rounded-xl w-full max-w-md p-6 shadow-xl space-y-4 animate-in zoom-in-95 duration-200"
           >
@@ -950,7 +940,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               <h3 className="text-headline-sm font-bold text-on-surface" id="dialog-title">
                 {editingTaskId ? "Edit Task Backlog Properties" : "Create New Backlog Task"}
               </h3>
-              <button 
+              <button
                 onClick={() => setIsNewTaskOpen(false)}
                 className="text-on-surface-variant hover:text-on-surface focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary"
                 aria-label="Close dialog"
@@ -967,9 +957,9 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               )}
 
               <div className="space-y-1">
-                <input 
+                <input
                   ref={taskTitleInputRef}
-                  type="text" 
+                  type="text"
                   id="form-title"
                   required
                   value={taskTitle}
@@ -980,7 +970,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               </div>
 
               <div className="space-y-1">
-                <textarea 
+                <textarea
                   rows={3}
                   id="form-desc"
                   value={taskDesc}
@@ -993,7 +983,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-outline uppercase block" htmlFor="form-status">Status</label>
-                  <select 
+                  <select
                     id="form-status"
                     value={taskStatus}
                     onChange={e => setTaskStatus(e.target.value as any)}
@@ -1008,7 +998,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-outline uppercase block" htmlFor="form-priority">Priority</label>
-                  <select 
+                  <select
                     id="form-priority"
                     value={taskPriority}
                     onChange={e => setTaskPriority(e.target.value as any)}
@@ -1024,7 +1014,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               {editingTaskId && (
                 <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-outline uppercase block" htmlFor="form-assignee">Assignee</label>
-                  <select 
+                  <select
                     id="form-assignee"
                     value={taskAssignee}
                     onChange={e => setTaskAssignee(e.target.value)}
@@ -1038,14 +1028,14 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
               )}
 
               <div className="flex justify-end gap-2 pt-2 border-t border-outline-variant/30">
-                <button 
+                <button
                   type="button"
                   onClick={() => setIsNewTaskOpen(false)}
                   className="px-3.5 py-2 border border-outline-variant rounded-lg text-xs font-bold text-on-surface-variant hover:bg-surface-container-high"
                 >
                   Cancel
                 </button>
-                <button 
+                <button
                   type="submit"
                   disabled={createTask.isPending || updateTask.isPending}
                   className="px-4 py-2 bg-primary text-on-primary rounded-lg text-xs font-bold hover:brightness-105 active:scale-[0.98] transition-all flex items-center gap-1.5"
