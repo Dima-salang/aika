@@ -47,6 +47,29 @@ export class NotificationService {
   }
 
   /**
+   * Bulk creates multiple notification records.
+   */
+  async createNotifications(
+    notifications: notificationSchema[],
+    tx: DBInstance = db
+  ): Promise<Array<Notification | NotificationSqlite>> {
+    if (notifications.length === 0) return [];
+    const notificationData = notifications.map((parsed) => ({
+      id: crypto.randomUUID(),
+      user_id: parsed.userId,
+      title: parsed.title,
+      message: parsed.message,
+      type: parsed.type,
+      is_read: false,
+      related_id: parsed.relatedId || null,
+      created_at: new Date(),
+    }));
+
+    const table = tables.notifications;
+    return await tx.insert(table).values(notificationData).returning();
+  }
+
+  /**
    * Retrieves a filtered list of notifications for users, default sorted descending by creation time.
    */
   async listNotifications(

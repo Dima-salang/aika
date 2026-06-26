@@ -97,7 +97,7 @@ export class InvitationService {
 
     // Check if user already exists in the system to create an in-app notification
     const [existingUser] = await tx
-      .select()
+      .select({ id: userTable.id })
       .from(userTable)
       .where(and(eq(userTable.email, parsed.email), isNull(userTable.deleted_at)))
       .limit(1);
@@ -220,7 +220,7 @@ export class InvitationService {
 
     // Check if user is already in the organization
     const [existingMember] = await tx
-      .select()
+      .select({ id: membersTable.id })
       .from(membersTable)
       .where(and(eq(membersTable.organizationId, token.organizationId), eq(membersTable.userId, parsed.userId)))
       .limit(1);
@@ -323,14 +323,15 @@ export class InvitationService {
     const orgMembers = await this.organizationService.getMembers(token.organizationId, tx);
     const adminsToNotify = orgMembers.filter((m) => m.role === "admin" || m.role === "owner" || m.role === "Admin");
 
-    for (const adminUser of adminsToNotify) {
-      await this.notificationService.createNotification({
+    if (adminsToNotify.length > 0) {
+      const adminNotifications = adminsToNotify.map((adminUser) => ({
         userId: adminUser.userId,
         title: "New Membership Request",
         message: `A user has requested to join your organization via magic link.`,
-        type: "team_invitation",
+        type: "team_invitation" as const,
         relatedId: requestId,
-      }, tx);
+      }));
+      await this.notificationService.createNotifications(adminNotifications, tx);
     }
 
     await this.auditService.createAuditLog(

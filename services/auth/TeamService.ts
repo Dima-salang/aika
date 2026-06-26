@@ -71,7 +71,7 @@ export class TeamService {
     // Check if user is soft-deleted
     const userTable = tables.user;
     const [deletedUser] = await tx
-      .select()
+      .select({ id: userTable.id })
       .from(userTable)
       .where(and(eq(userTable.id, parsed.userId), isNotNull(userTable.deleted_at)))
       .limit(1);
@@ -173,7 +173,7 @@ export class TeamService {
     z.string().parse(userId);
     const table = tables.teamMembers;
     const [res] = await tx
-      .select()
+      .select({ id: table.id })
       .from(table)
       .where(and(eq(table.team_id, teamId), eq(table.user_id, userId)))
       .limit(1);
@@ -186,7 +186,7 @@ export class TeamService {
     z.string().parse(userId);
     const table = tables.teamMembers;
     const [res] = await tx
-      .select()
+      .select({ id: table.id })
       .from(table)
       .where(and(eq(table.team_id, teamId), eq(table.user_id, userId), eq(table.role, "leader")))
       .limit(1);

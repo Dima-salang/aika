@@ -1122,15 +1122,19 @@ export class LogService {
       );
 
       if (timeLogValues.length > 0) {
-        // Run observer notifications sequentially in the background
-        // to prevent flooding/rate-limiting on external integrations
+        // Run observer notifications in chunks in the background
+        // to balance speed and prevent rate-limiting on external integrations
         (async () => {
-          for (const log of timeLogValues) {
-            try {
-              await this.notifyObservers("create", log.id, userId);
-            } catch (err) {
-              console.error(`Observer notification failed for log ${log.id}:`, err);
-            }
+          const chunkSize = 5;
+          for (let i = 0; i < timeLogValues.length; i += chunkSize) {
+            const chunk = timeLogValues.slice(i, i + chunkSize);
+            await Promise.all(
+              chunk.map((log) =>
+                this.notifyObservers("create", log.id, userId).catch((err) => {
+                  console.error(`Observer notification failed for log ${log.id}:`, err);
+                })
+              )
+            );
           }
         })();
       }

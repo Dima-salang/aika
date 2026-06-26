@@ -44,7 +44,7 @@ export class ProjectService {
       if (parsedProject.organization_id !== "org-default") {
         const orgMemberTable = tables.member;
         const [isOrgMember] = await tx
-          .select()
+          .select({ id: orgMemberTable.id })
           .from(orgMemberTable)
           .where(
             and(
@@ -62,7 +62,7 @@ export class ProjectService {
       if (parsedProject.team_id) {
         const teamMemberTable = tables.teamMembers;
         const [isTeamMember] = await tx
-          .select()
+          .select({ id: teamMemberTable.id })
           .from(teamMemberTable)
           .where(
             and(
