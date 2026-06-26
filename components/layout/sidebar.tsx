@@ -130,7 +130,7 @@ export function Sidebar({
       {collapsed ? (
         <div className="flex flex-col items-center gap-2 mb-unit-4">
           <div className="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-black text-sm">
-            A
+            O
           </div>
           <button
             onClick={toggleLeftSidebar}
