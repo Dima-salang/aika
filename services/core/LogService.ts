@@ -1153,20 +1153,41 @@ export class LogService {
     userAgent?: string
   ): Promise<{ successCount: number; errors: Array<{ title: string; error: string }> }> {
     const errors: Array<{ title: string; error: string }> = [];
-
-    const orgProjects = await db.select().from(tables.projects).where(
-      and(
-        eq(tables.projects.organization_id, organizationId),
-        isNull(tables.projects.deleted_at)
+    const uniqueProjNames = Array.from(new Set(logs.map((l) => l.projectName?.trim()).filter(Boolean) as string[]));
+    const uniqueTaskTitles = Array.from(
+      new Set(
+        logs
+          .flatMap((l) => l.taskTitles || [])
+          .map((t) => t.trim())
+          .filter(Boolean)
       )
     );
 
-    const orgTasks = await db.select().from(tables.tasks).where(
-      and(
-        eq(tables.tasks.organization_id, organizationId),
-        isNull(tables.tasks.deleted_at)
-      )
-    );
+    const orgProjects = uniqueProjNames.length > 0
+      ? await db
+          .select()
+          .from(tables.projects)
+          .where(
+            and(
+              eq(tables.projects.organization_id, organizationId),
+              isNull(tables.projects.deleted_at),
+              inArray(tables.projects.name, uniqueProjNames)
+            )
+          )
+      : [];
+
+    const orgTasks = uniqueTaskTitles.length > 0
+      ? await db
+          .select()
+          .from(tables.tasks)
+          .where(
+            and(
+              eq(tables.tasks.organization_id, organizationId),
+              isNull(tables.tasks.deleted_at),
+              inArray(tables.tasks.title, uniqueTaskTitles)
+            )
+          )
+      : [];
 
     const logsToCreate: any[] = [];
 
