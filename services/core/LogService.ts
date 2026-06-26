@@ -305,8 +305,10 @@ export class LogService {
     z.string().parse(userId);
     const parsedInput = updateLogInputZodSchema.parse(input);
 
+    let filesToDelete: string[] = [];
+
     const execute = async (tx: DBInstance) => {
-      const existing = await this.getLogById(logId);
+      const existing = await this.getLogById(logId, tx);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
       }
@@ -425,9 +427,8 @@ export class LogService {
           await tx.insert(tables.documentEvidences).values(evidenceEntries);
         }
 
-        // delete files from storage providers
-        const file_urls = deletedFiles.map((file) => file.file_url);
-        await this.storageService.deleteBatch(file_urls);
+        // queue files for deletion from storage providers
+        filesToDelete = deletedFiles.map((file) => file.file_url);
       }
 
       // Record Audit Log
@@ -445,7 +446,13 @@ export class LogService {
 
       return updatedLog;
     };
-    const updatedLog = await execute(db);
+    const updatedLog = await runTransaction(execute);
+
+    if (filesToDelete.length > 0) {
+      this.storageService.deleteBatch(filesToDelete).catch((err) => {
+        console.error(`Failed to delete storage files: ${err}`);
+      });
+    }
 
     const incomingFields = Object.keys(parsedInput);
     await this.notifyObservers("update", updatedLog.id, userId, incomingFields);
