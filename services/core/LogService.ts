@@ -160,9 +160,10 @@ export class LogService {
       conditions.push(ne(table.id, excludeLogId));
     }
     const overlapping = await tx
-      .select()
+      .select({ id: table.id })
       .from(table)
-      .where(and(...conditions));
+      .where(and(...conditions))
+      .limit(1);
     return overlapping.length > 0;
   }
 
