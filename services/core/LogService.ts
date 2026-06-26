@@ -1122,16 +1122,17 @@ export class LogService {
       );
 
       if (timeLogValues.length > 0) {
-        Promise.all(
-          timeLogValues.map((log) =>
-            // TODO: batch notify observers
-            // since it might lead to api rate limits
-            // we might want to use a queue
-            this.notifyObservers("create", log.id, userId).catch((err) => {
+        // Run observer notifications sequentially in the background
+        // to prevent flooding/rate-limiting on external integrations
+        (async () => {
+          for (const log of timeLogValues) {
+            try {
+              await this.notifyObservers("create", log.id, userId);
+            } catch (err) {
               console.error(`Observer notification failed for log ${log.id}:`, err);
-            })
-          )
-        );
+            }
+          }
+        })();
       }
 
       return { successCount: logs.length };
