@@ -93,7 +93,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
       activeLogKeyRef.current = currentKey;
 
       // determine the draft
-      const draft = drafts[currentKey];
+      const draft = !initialLog ? drafts[currentKey] : null;
       if (draft) {
         // ponytail: restore from persisted draft
         setTitle(draft.title || "");
@@ -156,6 +156,15 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         });
       }
       skipSaveRef.current = false;
+      setTitle("");
+      setDescription("");
+      setStartTime("");
+      setEndTime("");
+      setProjectId("");
+      setSelectedTasks([]);
+      setEvidenceList([]);
+      setIsPublic(false);
+      setError(null);
     }
   }, [
     isOpen,
