@@ -1,7 +1,6 @@
 import { db, DBInstance, runTransaction } from "@/db";
 import { calculateDurationSeconds } from "@/utils/time";
 import { TimeLogObserver } from "./TimeLogObserver";
-import { TimeLogHydrator } from "./TimeLogHydrator";
 import { TimeRange, Evidence } from "./valueObjects";
 import {
   NewTimeLog,
@@ -12,12 +11,9 @@ import {
   updateLogInputZodSchema,
   TimeLog,
   TimeLogSqlite,
-  Timer,
-  TimerSqlite,
   evidenceInputSchema
 } from "@/db/schema";
-import { eq, and, lt, gt, isNull, ne, inArray, lte, gte, desc, or, like } from "drizzle-orm";
-import { SQL } from "drizzle-orm";
+import { eq, and, lt, gt, isNull, ne, inArray, or, like } from "drizzle-orm";
 import { AuditService } from "./AuditService";
 import { StorageService } from "../integrations/StorageService";
 import { TaskService } from "./TaskService";
@@ -26,25 +22,6 @@ import crypto from "crypto";
 import { z } from "zod";
 import { ImportedLogInput } from "../import-export/types";
 
-const stopTimerSchema = z.object({
-  userId: z.string(),
-  organizationId: z.string(),
-  teamId: z.string().nullable(),
-  taskIds: z.array(z.string()),
-  evidence: z.array(
-    z.object({
-      fileUrl: z.url(),
-      fileKey: z.string(),
-      fileName: z.string(),
-      fileSize: z.number().int().positive(),
-      mimeType: z.string(),
-    })
-  ),
-  description: z.string().optional(),
-  projectId: z.string().nullable().optional(),
-  title: z.string().optional(),
-});
-
 export const bulkLogItemSchema = createLogInputZodSchema
   .omit({ organizationId: true, teamId: true, userId: true })
   .extend({
@@ -52,37 +29,6 @@ export const bulkLogItemSchema = createLogInputZodSchema
   });
 
 export type BulkLogItemInput = z.infer<typeof bulkLogItemSchema>;
-
-export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_at"> {
-  deleted_at: Date | null;
-  tasks: string[];
-  evidence: unknown[];
-  duration: number;
-}
-
-
-
-export interface TimelineLog {
-  id: string;
-  user_id: string;
-  organization_id: string;
-  team_id: string | null;
-  project_id: string | null;
-  start_time: Date;
-  end_time: Date;
-  title: string;
-  description: string | null;
-  created_at: Date;
-  updated_at: Date;
-  userName: string | null;
-  userEmail: string;
-  userImage: string | null;
-  projectName: string | null;
-  userRole: string;
-  is_public: boolean;
-  tasks: Array<{ id: string; title: string }>;
-  evidence: unknown[];
-}
 
 export class LogService {
   private auditService: AuditService;
@@ -192,6 +138,18 @@ export class LogService {
         }
       }
 
+      // Verify project exists
+      if (parsedInput.projectId && parsedInput.projectId.trim() !== "") {
+        const [existingProject] = await tx
+          .select({ id: tables.projects.id })
+          .from(tables.projects)
+          .where(and(eq(tables.projects.id, parsedInput.projectId), isNull(tables.projects.deleted_at)))
+          .limit(1);
+        if (!existingProject) {
+          throw new Error(`Validation Error: Project with ID ${parsedInput.projectId} does not exist or is deleted`);
+        }
+      }
+
       // Overlap check
       const overlaps = await this.checkOverlap(parsedInput.userId, timeRange.start, timeRange.end, undefined, tx);
       if (overlaps) {
@@ -290,7 +248,12 @@ export class LogService {
     let filesToDelete: string[] = [];
 
     const execute = async (tx: DBInstance) => {
-      const existing = await this.getLogById(logId, tx);
+      const existing = await tx
+        .select()
+        .from(tables.timeLogs)
+        .where(and(eq(tables.timeLogs.id, logId), isNull(tables.timeLogs.deleted_at)))
+        .limit(1)
+        .then(rows => rows[0]);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
       }
@@ -317,6 +280,18 @@ export class LogService {
               throw new Error(`Validation Error: Task with ID ${taskId} does not exist or is deleted`);
             }
           }
+        }
+      }
+
+      // Verify project exists
+      if (parsedInput.projectId && parsedInput.projectId.trim() !== "") {
+        const [existingProject] = await tx
+          .select({ id: tables.projects.id })
+          .from(tables.projects)
+          .where(and(eq(tables.projects.id, parsedInput.projectId), isNull(tables.projects.deleted_at)))
+          .limit(1);
+        if (!existingProject) {
+          throw new Error(`Validation Error: Project with ID ${parsedInput.projectId} does not exist or is deleted`);
         }
       }
 
@@ -444,7 +419,12 @@ export class LogService {
     z.string().parse(userId);
 
     const execute = async (tx: DBInstance) => {
-      const existing = await this.getLogById(logId);
+      const existing = await tx
+        .select()
+        .from(tables.timeLogs)
+        .where(and(eq(tables.timeLogs.id, logId), isNull(tables.timeLogs.deleted_at)))
+        .limit(1)
+        .then(rows => rows[0]);
       if (!existing) {
         throw new Error(`Validation Error: Time log with ID ${logId} not found`);
       }
@@ -471,355 +451,9 @@ export class LogService {
         tx
       );
     };
-    await execute(db);
+    await runTransaction(execute);
     await this.notifyObservers("delete", logId, userId);
     return true;
-  }
-
-  /**
-   * Starts a new running timer for a user if they do not already have one active.
-   * 
-   * @throws {Error} If an active timer is already running for the user.
-   */
-  async startTimer(
-    userId: string,
-    projectId: string | null = null,
-    description: string | null = null,
-    ipAddress?: string,
-    userAgent?: string
-  ): Promise<Timer | TimerSqlite> {
-    z.string().parse(userId);
-    z.string().nullable().parse(projectId);
-    z.string().nullable().parse(description);
-
-    // Check if running timer already exists
-    const active = await this.getRunningTimer(userId);
-    if (active) {
-      throw new Error("Validation Error: An active timer is already running for this user");
-    }
-
-    const timerData = {
-      user_id: userId,
-      start_time: new Date(),
-      description: description || null,
-      project_id: projectId || null,
-      created_at: new Date(),
-    };
-
-    const [newTimer] = await db.insert(tables.timers).values(timerData).returning();
-
-    await this.auditService.createAuditLog(
-      userId,
-      "timer_start",
-      "timers",
-      userId,
-      "Started a running timer",
-      { projectId, description },
-      ipAddress,
-      userAgent
-    );
-
-    return newTimer;
-  }
-
-  /**
-   * Stops the active running timer, converting its accumulated duration into a saved time log.
-   * 
-   * @throws {Error} If no active running timer exists for the user.
-   */
-  async stopTimer(
-    userId: string,
-    organizationId: string,
-    teamId: string | null,
-    taskIds: string[],
-    evidence: Array<{
-      fileUrl: string;
-      fileKey: string;
-      fileName: string;
-      fileSize: number;
-      mimeType: string;
-    }>,
-    description?: string,
-    ipAddress?: string,
-    userAgent?: string,
-    projectId?: string | null,
-    title?: string
-  ): Promise<TimeLog | TimeLogSqlite> {
-    const parsed = stopTimerSchema.parse({
-      userId,
-      organizationId,
-      teamId,
-      taskIds,
-      evidence,
-      description,
-      projectId,
-      title,
-    });
-
-    const active = await this.getRunningTimer(parsed.userId);
-    if (!active) {
-      throw new Error("Validation Error: No active running timer found for this user");
-    }
-
-    const startTime = active.start_time;
-    const endTime = new Date();
-
-    return await runTransaction(async (tx: DBInstance) => {
-      // 1. Delete the timer first
-      await tx.delete(tables.timers).where(eq(tables.timers.user_id, parsed.userId));
-
-      const log = await this.createLog(
-        {
-          userId: parsed.userId,
-          organizationId: parsed.organizationId,
-          teamId: parsed.teamId,
-          projectId: parsed.projectId !== undefined ? parsed.projectId : active.project_id,
-          startTime,
-          endTime,
-          title: parsed.title || parsed.description || active.description || "Timer-logged hours",
-          description: parsed.description || active.description || "Logged via active running timer.",
-          taskIds: parsed.taskIds,
-          evidence: parsed.evidence,
-        },
-        ipAddress,
-        userAgent,
-        tx
-      );
-
-      await this.auditService.createAuditLog(
-        parsed.userId,
-        "timer_stop",
-        "timers",
-        parsed.userId,
-        `Stopped running timer and saved time log ${log.id}`,
-        undefined,
-        ipAddress,
-        userAgent,
-        tx
-      );
-
-      return log;
-    });
-  }
-
-  /**
-   * Retrieves the active running timer details for a given user.
-   */
-  async getRunningTimer(userId: string): Promise<Timer | TimerSqlite | null> {
-    z.string().parse(userId);
-    const [res] = await db.select().from(tables.timers).where(eq(tables.timers.user_id, userId));
-    return res || null;
-  }
-
-  /**
-   * Discards/deletes the running timer for a user without saving the logged time.
-   * 
-   * @throws {Error} If no active running timer is found.
-   */
-  async discardTimer(userId: string, ipAddress?: string, userAgent?: string): Promise<boolean> {
-    z.string().parse(userId);
-    const active = await this.getRunningTimer(userId);
-    if (!active) {
-      throw new Error("Validation Error: No active running timer found for this user");
-    }
-
-    await db.delete(tables.timers).where(eq(tables.timers.user_id, userId));
-
-    await this.auditService.createAuditLog(
-      userId,
-      "timer_discard",
-      "timers",
-      userId,
-      "Discarded active running timer",
-      undefined,
-      ipAddress,
-      userAgent
-    );
-
-    return true;
-  }
-
-  /**
-   * Fetches a single detailed time log by its ID, including tasks and evidence.
-   */
-  async getLogById(logId: string, tx: DBInstance = db): Promise<DetailedTimeLog | null> {
-    const [log] = await tx
-      .select()
-      .from(tables.timeLogs)
-      .where(and(eq(tables.timeLogs.id, logId), isNull(tables.timeLogs.deleted_at)));
-    if (!log) return null;
-
-    const hydration = await TimeLogHydrator.hydrateRelations([logId], tx);
-    const rel = hydration[logId] || { tasks: [], evidence: [] };
-
-    return {
-      ...log,
-      tasks: rel.tasks.map((t) => t.id),
-      evidence: rel.evidence,
-    };
-  }
-
-  /**
-   * Retrieves filtered and paginated time logs belonging to a specific user.
-   */
-  async getUserLogs(
-    userId: string,
-    filters?: {
-      organizationId?: string;
-      teamId?: string | null;
-      projectId?: string | null;
-      startDate?: Date;
-      endDate?: Date;
-      search?: string;
-    },
-    limit?: number,
-    offset?: number,
-    tx: DBInstance = db
-  ): Promise<DetailedTimeLog[]> {
-    z.string().parse(userId);
-    const table = tables.timeLogs;
-    const conditions = [
-      eq(table.user_id, userId),
-      isNull(table.deleted_at),
-    ];
-
-    if (filters) {
-      if (filters.organizationId) {
-        conditions.push(eq(table.organization_id, filters.organizationId));
-      }
-      if (filters.teamId !== undefined) {
-        if (filters.teamId === null) {
-          conditions.push(isNull(table.team_id));
-        } else {
-          conditions.push(eq(table.team_id, filters.teamId));
-        }
-      }
-      if (filters.projectId !== undefined) {
-        if (filters.projectId === null) {
-          conditions.push(isNull(table.project_id));
-        } else {
-          conditions.push(eq(table.project_id, filters.projectId));
-        }
-      }
-      if (filters.startDate) {
-        conditions.push(gte(table.start_time, filters.startDate));
-      }
-      if (filters.endDate) {
-        conditions.push(lte(table.end_time, filters.endDate));
-      }
-      if (filters.search && filters.search.trim()) {
-        const searchPattern = `%${filters.search.toLowerCase()}%`;
-        conditions.push(
-          or(
-            like(table.title, searchPattern),
-            like(table.description, searchPattern)
-          ) as SQL
-        );
-      }
-    }
-
-    let query = tx
-      .select({
-        id: table.id,
-        user_id: table.user_id,
-        organization_id: table.organization_id,
-        team_id: table.team_id,
-        project_id: table.project_id,
-        start_time: table.start_time,
-        end_time: table.end_time,
-        title: table.title,
-        description: table.description,
-        created_at: table.created_at,
-        updated_at: table.updated_at,
-        deleted_at: table.deleted_at,
-        notion_page_id: table.notion_page_id,
-        duration: table.duration,
-        is_public: table.is_public,
-        projectName: tables.projects.name,
-      })
-      .from(table)
-      .leftJoin(tables.projects, eq(table.project_id, tables.projects.id))
-      .where(and(...conditions))
-      .orderBy(desc(table.start_time))
-      .$dynamic();
-
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    if (offset) {
-      query = query.offset(offset);
-    }
-
-    const logs = await query;
-
-    if (logs.length === 0) {
-      return [];
-    }
-
-    const logIds = logs.map((l) => l.id);
-    const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
-
-    return logs.map((log) => {
-      const rel = hydration[log.id] || { tasks: [], evidence: [] };
-      return {
-        ...log,
-        tasks: rel.tasks.map((t) => t.id),
-        evidence: rel.evidence,
-      };
-    }) as DetailedTimeLog[];
-  }
-
-  /**
-   * Retrieves active time logs scoped to a team with filters.
-   */
-  async getTeamLogs(
-    teamId: string,
-    filters?: {
-      projectId?: string | null;
-      startDate?: Date;
-      endDate?: Date;
-    },
-    limit?: number,
-    offset?: number
-  ): Promise<Array<TimeLog | TimeLogSqlite>> {
-    z.string().parse(teamId);
-    const table = tables.timeLogs;
-    const conditions = [
-      eq(table.team_id, teamId),
-      isNull(table.deleted_at),
-    ];
-
-    if (filters) {
-      if (filters.projectId !== undefined) {
-        if (filters.projectId === null) {
-          conditions.push(isNull(table.project_id));
-        } else {
-          conditions.push(eq(table.project_id, filters.projectId));
-        }
-      }
-      if (filters.startDate) {
-        conditions.push(gte(table.start_time, filters.startDate));
-      }
-      if (filters.endDate) {
-        conditions.push(lte(table.end_time, filters.endDate));
-      }
-    }
-
-    let query = db.select().from(table).where(and(...conditions)).$dynamic();
-
-    // query descending by start_time
-    query = query.orderBy(desc(table.start_time));
-
-    if (limit) {
-      query = query.limit(limit);
-    }
-
-    if (offset) {
-      query = query.offset(offset);
-    }
-
-    return await query;
   }
 
   /**
@@ -886,128 +520,6 @@ export class LogService {
       .where(eq(table.id, id))
       .returning();
     return res;
-  }
-
-  /**
-   * Compiles the team activity timeline within a given date range and filters.
-   */
-  async getTeamTimeline(
-    teamId: string,
-    startDate?: Date,
-    endDate?: Date,
-    search?: string,
-    role?: string,
-    selectedUser?: string,
-    limit?: number,
-    offset?: number,
-    tx: DBInstance = db
-  ): Promise<TimelineLog[]> {
-    z.string().parse(teamId);
-    const members = await tx
-      .select()
-      .from(tables.teamMembers)
-      .where(eq(tables.teamMembers.team_id, teamId));
-    const memberUserIds = members.map((m) => m.user_id);
-
-    if (memberUserIds.length === 0) {
-      return [];
-    }
-
-    const timeLogsTable = tables.timeLogs;
-    const userTable = tables.user;
-    const projectsTable = tables.projects;
-    const teamMembersTable = tables.teamMembers;
-
-    const conditions = [
-      eq(timeLogsTable.team_id, teamId),
-      inArray(timeLogsTable.user_id, memberUserIds),
-      isNull(timeLogsTable.deleted_at),
-    ];
-    if (startDate) {
-      conditions.push(gte(timeLogsTable.start_time, startDate));
-    }
-    if (endDate) {
-      conditions.push(lte(timeLogsTable.end_time, endDate));
-    }
-    if (selectedUser && selectedUser !== "all") {
-      conditions.push(eq(timeLogsTable.user_id, selectedUser));
-    }
-    if (role && role !== "all") {
-      conditions.push(eq(teamMembersTable.role, role));
-    }
-    if (search && search.trim()) {
-      const searchPattern = `%${search.toLowerCase()}%`;
-      conditions.push(
-        or(
-          like(timeLogsTable.title, searchPattern),
-          like(timeLogsTable.description, searchPattern),
-          like(userTable.name, searchPattern),
-          like(userTable.email, searchPattern),
-          like(projectsTable.name, searchPattern)
-        ) as SQL
-      );
-    }
-
-    let query = tx
-      .select({
-        id: timeLogsTable.id,
-        user_id: timeLogsTable.user_id,
-        organization_id: timeLogsTable.organization_id,
-        team_id: timeLogsTable.team_id,
-        project_id: timeLogsTable.project_id,
-        start_time: timeLogsTable.start_time,
-        end_time: timeLogsTable.end_time,
-        title: timeLogsTable.title,
-        description: timeLogsTable.description,
-        created_at: timeLogsTable.created_at,
-        updated_at: timeLogsTable.updated_at,
-        duration: timeLogsTable.duration,
-        is_public: timeLogsTable.is_public,
-        userName: userTable.name,
-        userEmail: userTable.email,
-        userImage: userTable.image,
-        projectName: projectsTable.name,
-        userRole: teamMembersTable.role,
-      })
-      .from(timeLogsTable)
-      .innerJoin(userTable, eq(timeLogsTable.user_id, userTable.id))
-      .innerJoin(
-        teamMembersTable,
-        and(
-          eq(timeLogsTable.user_id, teamMembersTable.user_id),
-          eq(teamMembersTable.team_id, teamId)
-        )
-      )
-      .leftJoin(projectsTable, eq(timeLogsTable.project_id, projectsTable.id))
-      .where(and(...conditions))
-      .orderBy(desc(timeLogsTable.start_time))
-      .$dynamic();
-
-    if (limit) {
-      query = query.limit(limit);
-    }
-    if (offset) {
-      query = query.offset(offset);
-    }
-
-    const logs = await query;
-
-    if (logs.length === 0) {
-      return [];
-    }
-
-    const logIds = logs.map((l) => l.id);
-    const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
-
-    // Hydrate logs in memory
-    return logs.map((log) => {
-      const rel = hydration[log.id] || { tasks: [], evidence: [] };
-      return {
-        ...log,
-        tasks: rel.tasks.map((t) => ({ id: t.id, title: t.title })),
-        evidence: rel.evidence,
-      };
-    }) as TimelineLog[];
   }
 
   /**
@@ -1096,8 +608,6 @@ export class LogService {
       );
 
       if (timeLogValues.length > 0) {
-        // Run observer notifications in chunks in the background
-        // to balance speed and prevent rate-limiting on external integrations
         (async () => {
           const chunkSize = 5;
           for (let i = 0; i < timeLogValues.length; i += chunkSize) {
@@ -1259,5 +769,4 @@ export class LogService {
       errors,
     };
   }
-
 }
