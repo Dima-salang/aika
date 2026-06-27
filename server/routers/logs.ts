@@ -16,7 +16,9 @@ import { importedLogZodSchema } from "@/services/import-export/types";
 // Service Imports & Instantiation
 import { AuditService } from "@/services/core/AuditService";
 import { TaskService } from "@/services/core/TaskService";
-import { LogService, DetailedTimeLog } from "@/services/core/LogService";
+import { LogService } from "@/services/core/LogService";
+import { LogQueryService, DetailedTimeLog } from "@/services/core/LogQueryService";
+import { TimerService } from "@/services/core/TimerService";
 import { StorageService } from "@/services/integrations/StorageService";
 import { NotionTimeLogObserver } from "@/services/core/NotionTimeLogObserver";
 
@@ -29,13 +31,15 @@ const logService = new LogService(
   storageService,
   [new NotionTimeLogObserver()]
 );
+const logQueryService = new LogQueryService();
+const timerService = new TimerService(logService, auditService);
 
 export const logsRouter = router({
   getLog: publicProcedure
     .input(getLogInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
-        const log = await logService.getLogById(input.id);
+        const log = await logQueryService.getLogById(input.id);
         if (!log) return null;
 
         // public access allowed if is_public is true
@@ -75,7 +79,7 @@ export const logsRouter = router({
     .input(getUserLogsInputZodSchema)
     .query(async ({ input }) => {
       try {
-        return await logService.getUserLogs(
+        return await logQueryService.getUserLogs(
           input.userId,
           {
             organizationId: input.organizationId,
@@ -102,7 +106,7 @@ export const logsRouter = router({
       try {
         const limit = input.limit ?? 10;
         const offset = input.cursor ?? 0;
-        const logs = await logService.getUserLogs(
+        const logs = await logQueryService.getUserLogs(
           input.userId,
           {
             organizationId: input.organizationId,
@@ -185,7 +189,7 @@ export const logsRouter = router({
     .input(startTimerInputZodSchema)
     .mutation(async ({ input }) => {
       try {
-        return await logService.startTimer(input.userId, input.projectId, input.description);
+        return await timerService.startTimer(input.userId, input.projectId, input.description);
       } catch (error) {
         handleDbError(error);
       }
@@ -195,7 +199,7 @@ export const logsRouter = router({
     .input(stopTimerInputZodSchema)
     .mutation(async ({ input }) => {
       try {
-        return await logService.stopTimer(
+        return await timerService.stopTimer(
           input.userId,
           input.organizationId,
           input.teamId || null,
@@ -216,7 +220,7 @@ export const logsRouter = router({
     .input(userIdInputZodSchema)
     .query(async ({ input }) => {
       try {
-        return await logService.getRunningTimer(input.userId);
+        return await timerService.getRunningTimer(input.userId);
       } catch (error) {
         handleDbError(error);
       }
@@ -226,7 +230,7 @@ export const logsRouter = router({
     .input(userIdInputZodSchema)
     .mutation(async ({ input }) => {
       try {
-        return await logService.discardTimer(input.userId);
+        return await timerService.discardTimer(input.userId);
       } catch (error) {
         handleDbError(error);
       }

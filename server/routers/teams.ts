@@ -8,31 +8,20 @@ import {
   getUserTeamsInputZodSchema,
   setActiveTeamInputZodSchema,
 } from "@/db/schema";
-import { LogService } from "@/services/core/LogService";
+import { LogQueryService } from "@/services/core/LogQueryService";
 import { TeamService } from "@/services/auth/TeamService";
 import { AuditService } from "@/services/core/AuditService";
 import { NotificationService } from "@/services/core/NotificationService";
-import { TaskService } from "@/services/core/TaskService";
 import { UserService } from "@/services/auth/UserService";
 import { OrganizationService } from "@/services/auth/OrganizationService";
 import { handleDbError } from "@/utils/db-errors";
-import { StorageService } from "@/services/integrations/StorageService";
-import { NotionTimeLogObserver } from "@/services/core/NotionTimeLogObserver";
 
 const auditService = new AuditService();
 const organizationService = new OrganizationService();
 const teamService = new TeamService();
 const notificationService = new NotificationService();
-const taskService = new TaskService();
 const userService = new UserService(organizationService, teamService);
-const storageService = StorageService.getInstance();
-
-const logService = new LogService(
-  auditService,
-  taskService,
-  storageService,
-  [new NotionTimeLogObserver()]
-);
+const logQueryService = new LogQueryService();
 
 export const teamsRouter = router({
   getTeamTimeline: publicProcedure
@@ -45,7 +34,7 @@ export const teamsRouter = router({
             message: "You must be a team member to view this timeline.",
           });
         }
-        return await logService.getTeamTimeline(
+        return await logQueryService.getTeamTimeline(
           input.teamId,
           input.startDate,
           input.endDate,
@@ -76,7 +65,7 @@ export const teamsRouter = router({
         }
         const limit = input.limit ?? 10;
         const offset = input.cursor ?? 0;
-        const logs = await logService.getTeamTimeline(
+        const logs = await logQueryService.getTeamTimeline(
           input.teamId,
           input.startDate,
           input.endDate,
