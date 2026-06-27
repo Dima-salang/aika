@@ -2,6 +2,7 @@ import { db, DBInstance, runTransaction } from "@/db";
 import { calculateDurationSeconds } from "@/utils/time";
 import { TimeLogObserver } from "./TimeLogObserver";
 import { TimeLogHydrator } from "./TimeLogHydrator";
+import { TimeRange, Evidence } from "./valueObjects";
 import {
   NewTimeLog,
   newTimeLogZodSchema,
@@ -18,7 +19,6 @@ import {
 import { eq, and, lt, gt, isNull, ne, inArray, lte, gte, desc, or, like } from "drizzle-orm";
 import { SQL } from "drizzle-orm";
 import { AuditService } from "./AuditService";
-import { isSupportedMimeType } from "@/utils/file";
 import { StorageService } from "../integrations/StorageService";
 import { TaskService } from "./TaskService";
 import { tables } from "../../db/tables";
@@ -136,25 +136,16 @@ export class LogService {
     tx: DBInstance = db
   ): Promise<boolean> {
     z.string().parse(userId);
-    z.date().parse(startTime);
-    z.date().parse(endTime);
     z.string().optional().parse(excludeLogId);
 
-    if (startTime >= endTime) {
-      throw new Error("Validation Error: Start time must be before end time");
-    }
-
-    // check end time is greater than today
-    if (endTime > new Date()) {
-      throw new Error("Validation Error: End time cannot be in the future.");
-    }
+    const timeRange = new TimeRange(startTime, endTime);
 
     const table = tables.timeLogs;
     const conditions = [
       eq(table.user_id, userId),
       isNull(table.deleted_at),
-      lt(table.start_time, endTime),
-      gt(table.end_time, startTime),
+      lt(table.start_time, timeRange.end),
+      gt(table.end_time, timeRange.start),
     ];
     if (excludeLogId) {
       conditions.push(ne(table.id, excludeLogId));
@@ -182,21 +173,12 @@ export class LogService {
     z.string().optional().parse(ipAddress);
     z.string().optional().parse(userAgent);
 
+    const timeRange = new TimeRange(parsedInput.startTime, parsedInput.endTime);
+    const validatedEvidence = (parsedInput.evidence || []).map((file) => new Evidence(file));
+
     let successfulLogId: string | null = null;
 
     const execute = async (tx: DBInstance) => {
-      if (parsedInput.evidence) {
-        for (const file of parsedInput.evidence) {
-          if (file.fileSize > 10 * 1024 * 1024) {
-            throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
-          }
-          const mime = file.mimeType.toLowerCase();
-          if (!isSupportedMimeType(mime)) {
-            throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
-          }
-        }
-      }
-
       // Verify tasks exist
       if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
         const existingTasks = await this.taskService.getTasksByIds(parsedInput.taskIds, tx);
@@ -211,7 +193,7 @@ export class LogService {
       }
 
       // Overlap check
-      const overlaps = await this.checkOverlap(parsedInput.userId, parsedInput.startTime, parsedInput.endTime, undefined, tx);
+      const overlaps = await this.checkOverlap(parsedInput.userId, timeRange.start, timeRange.end, undefined, tx);
       if (overlaps) {
         throw new Error("Validation Error: Time log overlaps with an existing active log");
       }
@@ -224,14 +206,14 @@ export class LogService {
         organization_id: parsedInput.organizationId,
         team_id: parsedInput.teamId || null,
         project_id: parsedInput.projectId || null,
-        start_time: parsedInput.startTime,
-        end_time: parsedInput.endTime,
+        start_time: timeRange.start,
+        end_time: timeRange.end,
         title: parsedInput.title || "Untitled Task",
         description: parsedInput.description,
         created_at: new Date(),
         updated_at: new Date(),
         deleted_at: null,
-        duration: calculateDurationSeconds(parsedInput.startTime, parsedInput.endTime),
+        duration: timeRange.durationSeconds,
         is_public: parsedInput.isPublic || false,
       };
 
@@ -250,7 +232,7 @@ export class LogService {
       }
 
       // Insert Document Evidence entries
-      const evidenceEntries = parsedInput.evidence.map((file) => ({
+      const evidenceEntries = validatedEvidence.map((file) => ({
         id: crypto.randomUUID(),
         time_log_id: logId,
         file_url: file.fileUrl,
@@ -271,7 +253,7 @@ export class LogService {
         "time_log_creation",
         "time_logs",
         logId,
-        `Created time log for duration ${calculateDurationSeconds(parsedInput.startTime, parsedInput.endTime)}s`,
+        `Created time log for duration ${timeRange.durationSeconds}s`,
         { description: parsedInput.description, taskIds: parsedInput.taskIds },
         ipAddress,
         userAgent,
@@ -319,19 +301,11 @@ export class LogService {
 
       const startTime = parsedInput.startTime ?? existing.start_time;
       const endTime = parsedInput.endTime ?? existing.end_time;
+      const timeRange = new TimeRange(startTime, endTime);
 
-      // Validate size and mimes of new evidence files if passed
-      if (parsedInput.evidence) {
-        for (const file of parsedInput.evidence) {
-          if (file.fileSize > 10 * 1024 * 1024) {
-            throw new Error(`Validation Error: File ${file.fileName} exceeds max size limit of 10MB`);
-          }
-          const mime = file.mimeType.toLowerCase();
-          if (!isSupportedMimeType(mime)) {
-            throw new Error(`Validation Error: File ${file.fileName} has unsupported type.`);
-          }
-        }
-      }
+      const validatedEvidence = parsedInput.evidence
+        ? parsedInput.evidence.map((file) => new Evidence(file))
+        : undefined;
 
       // Verify tasks exist
       if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
@@ -352,7 +326,7 @@ export class LogService {
         (parsedInput.endTime && parsedInput.endTime.getTime() !== existing.end_time.getTime());
 
       if (timeChanged) {
-        const overlaps = await this.checkOverlap(userId, startTime, endTime, logId, tx);
+        const overlaps = await this.checkOverlap(userId, timeRange.start, timeRange.end, logId, tx);
         if (overlaps) {
           throw new Error("Validation Error: Time log overlaps with an existing active log");
         }
@@ -363,12 +337,12 @@ export class LogService {
         organization_id: parsedInput.organizationId ?? existing.organization_id,
         team_id: parsedInput.teamId !== undefined ? parsedInput.teamId : existing.team_id,
         project_id: parsedInput.projectId !== undefined ? parsedInput.projectId : existing.project_id,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: timeRange.start,
+        end_time: timeRange.end,
         title: parsedInput.title ?? existing.title,
         description: parsedInput.description ?? existing.description,
         updated_at: new Date(),
-        duration: calculateDurationSeconds(startTime, endTime),
+        duration: timeRange.durationSeconds,
         is_public: parsedInput.isPublic !== undefined ? parsedInput.isPublic : existing.is_public,
       };
 
@@ -391,7 +365,7 @@ export class LogService {
       }
 
       // sync Document Evidence entries
-      if (parsedInput.evidence !== undefined) {
+      if (validatedEvidence !== undefined) {
         // Fetch existing active evidence to identify deleted ones
         const existingEvidence = await tx
           .select()
@@ -403,7 +377,7 @@ export class LogService {
             )
           );
 
-        const incomingUrls = new Set(parsedInput.evidence.map((f) => f.fileUrl));
+        const incomingUrls = new Set(validatedEvidence.map((f) => f.fileUrl));
         const deletedFiles = existingEvidence.filter((f) => !incomingUrls.has(f.file_url));
 
         // Soft-delete all existing evidence linked to the log
@@ -412,7 +386,7 @@ export class LogService {
           .set({ deleted_at: new Date() })
           .where(eq(tables.documentEvidences.time_log_id, logId));
 
-        const evidenceEntries = parsedInput.evidence.map((file) => ({
+        const evidenceEntries = validatedEvidence.map((file) => ({
           id: crypto.randomUUID(),
           time_log_id: logId,
           file_url: file.fileUrl,
