@@ -1,6 +1,10 @@
 import { isSupportedMimeType } from "@/utils/file";
-import { calculateDurationSeconds } from "@/utils/time";
+import { calculateDurationSeconds, formatDuration } from "@/utils/time";
 
+
+/*
+Time ranges are always valid by the time they are created. 
+*/
 export class TimeRange {
   readonly start: Date;
   readonly end: Date;
@@ -23,10 +27,25 @@ export class TimeRange {
     this.end = end;
   }
 
+  /**
+   * Calculates the duration of the time range in seconds.
+   */
   get durationSeconds(): number {
     return calculateDurationSeconds(this.start, this.end);
   }
+
+  /*
+  * converts the durationSeconds to a human-readable format
+  *
+  */
+  get durationHumanReadable(): string {
+    return formatDuration(this.durationSeconds);
+  }
+
+
+
 }
+
 
 export interface EvidenceData {
   fileUrl: string;
