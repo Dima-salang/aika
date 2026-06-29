@@ -8,12 +8,17 @@ import {
   Edit2, 
   Trash2,
   Calendar,
-  Share2
+  Share2,
+  MessageSquare
 } from "lucide-react";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { isImageUrl } from "@/utils/file";
 import { renderMarkdown } from "@/utils/markdown";
 import { formatDuration, getLogDurationSeconds } from "@/utils/time";
+import { trpc } from "@/utils/trpc";
+import { LogComments } from "../timer/log-comments";
+import { useState } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface LogTask {
   id: string;
@@ -103,6 +108,12 @@ export function ActivityLogItem({
   onShare,
   onSelectUser
 }: ActivityLogItemProps) {
+  const [showComments, setShowComments] = useState(false);
+  const [localCommentCount, setLocalCommentCount] = useState<number | null>(null);
+  const { data: comments } = trpc.listComments.useQuery({
+    filter: { log_id: log.id }
+  });
+
   const durationSeconds = getLogDurationSeconds(log);
   const durationFormatted = formatDuration(durationSeconds);
 
@@ -181,6 +192,19 @@ export function ActivityLogItem({
               <Clock className="h-3 w-3" />
               <span className="font-mono-timer">{durationFormatted}</span>
             </div>
+
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setShowComments(!showComments);
+              }}
+              className={`flex items-center gap-1 bg-surface-container-highest border border-outline-variant/60 hover:border-primary px-2 py-0.5 rounded text-[10px] font-bold transition-all cursor-pointer ${
+                showComments ? "text-primary border-primary/45 bg-primary/5" : "text-outline hover:text-primary"
+              }`}
+            >
+              <MessageSquare className="h-3 w-3" />
+              <span>Comments ({localCommentCount !== null ? localCommentCount : (comments?.length || 0)})</span>
+            </button>
 
             {showActions && (
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -329,7 +353,20 @@ export function ActivityLogItem({
             </div>
           </div>
         )}
-
+        <AnimatePresence initial={false}>
+          {showComments && (
+            <motion.div 
+              initial={{ opacity: 0, height: 0, marginTop: 0 }}
+              animate={{ opacity: 1, height: "auto", marginTop: 16 }}
+              exit={{ opacity: 0, height: 0, marginTop: 0 }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+              className="pt-4 border-t border-outline-variant/30 overflow-hidden" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <LogComments logId={log.id} onCommentCountChange={setLocalCommentCount} />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     </div>
   );
