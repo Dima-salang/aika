@@ -180,7 +180,7 @@ export function LogComments({ logId, onCommentCountChange }: LogCommentsProps) {
         className="space-y-3"
       >
         <div 
-          className={`flex gap-3 p-3 bg-surface-container-low/30 border border-outline-variant/30 rounded-xl transition-all relative ${
+          className={`flex gap-3 p-3 bg-surface-container-low/30 border border-outline-variant/30 rounded-xl transition-all duration-200 hover:border-primary/40 hover:bg-surface-container-low/60 hover:shadow-sm hover:-translate-y-0.5 relative ${
             isAuthor ? "border-primary/20 bg-primary/5" : ""
           }`}
         >
@@ -360,7 +360,7 @@ export function LogComments({ logId, onCommentCountChange }: LogCommentsProps) {
 
         {/* Nested replies recursive render */}
         {replies.length > 0 && (
-          <div className="pl-6 border-l border-outline-variant/40 space-y-3 mt-2">
+          <div className="pl-6 border-l-2 border-zinc-300 dark:border-zinc-700/80 space-y-3 mt-2">
             {replies.map((replyNode) => renderCommentNode(replyNode, depth + 1))}
           </div>
         )}
