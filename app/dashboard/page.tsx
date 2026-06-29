@@ -187,22 +187,19 @@ export default function Dashboard() {
 
   const createLogMutation = trpc.createLog.useMutation({
     onSuccess: () => {
-      refetchLogs();
-      refetchPaginatedLogs();
+      utils.invalidate();
     },
   });
 
   const updateLogMutation = trpc.updateLog.useMutation({
     onSuccess: () => {
-      refetchLogs();
-      refetchPaginatedLogs();
+      utils.invalidate();
     },
   });
 
   const deleteLogMutation = trpc.deleteLog.useMutation({
     onSuccess: () => {
-      refetchLogs();
-      refetchPaginatedLogs();
+      utils.invalidate();
     },
   });
 
