@@ -33,26 +33,45 @@ export class CommentService {
         offset = 0,
         limit = 5,
         tx: DBInstance = db
-    ): Promise<Comment[]> {
-        const table = tables.comments;
-        let query = tx.select().from(table).$dynamic();
+    ): Promise<Array<Comment & { user_name: string; user_image: string | null }>> {
+        const commentTable = tables.comments;
+        const userTable = tables.user;
+
+        // get the comments with user details
+        let query = tx
+            .select({
+                id: commentTable.id,
+                log_id: commentTable.log_id,
+                user_id: commentTable.user_id,
+                parent_id: commentTable.parent_id,
+                comment: commentTable.comment,
+                created_at: commentTable.created_at,
+                updated_at: commentTable.updated_at,
+                deleted_at: commentTable.deleted_at,
+                user_name: userTable.name,
+                user_image: userTable.image,
+            })
+            .from(commentTable)
+            .innerJoin(userTable, eq(commentTable.user_id, userTable.id))
+            .$dynamic();
 
         const conditions: SQL[] = [];
         if (filter) {
             if (filter.log_id) {
-                conditions.push(eq(table.log_id, filter.log_id));
+                conditions.push(eq(commentTable.log_id, filter.log_id));
             }
             if (filter.user_id) {
-                conditions.push(eq(table.user_id, filter.user_id));
+                conditions.push(eq(commentTable.user_id, filter.user_id));
             }
         }
-        conditions.push(isNull(table.deleted_at));
+        conditions.push(isNull(commentTable.deleted_at));
 
         if (conditions.length > 0) {
             query = query.where(and(...conditions));
         }
 
-        return await query.orderBy(desc(table.created_at)).limit(limit).offset(offset);
+        const results = await query.orderBy(desc(commentTable.created_at)).limit(limit).offset(offset);
+        return results as Array<Comment & { user_name: string; user_image: string | null }>;
     }
 
     async createComment(data: createComment, tx: DBInstance = db): Promise<Comment | null> {
