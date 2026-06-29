@@ -1,6 +1,6 @@
 import { pgTable, text, timestamp, boolean, integer, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
 import { sqliteTable, text as sqliteText, integer as sqliteInteger, primaryKey as sqlitePrimaryKey, index as sqliteIndex, uniqueIndex as sqliteUniqueIndex } from "drizzle-orm/sqlite-core";
-import { sql } from "drizzle-orm";
+import { desc, sql } from "drizzle-orm";
 import { z } from "zod";
 import { createSelectSchema, createInsertSchema} from "drizzle-zod";
 
@@ -285,6 +285,21 @@ export const joinRequests = pgTable("join_requests", {
 ]);
 
 
+export const comments = pgTable("comments", {
+    id: text("id").primaryKey(),
+    log_id: text("log_id").notNull().references(() => timeLogs.id),
+    user_id: text("user_id").notNull().references(() => user.id),
+    comment: text("comment").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+    updated_at: timestamp("updated_at").notNull().defaultNow(),
+    deleted_at: timestamp("deleted_at"),
+}, (table) => [
+    //index on log_id with desc order
+    index("idx_comments_log").on(desc(table.created_at)),
+    index("idx_comments_user").on(table.user_id),
+]);
+
+
 // ==========================================
 // 2. SQLITE SCHEMA DEFINITIONS (TESTING)
 // ==========================================
@@ -566,6 +581,19 @@ export const joinRequestsSqlite = sqliteTable("join_requests", {
     sqliteIndex("idx_join_requests_user_sqlite").on(table.userId),
 ]);
 
+export const commentsSqlite = sqliteTable("comments", {
+    id: sqliteText("id").primaryKey(),
+    log_id: sqliteText("log_id").notNull().references(() => timeLogsSqlite.id),
+    user_id: sqliteText("user_id").notNull().references(() => userSqlite.id),
+    comment: sqliteText("comment").notNull(),
+    created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
+    updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
+    deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
+}, (table) => [
+    sqliteIndex("idx_comments_log_sqlite").on(table.log_id),
+    sqliteIndex("idx_comments_user_sqlite").on(table.user_id),
+]);
+
 
 // ==========================================
 // 3. DOMAIN TYPE INFERENCES
@@ -606,6 +634,8 @@ export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
+export type Comment = typeof comments.$inferSelect;
+export type NewComment = typeof comments.$inferInsert;
 
 // SQLite Types (for local test suites)
 export type UserSqlite = typeof userSqlite.$inferSelect;
@@ -650,6 +680,8 @@ export type JoinTokenSqlite = typeof joinTokensSqlite.$inferSelect;
 export type NewJoinTokenSqlite = typeof joinTokensSqlite.$inferInsert;
 export type JoinRequestSqlite = typeof joinRequestsSqlite.$inferSelect;
 export type NewJoinRequestSqlite = typeof joinRequestsSqlite.$inferInsert;
+export type CommentSqlite = typeof commentsSqlite.$inferSelect;
+export type NewCommentSqlite = typeof commentsSqlite.$inferInsert;
 
 // ==========================================
 // 4. ZOD SCHEMA SCHEMAS
