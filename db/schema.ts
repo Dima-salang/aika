@@ -1,5 +1,6 @@
-import { pgTable, text, timestamp, boolean, integer, primaryKey } from "drizzle-orm/pg-core";
-import { sqliteTable, text as sqliteText, integer as sqliteInteger, primaryKey as sqlitePrimaryKey } from "drizzle-orm/sqlite-core";
+import { pgTable, text, timestamp, boolean, integer, primaryKey, index, uniqueIndex } from "drizzle-orm/pg-core";
+import { sqliteTable, text as sqliteText, integer as sqliteInteger, primaryKey as sqlitePrimaryKey, index as sqliteIndex, uniqueIndex as sqliteUniqueIndex } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 import { z } from "zod";
 import { createSelectSchema, createInsertSchema} from "drizzle-zod";
 
@@ -37,7 +38,9 @@ export const session = pgTable("session", {
     userId: text("userId").notNull().references(() => user.id),
     activeOrganizationId: text("activeOrganizationId"),
     activeTeamId: text("activeTeamId"),
-});
+}, (table) => [
+    index("idx_session_user_id").on(table.userId),
+]);
 
 // Better Auth: Account table
 export const account = pgTable("account", {
@@ -54,7 +57,9 @@ export const account = pgTable("account", {
     password: text("password"),
     createdAt: timestamp("createdAt").notNull(),
     updatedAt: timestamp("updatedAt").notNull(),
-});
+}, (table) => [
+    index("idx_account_user_id").on(table.userId),
+]);
 
 // Better Auth: Verification table
 export const verification = pgTable("verification", {
@@ -83,7 +88,10 @@ export const member = pgTable("member", {
     userId: text("userId").notNull().references(() => user.id),
     role: text("role").notNull(),
     createdAt: timestamp("createdAt").notNull(),
-});
+}, (table) => [
+    uniqueIndex("idx_member_org_user").on(table.organizationId, table.userId),
+    index("idx_member_user").on(table.userId),
+]);
 
 // Better Auth: Invitation table (Tenant invites)
 export const invitation = pgTable("invitation", {
@@ -95,7 +103,9 @@ export const invitation = pgTable("invitation", {
     expiresAt: timestamp("expiresAt").notNull(),
     inviterId: text("inviterId").notNull().references(() => user.id),
     teamId: text("teamId"),
-});
+}, (table) => [
+    index("idx_invitation_org_id").on(table.organizationId),
+]);
 
 // Custom Aika: Teams table (Nested inside Organization)
 export const teams = pgTable("teams", {
@@ -116,7 +126,10 @@ export const teamMembers = pgTable("team_members", {
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
-});
+}, (table) => [
+    uniqueIndex("idx_team_members_team_user").on(table.team_id, table.user_id),
+    index("idx_team_members_user").on(table.user_id),
+]);
 
 // Projects
 export const projects = pgTable("projects", {
@@ -131,7 +144,10 @@ export const projects = pgTable("projects", {
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
     user_id: text("user_id").references(() => user.id),
-});
+}, (table) => [
+    index("idx_projects_org").on(table.organization_id),
+    index("idx_projects_team").on(table.team_id),
+]);
 
 // Tasks
 export const tasks = pgTable("tasks", {
@@ -148,7 +164,10 @@ export const tasks = pgTable("tasks", {
     created_at: timestamp("created_at").notNull().defaultNow(),
     updated_at: timestamp("updated_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
-});
+}, (table) => [
+    index("idx_tasks_org_team").on(table.organization_id, table.team_id),
+    index("idx_tasks_user").on(table.user_id),
+]);
 
 // Time Logs
 export const timeLogs = pgTable("time_logs", {
@@ -167,7 +186,11 @@ export const timeLogs = pgTable("time_logs", {
     notion_page_id: text("notion_page_id"),
     duration: integer("duration").notNull().default(0),
     is_public: boolean("is_public").default(false),
-});
+}, (table) => [
+    index("idx_time_logs_user_start").on(table.user_id, sql`${table.start_time} DESC`).where(sql`deleted_at IS NULL`),
+    index("idx_time_logs_team_start").on(table.team_id, sql`${table.start_time} DESC`).where(sql`deleted_at IS NULL`),
+    index("idx_time_logs_org_team").on(table.organization_id, table.team_id),
+]);
 
 // Time Log Tasks (Many-to-Many Join Table)
 export const timeLogTasks = pgTable("time_log_tasks", {
@@ -197,7 +220,9 @@ export const documentEvidences = pgTable("document_evidences", {
     mime_type: text("mime_type").notNull(),
     created_at: timestamp("created_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
-});
+}, (table) => [
+    index("idx_document_evidences_log_id").on(table.time_log_id),
+]);
 
 // Notifications
 export const notifications = pgTable("notifications", {
@@ -210,7 +235,9 @@ export const notifications = pgTable("notifications", {
     related_id: text("related_id"),
     created_at: timestamp("created_at").notNull().defaultNow(),
     deleted_at: timestamp("deleted_at"),
-});
+}, (table) => [
+    index("idx_notifications_user_read").on(table.user_id, table.is_read),
+]);
 
 // Audit Logs (immutable mutation events only)
 export const auditLogs = pgTable("audit_logs", {
@@ -224,7 +251,9 @@ export const auditLogs = pgTable("audit_logs", {
     user_agent: text("user_agent"),
     payload: text("payload"),
     created_at: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+    index("idx_audit_logs_user_created").on(table.user_id, sql`${table.created_at} DESC`),
+]);
 
 // Secure Join Tokens (self-service onboarding links)
 export const joinTokens = pgTable("join_tokens", {
@@ -236,7 +265,10 @@ export const joinTokens = pgTable("join_tokens", {
     maxUses: integer("max_uses"),
     usesCount: integer("uses_count").notNull().default(0),
     autoJoin: boolean("auto_join").notNull().default(false),
-});
+}, (table) => [
+    index("idx_join_tokens_org").on(table.organizationId),
+    index("idx_join_tokens_team").on(table.teamId),
+]);
 
 // Join Requests (requests submitted via join tokens for admin review)
 export const joinRequests = pgTable("join_requests", {
@@ -246,7 +278,11 @@ export const joinRequests = pgTable("join_requests", {
     teamId: text("team_id").references(() => teams.id),
     status: text("status").notNull().default("pending"), // 'pending' | 'approved' | 'rejected'
     createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (table) => [
+    index("idx_join_requests_org").on(table.organizationId),
+    index("idx_join_requests_team").on(table.teamId),
+    index("idx_join_requests_user").on(table.userId),
+]);
 
 
 // ==========================================
@@ -284,7 +320,9 @@ export const sessionSqlite = sqliteTable("session", {
     userId: sqliteText("userId").notNull().references(() => userSqlite.id),
     activeOrganizationId: sqliteText("activeOrganizationId"),
     activeTeamId: sqliteText("activeTeamId"),
-});
+}, (table) => [
+    sqliteIndex("idx_session_user_id_sqlite").on(table.userId),
+]);
 
 // Better Auth: Account table
 export const accountSqlite = sqliteTable("account", {
@@ -301,7 +339,9 @@ export const accountSqlite = sqliteTable("account", {
     password: sqliteText("password"),
     createdAt: sqliteInteger("createdAt", { mode: "timestamp" }).notNull(),
     updatedAt: sqliteInteger("updatedAt", { mode: "timestamp" }).notNull(),
-});
+}, (table) => [
+    sqliteIndex("idx_account_user_id_sqlite").on(table.userId),
+]);
 
 // Better Auth: Verification table
 export const verificationSqlite = sqliteTable("verification", {
@@ -330,7 +370,10 @@ export const memberSqlite = sqliteTable("member", {
     userId: sqliteText("userId").notNull().references(() => userSqlite.id),
     role: sqliteText("role").notNull(),
     createdAt: sqliteInteger("createdAt", { mode: "timestamp" }).notNull(),
-});
+}, (table) => [
+    sqliteUniqueIndex("idx_member_org_user_sqlite").on(table.organizationId, table.userId),
+    sqliteIndex("idx_member_user_sqlite").on(table.userId),
+]);
 
 // Better Auth: Invitation table (Tenant invites)
 export const invitationSqlite = sqliteTable("invitation", {
@@ -342,7 +385,9 @@ export const invitationSqlite = sqliteTable("invitation", {
     expiresAt: sqliteInteger("expiresAt", { mode: "timestamp" }).notNull(),
     inviterId: sqliteText("inviterId").notNull().references(() => userSqlite.id),
     teamId: sqliteText("teamId"),
-});
+}, (table) => [
+    sqliteIndex("idx_invitation_org_id_sqlite").on(table.organizationId),
+]);
 
 // Custom Aika: Teams table (Nested inside Organization)
 export const teamsSqlite = sqliteTable("teams", {
@@ -363,7 +408,10 @@ export const teamMembersSqlite = sqliteTable("team_members", {
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
-});
+}, (table) => [
+    sqliteUniqueIndex("idx_team_members_team_user_sqlite").on(table.team_id, table.user_id),
+    sqliteIndex("idx_team_members_user_sqlite").on(table.user_id),
+]);
 
 // Projects
 export const projectsSqlite = sqliteTable("projects", {
@@ -378,7 +426,10 @@ export const projectsSqlite = sqliteTable("projects", {
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
     user_id: sqliteText("user_id").references(() => userSqlite.id),
-});
+}, (table) => [
+    sqliteIndex("idx_projects_org_sqlite").on(table.organization_id),
+    sqliteIndex("idx_projects_team_sqlite").on(table.team_id),
+]);
 
 // Tasks
 export const tasksSqlite = sqliteTable("tasks", {
@@ -395,7 +446,10 @@ export const tasksSqlite = sqliteTable("tasks", {
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     updated_at: sqliteInteger("updated_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
-});
+}, (table) => [
+    sqliteIndex("idx_tasks_org_team_sqlite").on(table.organization_id, table.team_id),
+    sqliteIndex("idx_tasks_user_sqlite").on(table.user_id),
+]);
 
 // Time Logs
 export const timeLogsSqlite = sqliteTable("time_logs", {
@@ -414,7 +468,11 @@ export const timeLogsSqlite = sqliteTable("time_logs", {
     notion_page_id: sqliteText("notion_page_id"),
     duration: sqliteInteger("duration").notNull().default(0),
     is_public: sqliteInteger("is_public", { mode: "boolean" }).default(false),
-});
+}, (table) => [
+    sqliteIndex("idx_time_logs_user_start_sqlite").on(table.user_id, sql`${table.start_time} DESC`),
+    sqliteIndex("idx_time_logs_team_start_sqlite").on(table.team_id, sql`${table.start_time} DESC`),
+    sqliteIndex("idx_time_logs_org_team_sqlite").on(table.organization_id, table.team_id),
+]);
 
 // Time Log Tasks (Many-to-Many Join Table)
 export const timeLogTasksSqlite = sqliteTable("time_log_tasks", {
@@ -444,7 +502,9 @@ export const documentEvidencesSqlite = sqliteTable("document_evidences", {
     mime_type: sqliteText("mime_type").notNull(),
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
-});
+}, (table) => [
+    sqliteIndex("idx_document_evidences_log_id_sqlite").on(table.time_log_id),
+]);
 
 // Notifications
 export const notificationsSqlite = sqliteTable("notifications", {
@@ -457,7 +517,9 @@ export const notificationsSqlite = sqliteTable("notifications", {
     related_id: sqliteText("related_id"),
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
     deleted_at: sqliteInteger("deleted_at", { mode: "timestamp" }),
-});
+}, (table) => [
+    sqliteIndex("idx_notifications_user_read_sqlite").on(table.user_id, table.is_read),
+]);
 
 // Audit Logs (immutable mutation events only)
 export const auditLogsSqlite = sqliteTable("audit_logs", {
@@ -471,7 +533,9 @@ export const auditLogsSqlite = sqliteTable("audit_logs", {
     user_agent: sqliteText("user_agent"),
     payload: sqliteText("payload"),
     created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
-});
+}, (table) => [
+    sqliteIndex("idx_audit_logs_user_created_sqlite").on(table.user_id, sql`${table.created_at} DESC`),
+]);
 
 // Secure Join Tokens (self-service onboarding links)
 export const joinTokensSqlite = sqliteTable("join_tokens", {
@@ -483,7 +547,10 @@ export const joinTokensSqlite = sqliteTable("join_tokens", {
     maxUses: sqliteInteger("max_uses"),
     usesCount: sqliteInteger("uses_count").notNull().default(0),
     autoJoin: sqliteInteger("auto_join", { mode: "boolean" }).notNull().default(false),
-});
+}, (table) => [
+    sqliteIndex("idx_join_tokens_org_sqlite").on(table.organizationId),
+    sqliteIndex("idx_join_tokens_team_sqlite").on(table.teamId),
+]);
 
 // Join Requests (requests submitted via join tokens for admin review)
 export const joinRequestsSqlite = sqliteTable("join_requests", {
@@ -493,7 +560,11 @@ export const joinRequestsSqlite = sqliteTable("join_requests", {
     teamId: sqliteText("team_id").references(() => teamsSqlite.id),
     status: sqliteText("status").notNull().default("pending"),
     createdAt: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
-});
+}, (table) => [
+    sqliteIndex("idx_join_requests_org_sqlite").on(table.organizationId),
+    sqliteIndex("idx_join_requests_team_sqlite").on(table.teamId),
+    sqliteIndex("idx_join_requests_user_sqlite").on(table.userId),
+]);
 
 
 // ==========================================
