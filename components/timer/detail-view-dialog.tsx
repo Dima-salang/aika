@@ -5,6 +5,7 @@ import { X, Calendar, Clock, ClipboardList, ExternalLink, Tag, AlertCircle, File
 import { getProjectColorBadge, getTaskColorBadge } from "./time-log-card";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { renderMarkdown } from "@/utils/markdown";
+import { LogComments } from "./log-comments";
 
 interface DetailViewDialogProps {
   isOpen: boolean;
@@ -241,6 +242,10 @@ export function DetailViewDialog({
                   </div>
                 </div>
               )}
+              {/* Comments Section */}
+              <div className="border-t border-outline-variant/60 pt-5 mt-5">
+                <LogComments logId={selectedLog.id} />
+              </div>
             </div>
           )}
 

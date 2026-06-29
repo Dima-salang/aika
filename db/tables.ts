@@ -21,4 +21,5 @@ export const tables = {
   get auditLogs() { return (isSQLite ? schema.auditLogsSqlite : schema.auditLogs) as unknown as typeof schema.auditLogs; },
   get joinTokens() { return (isSQLite ? schema.joinTokensSqlite : schema.joinTokens) as unknown as typeof schema.joinTokens; },
   get joinRequests() { return (isSQLite ? schema.joinRequestsSqlite : schema.joinRequests) as unknown as typeof schema.joinRequests; },
+  get comments() { return (isSQLite ? schema.commentsSqlite : schema.comments) as unknown as typeof schema.comments; },
 };

@@ -16,6 +16,7 @@ import { teamsRouter } from "./teams";
 import { reportsRouter } from "./reports";
 
 import { notificationsRouter } from "./notifications";
+import { commentRouter } from "./comments";
 
 // Service Imports
 
@@ -288,7 +289,8 @@ export const appRouter = mergeRouters(
   logsRouter,
   teamsRouter,
   reportsRouter,
-  notificationsRouter
+  notificationsRouter,
+  commentRouter
 );
 
 export type AppRouter = typeof appRouter;
