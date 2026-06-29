@@ -1,5 +1,5 @@
 import { read, utils, write } from "xlsx";
-import { DetailedTimeLog } from "@/services/core/LogService";
+import { DetailedTimeLog } from "@/services/core/LogQueryService";
 import { LogImportStrategy, LogExportStrategy, ImportResult, ImportedLog } from "./types";
 
 export class ExcelStrategy implements LogImportStrategy, LogExportStrategy {

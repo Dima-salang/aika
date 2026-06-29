@@ -1,6 +1,6 @@
 import { describe, test, expect } from "bun:test";
-import { ExcelStrategy } from "../import-export/ExcelStrategy";
-import { DetailedTimeLog } from "../core/LogService";
+import { ExcelStrategy } from "@/services/import-export/ExcelStrategy";
+import { DetailedTimeLog } from "@/services/core/LogQueryService";
 
 describe("ExcelStrategy", () => {
   const strategy = new ExcelStrategy();
