@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAuth } from "@/components/providers/auth-provider";
 import { trpc } from "@/utils/trpc";
 import { useConfirmStore } from "@/lib/store";
@@ -9,6 +9,13 @@ import { useImageViewer } from "@/utils/image-viewer-store";
 import { TimeLogsList } from "@/components/timer/time-logs-list";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar, Image as ImageIcon, Info, Link2, ShieldAlert, FileText, User } from "lucide-react";
+import { authClient } from "@/lib/auth-client";
+
+const Github = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+  </svg>
+);
 
 interface ProfileTabProps {
   targetUserId?: string;
@@ -39,7 +46,7 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
   const [logFilterEndDate, setLogFilterEndDate] = useState<string>("");
 
   // Query Profile Details
-  const { data: profileDetails, isLoading: loadingProfile } = trpc.getUserProfileDetails.useQuery(
+  const { data: profileDetails, isLoading: loadingProfile, refetch: refetchProfileDetails } = trpc.getUserProfileDetails.useQuery(
     { userId: viewingUserId, callerId: currentUserId },
     { enabled: !!viewingUserId && !!currentUserId }
   );
@@ -94,6 +101,40 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
       toast.success("Successfully reset Notion database linkage.");
     },
   });
+
+  const disconnectGithubMutation = trpc.disconnectGithub.useMutation({
+    onSuccess: async () => {
+      await refetchProfileDetails();
+      toast.success("Successfully disconnected GitHub account linking.");
+    },
+  });
+
+  const handleLinkGithub = async () => {
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set("github_linked", "true");
+      await authClient.linkSocial({
+        provider: "github",
+        callbackURL: url.toString(),
+      });
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to link GitHub account.");
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("github_linked") === "true") {
+        toast.success("Successfully linked GitHub account!");
+        refetchProfileDetails();
+        params.delete("github_linked");
+        const newSearch = params.toString();
+        const newUrl = window.location.pathname + (newSearch ? `?${newSearch}` : "");
+        window.history.replaceState({}, "", newUrl);
+      }
+    }
+  }, [refetchProfileDetails]);
 
   if (!session) return null;
 
@@ -331,6 +372,48 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
                     >
                       Connect Notion
                     </a>
+                  )}
+                </div>
+
+                {/* GitHub integration card */}
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-xl bg-surface-container-lowest border border-outline-variant">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-surface-container-high border border-outline-variant flex items-center justify-center shrink-0">
+                      <Github className="h-5 w-5 text-on-surface" />
+                    </div>
+                    <div>
+                      <h5 className="text-body-sm font-bold text-on-surface">GitHub Connection</h5>
+                      <p className="text-[11px] text-outline mt-0.5">
+                        {profileDetails.isGithubConnected
+                          ? "Linked and active. Commits and Pull Requests can be integrated with your time logs."
+                          : "Link your GitHub account to directly attach commits and PRs to your time logs."}
+                      </p>
+                    </div>
+                  </div>
+
+                  {profileDetails.isGithubConnected ? (
+                    <button
+                      onClick={() => {
+                        showConfirm({
+                          title: "Disconnect GitHub?",
+                          description: "Are you sure you want to disconnect GitHub? You will no longer be able to link recent commits or pull requests to your logs.",
+                          onConfirm: async () => {
+                            await disconnectGithubMutation.mutateAsync({ userId: viewingUserId });
+                          }
+                        });
+                      }}
+                      disabled={disconnectGithubMutation.isPending}
+                      className="w-full sm:w-auto rounded-lg text-body-sm px-4 py-2 font-bold border border-red-500/30 hover:bg-red-500/10 text-red-500 transition-colors disabled:opacity-50 cursor-pointer"
+                    >
+                      Disconnect
+                    </button>
+                  ) : (
+                    <button
+                      onClick={handleLinkGithub}
+                      className="w-full sm:w-auto text-center rounded-lg text-body-sm px-4 py-2 font-bold bg-primary text-on-primary hover:bg-primary/90 transition-colors cursor-pointer"
+                    >
+                      Link GitHub
+                    </button>
                   )}
                 </div>
               </div>
