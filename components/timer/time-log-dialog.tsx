@@ -5,11 +5,19 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText, Globe, Lock } from "lucide-react";
+import { AlertCircle, UploadCloud, X, Calendar, Clock, ClipboardList, Check, Sparkles, Folder, Kanban, Link as LinkIcon, Trash2, Loader2, FileText, Globe, Lock, GitCommit, GitPullRequest } from "lucide-react";
 import { isSupportedMimeType, formatErrorMessage } from "@/utils/file";
 import { useImageViewer } from "@/utils/image-viewer-store";
 import { RichTextEditor } from "@/components/ui-components/rich-text-editor";
 import { useTimeLogDraftStore } from "@/lib/store";
+import { useAuth } from "@/components/providers/auth-provider";
+import { trpc } from "@/utils/trpc";
+
+const Github = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" width="24" height="24" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round" {...props}>
+    <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />
+  </svg>
+);
 
 import type { CreateLogInput } from "@/db/schema";
 
@@ -29,6 +37,7 @@ interface TimeLogDialogProps {
     taskIds: string[];
     evidence: FileEvidence[];
     isPublic: boolean;
+    githubLinks?: any[];
   }) => Promise<void>;
   tasks: Array<{ id: string; title: string; project_id?: string | null; status: string; description?: string | null; updated_at?: any }>;
   projects: Array<{ id: string; name: string }>;
@@ -50,6 +59,27 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
   const [loading, setLoading] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const { session } = useAuth();
+  const userId = session?.user?.id || "";
+
+  const [rightPanelTab, setRightPanelTab] = useState<"tasks" | "github">("tasks");
+  const [selectedRepo, setSelectedRepo] = useState<string>("");
+  const [selectedGithubLinks, setSelectedGithubLinks] = useState<any[]>([]);
+
+  const { data: githubRepos, isLoading: loadingRepos } = trpc.getGitHubUserRepos.useQuery(
+    { userId },
+    { enabled: isOpen && !!userId && rightPanelTab === "github" }
+  );
+
+  const { data: githubCommits, isLoading: loadingCommits } = trpc.getGitHubRepoCommits.useQuery(
+    { userId, repoName: selectedRepo },
+    { enabled: isOpen && !!userId && !!selectedRepo && rightPanelTab === "github" }
+  );
+
+  const { data: githubPRs, isLoading: loadingPRs } = trpc.getGitHubRepoPRs.useQuery(
+    { userId, repoName: selectedRepo },
+    { enabled: isOpen && !!userId && !!selectedRepo && rightPanelTab === "github" }
+  );
   const [uploadingFiles, setUploadingFiles] = useState<Array<{ name: string; size: number }>>([]);
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -104,6 +134,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         setSelectedTasks(draft.selectedTasks || []);
         setEvidenceList(draft.evidenceList || []);
         setIsPublic(draft.isPublic || false);
+        setSelectedGithubLinks(draft.githubLinks || []);
       } else {
         setTitle(initialLog?.title || "");
         setDescription(initialLog?.description || "");
@@ -132,6 +163,15 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
           setEvidenceList([]);
         }
         setIsPublic(initialLog?.is_public || false);
+        setSelectedGithubLinks(
+          (initialLog?.githubLinks || []).map((link: any) => ({
+            repoName: link.repo_name || link.repoName,
+            linkType: link.link_type || link.linkType,
+            entityId: link.entity_id || link.entityId,
+            title: link.title,
+            url: link.url,
+          }))
+        );
       }
       setError(null);
     } else if (!isOpen && lastIsOpen) {
@@ -153,6 +193,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
           isPublic,
           startTime,
           endTime,
+          githubLinks: selectedGithubLinks,
         });
       }
       skipSaveRef.current = false;
@@ -164,6 +205,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
       setSelectedTasks([]);
       setEvidenceList([]);
       setIsPublic(false);
+      setSelectedGithubLinks([]);
       setError(null);
     }
   }, [
@@ -177,6 +219,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     isPublic,
     startTime,
     endTime,
+    selectedGithubLinks,
     setDraft,
   ]);
 
@@ -375,6 +418,7 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
         taskIds: selectedTasks,
         evidence: evidenceList,
         isPublic,
+        githubLinks: selectedGithubLinks,
       });
       skipSaveRef.current = true;
       clearDraft(activeLogKeyRef.current);
@@ -384,6 +428,17 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     } finally {
       setLoading(false);
     }
+  };
+
+  const toggleGithubLink = (link: { repoName: string; linkType: "commit" | "pr"; entityId: string; title: string; url: string }) => {
+    setSelectedGithubLinks((prev) => {
+      const exists = prev.some((item) => item.repoName === link.repoName && item.linkType === link.linkType && item.entityId === link.entityId);
+      if (exists) {
+        return prev.filter((item) => !(item.repoName === link.repoName && item.linkType === link.linkType && item.entityId === link.entityId));
+      } else {
+        return [...prev, link];
+      }
+    });
   };
 
   const toggleTask = (taskId: string) => {
@@ -396,11 +451,43 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
     const { destination, source, draggableId } = result;
     if (!destination) return;
 
-    if (destination.droppableId === "linked-tasks" && source.droppableId !== "linked-tasks") {
-      setSelectedTasks((prev) => {
-        if (prev.includes(draggableId)) return prev;
-        return [...prev, draggableId];
-      });
+    if (destination.droppableId === "linked-tasks") {
+      if (draggableId.startsWith("github-link::")) {
+        const parts = draggableId.split("::");
+        const repoName = parts[1];
+        const linkType = parts[2] as "commit" | "pr";
+        const entityId = parts[3];
+
+        let title = "";
+        let url = "";
+
+        if (linkType === "commit") {
+          const commit = (githubCommits || []).find((c: any) => c.sha === entityId);
+          if (commit) {
+            title = commit.message;
+            url = commit.url;
+          }
+        } else {
+          const pr = (githubPRs || []).find((p: any) => p.number === entityId);
+          if (pr) {
+            title = pr.title;
+            url = pr.url;
+          }
+        }
+
+        if (title && url) {
+          setSelectedGithubLinks((prev) => {
+            const exists = prev.some((item) => item.repoName === repoName && item.linkType === linkType && item.entityId === entityId);
+            if (exists) return prev;
+            return [...prev, { repoName, linkType, entityId, title, url }];
+          });
+        }
+      } else {
+        setSelectedTasks((prev) => {
+          if (prev.includes(draggableId)) return prev;
+          return [...prev, draggableId];
+        });
+      }
     }
   };
 
@@ -501,11 +588,11 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                           setProjectId(e.target.value);
                           setSelectedTasks([]); // Clear linked tasks when project changes
                         }}
-                        className="w-full bg-transparent border-none text-xs text-on-surface-variant font-medium px-0 py-1 focus:outline-none focus:ring-0 cursor-pointer"
+                        className="w-full bg-transparent border-none text-xs text-on-surface font-semibold px-0 py-1 focus:outline-none focus:ring-0 cursor-pointer"
                       >
-                        <option value="" className="bg-[#131315]">No Project</option>
+                        <option value="">No Project</option>
                         {projects.map((proj) => (
-                          <option key={proj.id} value={proj.id} className="bg-[#131315]">
+                          <option key={proj.id} value={proj.id}>
                             {proj.name}
                           </option>
                         ))}
@@ -552,10 +639,10 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                 </div>
 
 
-                {/* Drag and Drop Drop Zone for Linked Tasks */}
+                {/* Drag and Drop Drop Zone for Linked Tasks & Updates */}
                 <div className="space-y-2">
                   <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider flex items-center gap-1.5">
-                    <LinkIcon className="h-3.5 w-3.5 text-primary" /> Linked Tasks
+                    <LinkIcon className="h-3.5 w-3.5 text-primary" /> Linked Tasks & Updates
                   </Label>
                   <Droppable droppableId="linked-tasks">
                     {(provided, snapshot) => (
@@ -567,13 +654,14 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                             : "border-outline-variant bg-surface-container-low/30"
                           }`}
                       >
-                        {selectedTasks.length === 0 ? (
+                        {selectedTasks.length === 0 && selectedGithubLinks.length === 0 ? (
                           <div className="text-center text-outline py-2 select-none">
-                            <p className="text-[11px] font-medium">Drag tasks from the Kanban board here to link them.</p>
-                            <p className="text-[9px] mt-0.5">Or simply click task cards in the columns to toggle linking.</p>
+                            <p className="text-[11px] font-medium">Drag tasks or GitHub commits/PRs here to link them.</p>
+                            <p className="text-[9px] mt-0.5">Or simply click cards in the columns/feed to toggle linking.</p>
                           </div>
                         ) : (
-                          <div className="flex flex-wrap gap-1.5 max-h-[140px] overflow-y-auto custom-scrollbar">
+                          <div className="flex flex-wrap gap-1.5 max-h-[220px] overflow-y-auto custom-scrollbar">
+                            {/* Render Tasks */}
                             {selectedTasks.map((tId) => {
                               const tIdStr = typeof tId === "string" ? tId : (tId as any)?.id || "";
                               const t = tasks.find((item) => item.id === tIdStr);
@@ -594,6 +682,26 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
                                 </div>
                               );
                             })}
+
+                            {/* Render GitHub Links */}
+                            {selectedGithubLinks.map((link, idx) => (
+                              <div
+                                key={`gl-${idx}`}
+                                className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-[10.5px] font-semibold animate-in zoom-in-95 duration-100"
+                              >
+                                <Github className="h-3 w-3 shrink-0" />
+                                <span className="truncate max-w-[150px]" title={`${link.repoName}: ${link.title}`}>
+                                  {link.linkType === "commit" ? `[Commit] ${link.entityId.slice(0, 7)}` : `[PR] #${link.entityId}`} - {link.title}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={() => toggleGithubLink(link)}
+                                  className="p-0.5 rounded-full hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 shrink-0 transition-colors"
+                                >
+                                  <X className="h-3 w-3" />
+                                </button>
+                              </div>
+                            ))}
                           </div>
                         )}
                         {provided.placeholder}
@@ -709,98 +817,322 @@ export function TimeLogDialog({ isOpen, onClose, onSubmit, tasks = [], projects 
             {/* Right Column: Kanban board */}
             <div className="w-full lg:w-1/2 flex flex-col bg-surface-container-lowest/40 p-4 sm:p-unit-6 min-h-[450px] lg:min-h-0 overflow-hidden shrink-0 lg:shrink">
               <div className="flex items-center justify-between mb-5 shrink-0">
-                <h3 className="text-xs font-extrabold uppercase tracking-wider text-on-surface-variant flex items-center gap-1.5">
-                  <Kanban className="h-4 w-4 text-primary" /> Kanban Board
-                </h3>
-                {projectId && (
+                <div className="flex bg-surface-container-high p-0.5 rounded-lg border border-outline-variant">
+                  <button
+                    type="button"
+                    onClick={() => setRightPanelTab("tasks")}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      rightPanelTab === "tasks"
+                        ? "bg-primary text-on-primary shadow-sm"
+                        : "text-on-surface-variant hover:text-on-surface"
+                    }`}
+                  >
+                    <Kanban className="h-3.5 w-3.5" /> Kanban Board
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setRightPanelTab("github")}
+                    className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[10px] font-extrabold uppercase tracking-wider transition-all cursor-pointer ${
+                      rightPanelTab === "github"
+                        ? "bg-primary text-on-primary shadow-sm"
+                        : "text-on-surface-variant hover:text-on-surface"
+                    }`}
+                  >
+                    <Github className="h-3.5 w-3.5" /> GitHub Feed
+                  </button>
+                </div>
+                {rightPanelTab === "tasks" && projectId && (
                   <span className="text-[10px] text-outline font-bold bg-surface-container-high px-2 py-0.5 rounded">
                     {projectTasks.length} Tasks
                   </span>
                 )}
               </div>
 
-              {!projectId ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
-                  <Folder className="h-8 w-8 text-outline/65 mb-2 animate-bounce" />
-                  <p className="text-[11px] font-bold text-on-surface-variant">Select a project scope</p>
-                  <p className="text-[10px] text-outline max-w-[240px] mt-0.5 leading-relaxed">
-                    Once you assign a project on the left form, the related tasks will populate here for drag-and-drop linking.
-                  </p>
-                </div>
-              ) : projectTasks.length === 0 ? (
-                <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
-                  <ClipboardList className="h-8 w-8 text-outline/65 mb-2" />
-                  <p className="text-[11px] font-bold text-on-surface-variant">No tasks found</p>
-                  <p className="text-[10px] text-outline max-w-[240px] mt-0.5 leading-relaxed">
-                    There are no tasks associated with this project. Add some deliverables on the Projects board to log time against them.
-                  </p>
-                </div>
-              ) : (
-                /* Kanban Columns Board */
-                <div className="flex-1 flex gap-4 overflow-x-auto pb-2 min-h-0 custom-scrollbar">
-                  {columns.map((col) => (
-                    <div key={col.id} className="flex-shrink-0 w-[185px] flex flex-col h-full bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-3">
-                      <div className="flex items-center justify-between mb-3 shrink-0 px-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant truncate">
-                          {col.title}
-                        </span>
-                        <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface-variant">
-                          {col.tasks.length}
-                        </span>
-                      </div>
+              {rightPanelTab === "tasks" && (
+                <>
+                  {!projectId ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
+                      <Folder className="h-8 w-8 text-outline/65 mb-2 animate-bounce" />
+                      <p className="text-[11px] font-bold text-on-surface-variant">Select a project scope</p>
+                      <p className="text-[10px] text-outline max-w-[240px] mt-0.5 leading-relaxed">
+                        Once you assign a project on the left form, the related tasks will populate here for drag-and-drop linking.
+                      </p>
+                    </div>
+                  ) : projectTasks.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
+                      <ClipboardList className="h-8 w-8 text-outline/65 mb-2" />
+                      <p className="text-[11px] font-bold text-on-surface-variant">No tasks found</p>
+                      <p className="text-[10px] text-outline max-w-[240px] mt-0.5 leading-relaxed">
+                        There are no tasks associated with this project. Add some deliverables on the Projects board to log time against them.
+                      </p>
+                    </div>
+                  ) : (
+                    /* Kanban Columns Board */
+                    <div className="flex-1 flex gap-4 overflow-x-auto pb-2 min-h-0 custom-scrollbar">
+                      {columns.map((col) => (
+                        <div key={col.id} className="flex-shrink-0 w-[185px] flex flex-col h-full bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-3">
+                          <div className="flex items-center justify-between mb-3 shrink-0 px-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant truncate">
+                              {col.title}
+                            </span>
+                            <span className="text-[9px] font-bold px-1.5 py-0.2 rounded-full bg-surface-container-high text-on-surface-variant">
+                              {col.tasks.length}
+                            </span>
+                          </div>
 
-                      <Droppable droppableId={col.id}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.droppableProps}
-                            className={`flex-1 space-y-1.5 overflow-y-auto custom-scrollbar p-0.5 rounded-lg min-h-[100px] transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""
-                              }`}
-                          >
-                            {col.tasks.map((task, index) => {
-                              const isLinked = selectedTasks.includes(task.id);
-                              return (
-                                <Draggable key={task.id} draggableId={task.id} index={index}>
-                                  {(providedDraggable, snapshotDraggable) => (
-                                    <div
-                                      ref={providedDraggable.innerRef}
-                                      {...providedDraggable.draggableProps}
-                                      {...providedDraggable.dragHandleProps}
-                                      style={providedDraggable.draggableProps.style as React.CSSProperties}
-                                      onClick={() => toggleTask(task.id)}
-                                      className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${isLinked
-                                          ? "border-primary bg-primary/[4%] shadow-sm"
-                                          : "bg-surface-container border-outline-variant"
-                                        } ${snapshotDraggable.isDragging ? "shadow-md scale-[0.98] border-primary" : ""
-                                        }`}
-                                    >
-                                      <div className="flex justify-between items-start gap-1">
-                                        <p className={`text-[10.5px] font-semibold leading-snug text-on-surface break-words ${col.id === 'done' ? 'line-through decoration-outline/40 opacity-70' : ''}`}>
-                                          {task.title}
-                                        </p>
-                                        <div className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-all ${isLinked
-                                            ? 'bg-primary border-primary text-on-primary'
-                                            : 'border-outline bg-surface-container-lowest'
-                                          }`}>
-                                          {isLinked && <Check className="h-2 w-2 stroke-[3.5]" />}
+                          <Droppable droppableId={col.id}>
+                            {(provided, snapshot) => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.droppableProps}
+                                className={`flex-1 space-y-1.5 overflow-y-auto custom-scrollbar p-0.5 rounded-lg min-h-[100px] transition-colors ${snapshot.isDraggingOver ? "bg-primary/5" : ""
+                                  }`}
+                              >
+                                {col.tasks.map((task, index) => {
+                                  const isLinked = selectedTasks.includes(task.id);
+                                  return (
+                                    <Draggable key={task.id} draggableId={task.id} index={index}>
+                                      {(providedDraggable, snapshotDraggable) => (
+                                        <div
+                                          ref={providedDraggable.innerRef}
+                                          {...providedDraggable.draggableProps}
+                                          {...providedDraggable.dragHandleProps}
+                                          style={providedDraggable.draggableProps.style as React.CSSProperties}
+                                          onClick={() => toggleTask(task.id)}
+                                          className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${isLinked
+                                              ? "border-primary bg-primary/[4%] shadow-sm"
+                                              : "bg-surface-container border-outline-variant"
+                                            } ${snapshotDraggable.isDragging ? "shadow-md scale-[0.98] border-primary" : ""
+                                            }`}
+                                        >
+                                          <div className="flex justify-between items-start gap-1">
+                                            <p className={`text-[10.5px] font-semibold leading-snug text-on-surface break-words ${col.id === 'done' ? 'line-through decoration-outline/40 opacity-70' : ''}`}>
+                                              {task.title}
+                                            </p>
+                                            <div className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-all ${isLinked
+                                                ? 'bg-primary border-primary text-on-primary'
+                                                : 'border-outline bg-surface-container-lowest'
+                                              }`}>
+                                              {isLinked && <Check className="h-2 w-2 stroke-[3.5]" />}
+                                            </div>
+                                          </div>
+                                          {task.description && (
+                                            <p className="text-[9px] text-outline line-clamp-2 mt-1 leading-normal">
+                                              {task.description}
+                                            </p>
+                                          )}
                                         </div>
-                                      </div>
-                                      {task.description && (
-                                        <p className="text-[9px] text-outline line-clamp-2 mt-1 leading-normal">
-                                          {task.description}
-                                        </p>
                                       )}
-                                    </div>
-                                  )}
-                                </Draggable>
-                              );
-                            })}
-                            {provided.placeholder}
+                                    </Draggable>
+                                  );
+                                })}
+                                {provided.placeholder}
+                              </div>
+                            )}
+                          </Droppable>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {rightPanelTab === "github" && (
+                <div className="flex-1 flex flex-col min-h-0 overflow-hidden space-y-4">
+                  {/* Repo select */}
+                  <div className="space-y-1.5 shrink-0">
+                    <Label className="text-[10px] font-extrabold text-on-surface-variant uppercase tracking-wider block">
+                      Target Repository
+                    </Label>
+                    {loadingRepos ? (
+                      <div className="flex items-center gap-2 py-2 text-xs text-outline font-semibold">
+                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
+                        Fetching repositories...
+                      </div>
+                    ) : githubRepos && githubRepos.length > 0 ? (
+                      <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-surface-container border border-outline-variant rounded-lg">
+                        <Folder className="h-3.5 w-3.5 text-outline" />
+                        <select
+                          value={selectedRepo}
+                          onChange={(e) => setSelectedRepo(e.target.value)}
+                          className="bg-transparent border-none text-xs text-on-surface font-semibold focus:ring-0 focus:outline-none cursor-pointer py-0.5 w-full"
+                        >
+                          <option value="">Select repository...</option>
+                          {githubRepos.map((repo: any) => (
+                            <option key={repo.id} value={repo.name}>
+                              {repo.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <div className="text-[10.5px] text-outline font-semibold bg-surface-container p-3 rounded-lg border border-outline-variant">
+                        No connected GitHub repositories found. Ensure you logged in with GitHub or link your GitHub account.
+                      </div>
+                    )}
+                  </div>
+
+                  {!selectedRepo ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border border-dashed border-outline-variant/60 rounded-xl bg-surface-container-low/10 select-none">
+                      <Github className="h-8 w-8 text-outline/65 mb-2 animate-bounce" />
+                      <p className="text-[11px] font-bold text-on-surface-variant">Select a repository</p>
+                      <p className="text-[10px] text-outline max-w-[240px] mt-0.5 leading-relaxed">
+                        Choose a GitHub repository scope to retrieve your recent commits and Pull Requests for linking.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex gap-4 overflow-hidden min-h-0">
+                      {/* Commits Column */}
+                      <Droppable droppableId="github-commits-source" isDropDisabled={true}>
+                        {(providedDroppable, snapshotDroppable) => (
+                          <div
+                            ref={providedDroppable.innerRef}
+                            {...providedDroppable.droppableProps}
+                            className="flex-1 flex flex-col bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-3 h-full overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between mb-3 shrink-0 px-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1">
+                                <GitCommit className="h-3 w-3 text-primary" /> Commits
+                              </span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 p-0.5 rounded-lg">
+                              {loadingCommits ? (
+                                <div className="flex justify-center items-center py-6">
+                                  <Loader2 className="h-4.5 w-4.5 animate-spin text-primary" />
+                                </div>
+                              ) : githubCommits && githubCommits.length > 0 ? (
+                                githubCommits.map((commit: any, index: number) => {
+                                  const draggableId = `github-link::${selectedRepo}::commit::${commit.sha}`;
+                                  const isLinked = selectedGithubLinks.some((item) => item.repoName === selectedRepo && item.linkType === "commit" && item.entityId === commit.sha);
+                                  return (
+                                    <Draggable key={commit.sha} draggableId={draggableId} index={index}>
+                                      {(providedDraggable, snapshotDraggable) => (
+                                        <div
+                                          ref={providedDraggable.innerRef}
+                                          {...providedDraggable.draggableProps}
+                                          {...providedDraggable.dragHandleProps}
+                                          style={providedDraggable.draggableProps.style as React.CSSProperties}
+                                          onClick={() => toggleGithubLink({
+                                            repoName: selectedRepo,
+                                            linkType: "commit",
+                                            entityId: commit.sha,
+                                            title: commit.message,
+                                            url: commit.url,
+                                          })}
+                                          className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${
+                                            isLinked
+                                              ? "border-primary bg-primary/[4%] shadow-sm"
+                                              : "bg-surface-container border-outline-variant"
+                                          } ${snapshotDraggable.isDragging ? "shadow-md scale-[0.98] border-primary bg-surface-container-high" : ""}`}
+                                        >
+                                          <div className="flex justify-between items-start gap-1">
+                                            <p className="text-[10.5px] font-semibold leading-snug text-on-surface break-all line-clamp-2">
+                                              {commit.message}
+                                            </p>
+                                            <div className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-all ${
+                                              isLinked
+                                                ? 'bg-primary border-primary text-on-primary'
+                                                : 'border-outline bg-surface-container-lowest'
+                                            }`}>
+                                              {isLinked && <Check className="h-2 w-2 stroke-[3.5]" />}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center justify-between mt-1 text-[8.5px] text-outline font-mono">
+                                            <span>{commit.sha.slice(0, 7)}</span>
+                                            <span>by {commit.author}</span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-center text-[10px] text-outline py-4 select-none">
+                                  No recent commits.
+                                </div>
+                              )}
+                              {providedDroppable.placeholder}
+                            </div>
+                          </div>
+                        )}
+                      </Droppable>
+
+                      {/* Pull Requests Column */}
+                      <Droppable droppableId="github-prs-source" isDropDisabled={true}>
+                        {(providedDroppable, snapshotDroppable) => (
+                          <div
+                            ref={providedDroppable.innerRef}
+                            {...providedDroppable.droppableProps}
+                            className="flex-1 flex flex-col bg-surface-container-low/40 border border-outline-variant/40 rounded-xl p-3 h-full overflow-hidden"
+                          >
+                            <div className="flex items-center justify-between mb-3 shrink-0 px-1">
+                              <span className="text-[10px] font-bold uppercase tracking-wider text-on-surface-variant flex items-center gap-1">
+                                <GitPullRequest className="h-3 w-3 text-primary" /> PRs
+                              </span>
+                            </div>
+                            <div className="flex-1 overflow-y-auto custom-scrollbar space-y-1.5 p-0.5 rounded-lg">
+                              {loadingPRs ? (
+                                <div className="flex justify-center items-center py-6">
+                                  <Loader2 className="h-4.5 w-4.5 animate-spin text-primary" />
+                                </div>
+                              ) : githubPRs && githubPRs.length > 0 ? (
+                                githubPRs.map((pr: any, index: number) => {
+                                  const draggableId = `github-link::${selectedRepo}::pr::${pr.number}`;
+                                  const isLinked = selectedGithubLinks.some((item) => item.repoName === selectedRepo && item.linkType === "pr" && item.entityId === pr.number);
+                                  return (
+                                    <Draggable key={pr.number} draggableId={draggableId} index={index}>
+                                      {(providedDraggable, snapshotDraggable) => (
+                                        <div
+                                          ref={providedDraggable.innerRef}
+                                          {...providedDraggable.draggableProps}
+                                          {...providedDraggable.dragHandleProps}
+                                          style={providedDraggable.draggableProps.style as React.CSSProperties}
+                                          onClick={() => toggleGithubLink({
+                                            repoName: selectedRepo,
+                                            linkType: "pr",
+                                            entityId: pr.number,
+                                            title: pr.title,
+                                            url: pr.url,
+                                          })}
+                                          className={`p-2 border rounded-lg hover:border-primary/50 cursor-pointer select-none transition-all text-left group ${
+                                            isLinked
+                                              ? "border-primary bg-primary/[4%] shadow-sm"
+                                              : "bg-surface-container border-outline-variant"
+                                          } ${snapshotDraggable.isDragging ? "shadow-md scale-[0.98] border-primary bg-surface-container-high" : ""}`}
+                                        >
+                                          <div className="flex justify-between items-start gap-1">
+                                            <p className="text-[10.5px] font-semibold leading-snug text-on-surface break-words line-clamp-2">
+                                              {pr.title}
+                                            </p>
+                                            <div className={`h-3.5 w-3.5 rounded border shrink-0 flex items-center justify-center transition-all ${
+                                              isLinked
+                                                ? 'bg-primary border-primary text-on-primary'
+                                                : 'border-outline bg-surface-container-lowest'
+                                            }`}>
+                                              {isLinked && <Check className="h-2 w-2 stroke-[3.5]" />}
+                                            </div>
+                                          </div>
+                                          <div className="flex items-center justify-between mt-1 text-[8.5px] text-outline">
+                                            <span>#{pr.number} ({pr.state})</span>
+                                            <span>by {pr.user}</span>
+                                          </div>
+                                        </div>
+                                      )}
+                                    </Draggable>
+                                  );
+                                })
+                              ) : (
+                                <div className="text-center text-[10px] text-outline py-4 select-none">
+                                  No pull requests.
+                                </div>
+                              )}
+                              {providedDroppable.placeholder}
+                            </div>
                           </div>
                         )}
                       </Droppable>
                     </div>
-                  ))}
+                  )}
                 </div>
               )}
             </div>

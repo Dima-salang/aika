@@ -426,6 +426,7 @@ export default function Dashboard() {
       projectId: evidenceData.projectId,
       title: evidenceData.title,
       description: evidenceData.description || runningTimer?.description || "Timer-logged hours",
+      githubLinks: evidenceData.githubLinks,
     });
   };
 
@@ -445,6 +446,7 @@ export default function Dashboard() {
           taskIds: data.taskIds,
           evidence: data.evidence,
           isPublic: data.isPublic,
+          githubLinks: data.githubLinks,
         },
       });
     } else {
@@ -460,6 +462,7 @@ export default function Dashboard() {
         taskIds: data.taskIds,
         evidence: data.evidence,
         isPublic: data.isPublic,
+        githubLinks: data.githubLinks,
       });
     }
   };
