@@ -10,6 +10,12 @@ export const auth = betterAuth({
     provider: isSQLite ? "sqlite" : "pg",
     schema: schema,
   }),
+  account: {
+    accountLinking: {
+      enabled: true,
+      allowDifferentEmails: true,
+    },
+  },
   pages: {
     signIn: "/auth",
     error: "/auth",
