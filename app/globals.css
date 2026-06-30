@@ -360,3 +360,18 @@
   animation-timeline: view();
   animation-range: entry 0% cover 25%;
 }
+
+/* Ensure select option dropdowns are readable in both light and dark mode */
+select {
+  color: var(--on-surface) !important;
+}
+
+select option {
+  background-color: var(--surface-container-high, #ffffff);
+  color: var(--on-surface, #000000);
+}
+
+.dark select option {
+  background-color: var(--surface-container-highest, #1a1a1f);
+  color: var(--on-surface, #ffffff);
+}

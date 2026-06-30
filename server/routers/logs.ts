@@ -21,6 +21,7 @@ import { LogQueryService, DetailedTimeLog } from "@/services/core/LogQueryServic
 import { TimerService } from "@/services/core/TimerService";
 import { StorageService } from "@/services/integrations/StorageService";
 import { NotionTimeLogObserver } from "@/services/core/NotionTimeLogObserver";
+import { githubService } from "@/services/integrations/GitHubService";
 
 const auditService = new AuditService();
 const taskService = new TaskService();
@@ -209,7 +210,8 @@ export const logsRouter = router({
           undefined,
           undefined,
           input.projectId,
-          input.title
+          input.title,
+          input.githubLinks
         );
       } catch (error) {
         handleDbError(error);
@@ -265,6 +267,27 @@ export const logsRouter = router({
       }
     }),
 
+  disconnectGithub: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .mutation(async ({ input }) => {
+      try {
+        const { db } = await import("@/db");
+        const { eq, and } = await import("drizzle-orm");
+        const { tables } = await import("@/db/tables");
+
+        const accountsTable = tables.account;
+
+        await db.delete(accountsTable)
+          .where(and(
+            eq(accountsTable.userId, input.userId),
+            eq(accountsTable.providerId, "github")
+        ));
+        return { success: true };
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
   resetNotionDatabase: publicProcedure
     .input(z.object({ userId: z.string() }))
     .mutation(async ({ input }) => {
@@ -287,6 +310,36 @@ export const logsRouter = router({
             .where(eq(user.id, input.userId));
         }
         return { success: true };
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
+  getGitHubUserRepos: publicProcedure
+    .input(z.object({ userId: z.string() }))
+    .query(async ({ input }) => {
+      try {
+        return await githubService.getRepos(input.userId);
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
+  getGitHubRepoCommits: publicProcedure
+    .input(z.object({ userId: z.string(), repoName: z.string() }))
+    .query(async ({ input }) => {
+      try {
+        return await githubService.getCommits(input.userId, input.repoName);
+      } catch (error) {
+        handleDbError(error);
+      }
+    }),
+
+  getGitHubRepoPRs: publicProcedure
+    .input(z.object({ userId: z.string(), repoName: z.string() }))
+    .query(async ({ input }) => {
+      try {
+        return await githubService.getPullRequests(input.userId, input.repoName);
       } catch (error) {
         handleDbError(error);
       }

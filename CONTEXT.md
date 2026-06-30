@@ -27,3 +27,7 @@ Client-side persisted state of an in-progress time log form, preserved using a Z
 ## Evidence Batching
 Parallel uploading of multiple files and bulk deletion of stored assets in a single request to minimize latency and network overhead.
 
+## GitHub Link
+A reference to a specific GitHub commit or Pull Request associated with a Time Log to provide direct, verifiable code context for the logged hours.
+
+

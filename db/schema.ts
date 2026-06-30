@@ -224,6 +224,20 @@ export const documentEvidences = pgTable("document_evidences", {
     index("idx_document_evidences_log_id").on(table.time_log_id),
 ]);
 
+// Time Log GitHub Links
+export const timeLogGithubLinks = pgTable("time_log_github_links", {
+    id: text("id").primaryKey(),
+    time_log_id: text("time_log_id").notNull().references(() => timeLogs.id),
+    repo_name: text("repo_name").notNull(),
+    link_type: text("link_type").notNull(), // 'commit' | 'pr'
+    entity_id: text("entity_id").notNull(),  // SHA hash or PR number
+    title: text("title").notNull(),
+    url: text("url").notNull(),
+    created_at: timestamp("created_at").notNull().defaultNow(),
+}, (table) => [
+    index("idx_github_links_log").on(table.time_log_id),
+]);
+
 // Notifications
 export const notifications = pgTable("notifications", {
     id: text("id").primaryKey(),
@@ -522,6 +536,20 @@ export const documentEvidencesSqlite = sqliteTable("document_evidences", {
     sqliteIndex("idx_document_evidences_log_id_sqlite").on(table.time_log_id),
 ]);
 
+// Time Log GitHub Links (SQLite)
+export const timeLogGithubLinksSqlite = sqliteTable("time_log_github_links", {
+    id: sqliteText("id").primaryKey(),
+    time_log_id: sqliteText("time_log_id").notNull().references(() => timeLogsSqlite.id),
+    repo_name: sqliteText("repo_name").notNull(),
+    link_type: sqliteText("link_type").notNull(), // 'commit' | 'pr'
+    entity_id: sqliteText("entity_id").notNull(),
+    title: sqliteText("title").notNull(),
+    url: sqliteText("url").notNull(),
+    created_at: sqliteInteger("created_at", { mode: "timestamp" }).notNull().defaultNow(),
+}, (table) => [
+    sqliteIndex("idx_github_links_log_sqlite").on(table.time_log_id),
+]);
+
 // Notifications
 export const notificationsSqlite = sqliteTable("notifications", {
     id: sqliteText("id").primaryKey(),
@@ -638,6 +666,8 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type NewAuditLog = typeof auditLogs.$inferInsert;
 export type Comment = typeof comments.$inferSelect;
 export type NewComment = typeof comments.$inferInsert;
+export type TimeLogGithubLink = typeof timeLogGithubLinks.$inferSelect;
+export type NewTimeLogGithubLink = typeof timeLogGithubLinks.$inferInsert;
 
 // SQLite Types (for local test suites)
 export type UserSqlite = typeof userSqlite.$inferSelect;
@@ -684,6 +714,8 @@ export type JoinRequestSqlite = typeof joinRequestsSqlite.$inferSelect;
 export type NewJoinRequestSqlite = typeof joinRequestsSqlite.$inferInsert;
 export type CommentSqlite = typeof commentsSqlite.$inferSelect;
 export type NewCommentSqlite = typeof commentsSqlite.$inferInsert;
+export type TimeLogGithubLinkSqlite = typeof timeLogGithubLinksSqlite.$inferSelect;
+export type NewTimeLogGithubLinkSqlite = typeof timeLogGithubLinksSqlite.$inferInsert;
 
 // ==========================================
 // 4. ZOD SCHEMA SCHEMAS
@@ -818,6 +850,14 @@ export const evidenceInputSchema = z.object({
   mimeType: z.string(),
 });
 
+export const githubLinkInputSchema = z.object({
+  repoName: z.string(),
+  linkType: z.enum(["commit", "pr"]),
+  entityId: z.string(),
+  title: z.string(),
+  url: z.string().url(),
+});
+
 export const createLogInputZodSchema = z.object({
   userId: z.string(),
   organizationId: z.string(),
@@ -830,6 +870,7 @@ export const createLogInputZodSchema = z.object({
   taskIds: z.array(z.string()).optional(),
   evidence: z.array(evidenceInputSchema).optional().default([]),
   isPublic: z.boolean().optional(),
+  githubLinks: z.array(githubLinkInputSchema).optional().default([]),
 });
 
 export const updateLogInputZodSchema = z.object({
@@ -843,6 +884,7 @@ export const updateLogInputZodSchema = z.object({
   taskIds: z.array(z.string()).optional(),
   evidence: z.array(evidenceInputSchema).optional(),
   isPublic: z.boolean().optional(),
+  githubLinks: z.array(githubLinkInputSchema).optional(),
 });
 
 export const readLogZodSchema = z.object({
@@ -874,9 +916,21 @@ export const readLogZodSchema = z.object({
       deleted_at: z.coerce.date().nullable(),
     })
   ),
+  githubLinks: z.array(
+    z.object({
+      id: z.string(),
+      time_log_id: z.string(),
+      repo_name: z.string(),
+      link_type: z.string(),
+      entity_id: z.string(),
+      title: z.string(),
+      url: z.string(),
+      created_at: z.coerce.date(),
+    })
+  ).optional().default([]),
 });
 
-export type CreateLogInput = Omit<z.infer<typeof createLogInputZodSchema>, "title"> & { title?: string };
+export type CreateLogInput = Omit<z.infer<typeof createLogInputZodSchema>, "title" | "githubLinks"> & { title?: string; githubLinks?: z.infer<typeof githubLinkInputSchema>[] };
 export type UpdateLogInput = Omit<z.infer<typeof updateLogInputZodSchema>, "title"> & { title?: string };
 export type ReadLog = z.infer<typeof readLogZodSchema>;
 
@@ -1041,6 +1095,7 @@ export const stopTimerInputZodSchema = z.object({
   projectId: z.string().nullable().optional(),
   title: z.string().optional(),
   description: z.string().optional(),
+  githubLinks: z.array(githubLinkInputSchema).optional().default([]),
 });
 
 export const getPersonalReportInputZodSchema = z.object({
