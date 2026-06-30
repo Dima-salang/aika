@@ -134,7 +134,7 @@ export function ActivityLogItem({
   return (
     <div 
       onClick={() => onSelect?.(log)}
-      className="relative pl-12 group animate-in fade-in duration-300"
+      className="relative pl-12 group animate-in fade-in duration-300 scroll-fade-item"
     >
       {/* Timeline Dot */}
       <div className="absolute left-[13px] top-4 h-3.5 w-3.5 rounded-full border-2 border-outline-variant bg-surface group-hover:border-primary transition-colors flex items-center justify-center">
