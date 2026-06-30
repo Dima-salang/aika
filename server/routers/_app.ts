@@ -159,7 +159,7 @@ const baseRouter = router({
 
       const isSelf = input.userId === input.callerId;
 
-      const [targetUser, callerUser, orgLink, teamLink] = await Promise.all([
+      const [targetUser, callerUser, orgLink, teamLink, githubLink] = await Promise.all([
         // get target user
         db
           .select()
@@ -226,6 +226,13 @@ const baseRouter = router({
               )
               .limit(1)
               .then((r) => r[0]),
+        // check if GitHub is linked
+        db
+          .select({ id: tables.account.id })
+          .from(tables.account)
+          .where(and(eq(tables.account.userId, input.userId), eq(tables.account.providerId, "github")))
+          .limit(1)
+          .then((r) => r[0] || null),
       ]);
 
       if (!targetUser) {
@@ -274,6 +281,7 @@ const baseRouter = router({
         },
         canViewPrivateData,
         evidence,
+        isGithubConnected: !!githubLink,
       };
     }),
 
