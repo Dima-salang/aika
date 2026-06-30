@@ -80,7 +80,7 @@ export function TimeLogCard({
   return (
     <div
       onClick={() => onSelect?.(log)}
-      className="glass-card rounded-xl p-unit-4 flex flex-col justify-between hover:border-primary/60 hover:shadow-lg transition-all group relative cursor-pointer min-h-[190px] border border-outline-variant/40"
+      className="glass-card rounded-xl p-unit-4 flex flex-col justify-between hover:border-primary/60 hover:shadow-lg transition-all group relative cursor-pointer min-h-[190px] border border-outline-variant/40 scroll-fade-item"
     >
       {/* Top row: Project Badge + Actions */}
       <div className="flex items-center justify-between mb-unit-3 gap-2">

@@ -171,15 +171,17 @@ export default function Dashboard() {
   );
 
   const startTimerMutation = trpc.startTimer.useMutation({
-    onSuccess: () => {
-      refetchTimer();
+    onSuccess: (data) => {
+      utils.getRunningTimer.setData({ userId }, data);
+      utils.getRunningTimer.invalidate({ userId });
       setTimerDesc("");
     },
   });
 
   const stopTimerMutation = trpc.stopTimer.useMutation({
     onSuccess: () => {
-      refetchTimer();
+      utils.getRunningTimer.setData({ userId }, null);
+      utils.getRunningTimer.invalidate({ userId });
       refetchLogs();
       refetchPaginatedLogs();
     },
@@ -205,7 +207,8 @@ export default function Dashboard() {
 
   const discardTimerMutation = trpc.discardTimer.useMutation({
     onSuccess: () => {
-      refetchTimer();
+      utils.getRunningTimer.setData({ userId }, null);
+      utils.getRunningTimer.invalidate({ userId });
     },
   });
 
