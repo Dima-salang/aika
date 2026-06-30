@@ -205,6 +205,21 @@ export class LogService {
         await tx.insert(tables.documentEvidences).values(evidenceEntries);
       }
 
+      // Insert GitHub Links entries
+      if (parsedInput.githubLinks && parsedInput.githubLinks.length > 0) {
+        const githubLinkEntries = parsedInput.githubLinks.map((link) => ({
+          id: crypto.randomUUID(),
+          time_log_id: logId,
+          repo_name: link.repoName,
+          link_type: link.linkType,
+          entity_id: link.entityId,
+          title: link.title,
+          url: link.url,
+          created_at: new Date(),
+        }));
+        await tx.insert(tables.timeLogGithubLinks).values(githubLinkEntries);
+      }
+
       // Record Audit Log
       await this.auditService.createAuditLog(
         parsedInput.userId,
@@ -378,6 +393,24 @@ export class LogService {
 
         // queue files for deletion from storage providers
         filesToDelete = deletedFiles.map((file) => file.file_url);
+      }
+
+      // sync GitHub Links entries
+      if (parsedInput.githubLinks !== undefined) {
+        await tx.delete(tables.timeLogGithubLinks).where(eq(tables.timeLogGithubLinks.time_log_id, logId));
+        if (parsedInput.githubLinks.length > 0) {
+          const githubLinkEntries = parsedInput.githubLinks.map((link) => ({
+            id: crypto.randomUUID(),
+            time_log_id: logId,
+            repo_name: link.repoName,
+            link_type: link.linkType,
+            entity_id: link.entityId,
+            title: link.title,
+            url: link.url,
+            created_at: new Date(),
+          }));
+          await tx.insert(tables.timeLogGithubLinks).values(githubLinkEntries);
+        }
       }
 
       // Record Audit Log

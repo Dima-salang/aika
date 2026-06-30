@@ -9,6 +9,7 @@ export interface DetailedTimeLog extends Omit<TimeLog | TimeLogSqlite, "deleted_
   deleted_at: Date | null;
   tasks: string[];
   evidence: unknown[];
+  githubLinks?: unknown[];
   duration: number;
 }
 
@@ -32,6 +33,7 @@ export interface TimelineLog {
   is_public: boolean;
   tasks: Array<{ id: string; title: string }>;
   evidence: unknown[];
+  githubLinks: unknown[];
 }
 
 export class LogQueryService {
@@ -46,12 +48,13 @@ export class LogQueryService {
     if (!log) return null;
 
     const hydration = await TimeLogHydrator.hydrateRelations([logId], tx);
-    const rel = hydration[logId] || { tasks: [], evidence: [] };
+    const rel = hydration[logId] || { tasks: [], evidence: [], githubLinks: [] };
 
     return {
       ...log,
       tasks: rel.tasks.map((t) => t.id),
       evidence: rel.evidence,
+      githubLinks: rel.githubLinks,
     } as DetailedTimeLog;
   }
 
@@ -157,11 +160,12 @@ export class LogQueryService {
     const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
 
     return logs.map((log) => {
-      const rel = hydration[log.id] || { tasks: [], evidence: [] };
+      const rel = hydration[log.id] || { tasks: [], evidence: [], githubLinks: [] };
       return {
         ...log,
         tasks: rel.tasks.map((t) => t.id),
         evidence: rel.evidence,
+        githubLinks: rel.githubLinks,
       };
     }) as DetailedTimeLog[];
   }
@@ -322,11 +326,12 @@ export class LogQueryService {
     const hydration = await TimeLogHydrator.hydrateRelations(logIds, tx);
 
     return logs.map((log) => {
-      const rel = hydration[log.id] || { tasks: [], evidence: [] };
+      const rel = hydration[log.id] || { tasks: [], evidence: [], githubLinks: [] };
       return {
         ...log,
         tasks: rel.tasks,
         evidence: rel.evidence,
+        githubLinks: rel.githubLinks,
       };
     }) as TimelineLog[];
   }

@@ -6,6 +6,14 @@ import { AuditService } from "./AuditService";
 import { LogService } from "./LogService";
 import { Timer, TimerSqlite, TimeLog, TimeLogSqlite } from "@/db/schema";
 
+const githubLinkInputSchema = z.object({
+  repoName: z.string(),
+  linkType: z.enum(["commit", "pr"]),
+  entityId: z.string(),
+  title: z.string(),
+  url: z.string().url(),
+});
+
 const stopTimerSchema = z.object({
   userId: z.string(),
   organizationId: z.string(),
@@ -23,6 +31,7 @@ const stopTimerSchema = z.object({
   description: z.string().optional(),
   projectId: z.string().nullable().optional(),
   title: z.string().optional(),
+  githubLinks: z.array(githubLinkInputSchema).optional().default([]),
 });
 
 export class TimerService {
@@ -107,7 +116,8 @@ export class TimerService {
     ipAddress?: string,
     userAgent?: string,
     projectId?: string | null,
-    title?: string
+    title?: string,
+    githubLinks?: any[]
   ): Promise<TimeLog | TimeLogSqlite> {
     const parsed = stopTimerSchema.parse({
       userId,
@@ -118,6 +128,7 @@ export class TimerService {
       description,
       projectId,
       title,
+      githubLinks,
     });
 
     const active = await this.getRunningTimer(parsed.userId);
@@ -144,6 +155,7 @@ export class TimerService {
           description: parsed.description || active.description || "Logged via active running timer.",
           taskIds: parsed.taskIds,
           evidence: parsed.evidence,
+          githubLinks: parsed.githubLinks,
         },
         ipAddress,
         userAgent,

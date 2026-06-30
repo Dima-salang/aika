@@ -20,14 +20,26 @@ export interface HydratedTask {
   status: string;
 }
 
+export interface HydratedGitHubLink {
+  id: string;
+  time_log_id: string;
+  repo_name: string;
+  link_type: string;
+  entity_id: string;
+  title: string;
+  url: string;
+  created_at: Date;
+}
+
 export interface HydratedRelations {
   tasks: HydratedTask[];
   evidence: HydratedEvidence[];
+  githubLinks: HydratedGitHubLink[];
 }
 
 export class TimeLogHydrator {
   /**
-   * Bulk hydrator to batch fetch tasks and evidence records in memory for a given set of log IDs.
+   * Bulk hydrator to batch fetch tasks, evidence, and GitHub link records in memory for a given set of log IDs.
    */
   static async hydrateRelations(
     logIds: string[],
@@ -38,7 +50,7 @@ export class TimeLogHydrator {
 
     // Initialize map
     for (const logId of logIds) {
-      mapping[logId] = { tasks: [], evidence: [] };
+      mapping[logId] = { tasks: [], evidence: [], githubLinks: [] };
     }
 
     // 1. Fetch evidence in a single query
@@ -72,7 +84,14 @@ export class TimeLogHydrator {
         )
       );
 
-    // Map evidence and tasks in memory
+    // 3. Fetch GitHub links in a single query
+    const githubLinksTable = tables.timeLogGithubLinks;
+    const githubLinksList = await tx
+      .select()
+      .from(githubLinksTable)
+      .where(inArray(githubLinksTable.time_log_id, logIds));
+
+    // Map evidence, tasks, and GitHub links in memory
     evidenceList.forEach((ev) => {
       if (mapping[ev.time_log_id]) {
         mapping[ev.time_log_id].evidence.push(ev as HydratedEvidence);
@@ -86,6 +105,12 @@ export class TimeLogHydrator {
           title: t.title,
           status: t.status,
         });
+      }
+    });
+
+    githubLinksList.forEach((gl) => {
+      if (mapping[gl.time_log_id]) {
+        mapping[gl.time_log_id].githubLinks.push(gl as HydratedGitHubLink);
       }
     });
 
