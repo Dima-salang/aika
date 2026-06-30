@@ -930,7 +930,7 @@ export const readLogZodSchema = z.object({
   ).optional().default([]),
 });
 
-export type CreateLogInput = Omit<z.infer<typeof createLogInputZodSchema>, "title"> & { title?: string };
+export type CreateLogInput = Omit<z.infer<typeof createLogInputZodSchema>, "title" | "githubLinks"> & { title?: string; githubLinks?: z.infer<typeof githubLinkInputSchema>[] };
 export type UpdateLogInput = Omit<z.infer<typeof updateLogInputZodSchema>, "title"> & { title?: string };
 export type ReadLog = z.infer<typeof readLogZodSchema>;
 
