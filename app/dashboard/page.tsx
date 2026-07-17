@@ -100,7 +100,7 @@ export default function Dashboard() {
   );
 
   const { data: tasks } = trpc.getTasks.useQuery(
-    { userId },
+    { userId, pagination: { limit: 1000, offset: 0 } },
     { enabled: !!userId }
   );
 
