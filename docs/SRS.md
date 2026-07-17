@@ -236,11 +236,12 @@ Note: Duration is always computed from end time minus start time. It is never st
 
 ### FR-21 Document Evidence Storage Rules
 
-- Images stored in Cloudinary; non-image documents stored in Supabase Object Storage
-- Files organized by organization and user under the `evidences` bucket
-- Document Evidence cannot be reused across logs
-- The system shall support parallel uploading of multiple evidence files up to the file size limit.
-- The system shall support deleting multiple files in a single batch to minimize network requests.
+- Images are stored in Cloudinary; non-image documents are stored in Supabase Object Storage.
+- Files are organized by organization and user under the `evidences` bucket or Cloudinary root.
+- Document Evidence cannot be reused across logs.
+- The system supports parallel uploading of multiple evidence files.
+- The system supports deleting multiple files in a single batch to minimize network requests.
+- When time logs are deleted or evidence is detached, the corresponding files in Cloudinary or Supabase Object Storage are physically deleted to prevent storage accumulation.
 
 ---
 
@@ -403,6 +404,11 @@ The system shall log the following mutation events only (reads/page views are NO
 - Aika will sync the logs from the dashboard to the database, and the user can view the logs in the Notion database.
 - Users can disconnect Notion at any time via a confirmation modal.
 
+### FR-36.1 GitHub Integration
+- Users shall be able to link specific GitHub commits and Pull Requests (PRs) directly to their Time Logs in the time log dialog.
+- The system shall reuse the authentication credentials populated by Better Auth's GitHub OAuth provider (no separate token configuration needed).
+- Linked commits and PRs are stored in a structured relational database schema (`time_log_github_links`) referencing repository path, commit hash (SHA), or PR details to maintain integrity.
+
 ---
 
 # 3.12 Import & Export Capabilities
@@ -538,7 +544,7 @@ Soft delete behavior:
 - **Projects** — Tasks under a deleted project are unassigned from the project (not deleted). Time logs on those tasks are unaffected.
 - **Teams** — Team becomes "deleted." Members lose access. Members' personal tasks and time logs are preserved in their personal history but are no longer visible under the team context. Team invitation links become invalid.
 - **Users (deactivated by admin)** — User cannot log in. All personal data (tasks, time logs, evidence) is preserved and remains visible to leaders and admins in reports.
-- **Document Evidence** — Files remain stored in ImageKit/Cloudinary. The attachment reference is marked deleted. Files are never physically deleted from storage.
+- **Document Evidence** — The attachment reference is marked deleted, and the corresponding physical files are deleted from Cloudinary or Supabase Object Storage to free up space.
 
 Constraints:
 

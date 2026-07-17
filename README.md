@@ -19,16 +19,22 @@ Aika is designed around a multi-tenant workspace architecture with a clear hiera
 
 ---
 
-## 🛠️ Tech Stack
+## 🛠️ Tech Stack & Integrations
 
 Aika uses a modern, type-safe stack optimized for developer experience and performance:
 
 *   **Framework**: [Next.js 16 (App Router)](https://nextjs.org/)
 *   **Language**: [TypeScript](https://www.typescriptlang.org/)
 *   **API & State**: [tRPC (v11)](https://trpc.io/) & [TanStack React Query (v5)](https://tanstack.com/query)
-*   **Authentication**: [Better Auth](https://www.better-auth.com/)
+*   **Authentication**: [Better Auth](https://www.better-auth.com/) (with GitHub and Google OAuth)
 *   **Database**: [Drizzle ORM](https://orm.drizzle.team/) with SQLite / PostgreSQL support
-*   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & [Base UI](https://base-ui.com/)
+*   **Storage Providers**:
+    *   **Cloudinary**: Optimized hosting, scaling, and transformation of image assets.
+    *   **Supabase Object Storage**: Cost-effective general document hosting (PDFs, Zip, Office files).
+*   **Integrations**:
+    *   **GitHub**: Repository, commit, and Pull Request (PR) linking directly to time logs.
+    *   **Notion**: Sync tasks and time records.
+*   **Styling**: [Tailwind CSS v4](https://tailwindcss.com/) & [Base UI](https://base-ui.com/) with a Linear-inspired minimalistic aesthetic.
 *   **Observability**: [Sentry Next.js SDK](https://sentry.io/)
 *   **Package Manager & Runner**: [Bun](https://bun.sh/)
 
@@ -38,14 +44,14 @@ Aika uses a modern, type-safe stack optimized for developer experience and perfo
 
 ```text
 ├── app/                  # Next.js App Router (pages, layouts, api/trpc, auth routes)
-├── components/           # Reusable UI component library (shadcn, auth, dashboards)
+├── components/           # Reusable UI component library structured by domain
 ├── db/                   # Database client configurations, schemas, and seeding
 ├── docs/                 # Documentation (ADRs, system design guides)
 ├── drizzle/              # Generated migrations and schemas
 ├── env/                  # Schema-validated environment variable setups
 ├── lib/                  # Auth clients, helper utility libraries, wrappers
 ├── server/               # tRPC routers, context initialization, and controllers
-├── services/             # Core business logic / services layer
+├── services/             # Core business logic / services layer structured by domain
 └── utils/                # General utility helper functions
 ```
 
@@ -64,15 +70,32 @@ Clone the `.env.example` file (or update your local `.env`) and provide the requ
 
 ```ini
 # Database configuration
-DATABASE_URL="file:aika.db"
-
-# Supabase configuration
-SUPABASE_URL="https://your-project.supabase.co"
-SUPABASE_ANON_KEY="your-anon-key"
+DATABASE_URL="postgresql://username:password@host:port/database"
 
 # Better Auth setup
 BETTER_AUTH_SECRET="your-32-byte-secret"
 BETTER_AUTH_URL="http://localhost:3020"
+
+# Third-Party OAuth & SSO
+GITHUB_CLIENT_ID="your-github-client-id"
+GITHUB_CLIENT_SECRET="your-github-client-secret"
+GOOGLE_CLIENT_ID="your-google-client-id"
+GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+# Supabase Storage Configuration
+SUPABASE_URL="https://your-project.supabase.co"
+SUPABASE_ANON_KEY="your-anon-key"
+SUPABASE_SERVICE_ROLE_KEY="your-service-role-key"
+
+# Cloudinary Media Configuration
+CLOUDINARY_CLOUD_NAME="your-cloud-name"
+CLOUDINARY_API_KEY="your-api-key"
+CLOUDINARY_API_SECRET="your-api-secret"
+
+# Notion Integration
+NOTION_CLIENT_ID="your-notion-client-id"
+NOTION_CLIENT_SECRET="your-notion-client-secret"
+NOTION_REDIRECT_URI="http://localhost:3020/api/integrations/callback/notion"
 
 # Sentry Token (Optional)
 SENTRY_AUTH_TOKEN="your-sentry-token"
@@ -96,7 +119,7 @@ Start the Next.js development server:
 ```bash
 bun dev
 ```
-Open [http://localhost:3000](http://localhost:3000) to view Aika.
+Open [http://localhost:3020](http://localhost:3020) to view Aika.
 
 ---
 

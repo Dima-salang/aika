@@ -111,6 +111,7 @@ The platform aims to achieve the following objectives:
 ### Third-Party & Data Integrations
 
 - Notion task integration via OAuth
+- GitHub repository, commit, and PR linking via Better Auth OAuth
 - Excel/CSV import and exporting of task/time log reports
 
 ### Rich Text & Shared Access
@@ -369,7 +370,7 @@ Soft delete behavior:
 - **Projects** — Tasks under a deleted project are unassigned from the project (not deleted). Time logs on those tasks are unaffected.
 - **Teams** — Team becomes "deleted." Members lose access. Members' personal tasks and time logs are preserved in their personal history but are no longer visible under the team context. Team invitation links become invalid.
 - **Users (deactivated by admin)** — User cannot log in. All personal data (tasks, time logs, evidence) is preserved and remains visible to leaders and admins in reports.
-- **Document Evidence** — Files remain stored in Cloudinary or Supabase Object Storage. The attachment reference is marked deleted. Files are never physically deleted from storage.
+- **Document Evidence** — The attachment reference is marked deleted, and the corresponding physical files are deleted from Cloudinary or Supabase Object Storage to free up space.
 
 Constraints:
 
