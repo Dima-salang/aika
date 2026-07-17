@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { useLayoutStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -43,18 +43,11 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     { organizationId, teamId: activeTeamId }
   );
 
+  const queryKey = { userId, pagination: { limit: 1000, offset: 0 } } as const;
+
   const { data: tasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
-    { userId, pagination: { limit: 1000, offset: 0 } }
+    queryKey
   );
-
-  const [localTasks, setLocalTasks] = useState<any[]>([]);
-  const [loadingTaskIds, setLoadingTaskIds] = useState<string[]>([]);
-
-  React.useEffect(() => {
-    if (tasks) {
-      setLocalTasks(tasks);
-    }
-  }, [tasks]);
 
   const { data: users } = trpc.admin.getUsers.useQuery();
 
@@ -65,10 +58,10 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
       setIsNewProjectOpen(false);
       setNewProjectName("");
       setNewProjectDesc("");
-      toast.success("Project instantiated successfully!");
+      toast.success("Project created successfully!");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to create project.");
+      toast.error("Failed to create project.");
     }
   });
 
@@ -78,42 +71,128 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
       if (selectedProjectId) {
         setSelectedProjectId(projects?.[0]?.id || "");
       }
-      toast.success("Project archived successfully!");
+      toast.success("Project deleted successfully!");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to archive project.");
+      toast.error("Failed to delete project.");
     }
   });
 
   const createTask = trpc.createTask.useMutation({
-    onSuccess: () => {
-      utils.invalidate();
-      setIsNewTaskOpen(false);
-      resetTaskForm();
-      toast.success("Task backlog item created!");
+    onMutate: async (newTaskInput) => {
+      await utils.getTasks.cancel(queryKey);
+      const previousTasks = utils.getTasks.getData(queryKey);
+
+      const optimisticTask = {
+        id: newTaskInput.id || crypto.randomUUID(),
+        title: newTaskInput.title,
+        description: newTaskInput.description || null,
+        status: "backlog", // Server forces backlog on creation
+        priority: newTaskInput.priority || "medium",
+        user_id: newTaskInput.user_id,
+        project_id: newTaskInput.project_id || null,
+        team_id: newTaskInput.team_id || null,
+        organization_id: newTaskInput.organization_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+        due_date: null,
+      };
+
+      utils.getTasks.setData(queryKey, (old) => {
+        if (!old) return [optimisticTask];
+        return [optimisticTask, ...old];
+      });
+
+      return { previousTasks };
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to create task.");
-    }
+    onSuccess: (serverTask) => {
+      if (serverTask) {
+        utils.getTasks.setData(queryKey, (old) => {
+          if (!old) return [serverTask];
+          const exists = old.some((t) => t.id === serverTask.id);
+          if (exists) {
+            return old.map((t) => (t.id === serverTask.id ? serverTask : t));
+          }
+          return [serverTask, ...old];
+        });
+      }
+      toast.success("Task created successfully!");
+    },
+    onError: (err, newTask, context) => {
+      if (context?.previousTasks) {
+        utils.getTasks.setData(queryKey, context.previousTasks);
+      }
+      toast.error("Failed to create task.");
+    },
   });
 
   const updateTask = trpc.updateTask.useMutation({
-    onSuccess: () => {
-      utils.invalidate();
+    onMutate: async (newTask) => {
+      await utils.getTasks.cancel(queryKey);
+      const previousTasks = utils.getTasks.getData(queryKey);
+
+      utils.getTasks.setData(queryKey, (old) => {
+        if (!old) return old;
+        return old.map((t) => {
+          if (t.id === newTask.id) {
+            const updated: any = { ...t };
+            Object.keys(newTask).forEach((key) => {
+              const val = (newTask as any)[key];
+              updated[key] = val instanceof Date ? val.toISOString() : val;
+            });
+            return updated;
+          }
+          return t;
+        });
+      });
+
+      return { previousTasks };
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to update task.");
-    }
+    onSuccess: (serverTask) => {
+      if (serverTask) {
+        utils.getTasks.setData(queryKey, (old) => {
+          if (!old) return old;
+          return old.map((t) => (t.id === serverTask.id ? serverTask : t));
+        });
+      }
+      toast.success("Task updated successfully!");
+    },
+    onError: (err, newTask, context) => {
+      if (context?.previousTasks) {
+        utils.getTasks.setData(queryKey, context.previousTasks);
+      }
+      toast.error("Failed to update task.");
+    },
   });
 
   const deleteTask = trpc.deleteTask.useMutation({
-    onSuccess: () => {
-      utils.invalidate();
+    onMutate: async (variables) => {
+      await utils.getTasks.cancel(queryKey);
+      const previousTasks = utils.getTasks.getData(queryKey);
+
+      utils.getTasks.setData(queryKey, (old) => {
+        if (!old) return [];
+        return old.filter((t) => t.id !== variables.id);
+      });
+
+      return { previousTasks };
+    },
+    onSuccess: (serverTask) => {
+      if (serverTask) {
+        utils.getTasks.setData(queryKey, (old) => {
+          if (!old) return [];
+          return old.filter((t) => t.id !== serverTask.id);
+        });
+      }
       toast.success("Task deleted successfully!");
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to delete task.");
-    }
+    onError: (err, variables, context) => {
+      if (context?.previousTasks) {
+        utils.getTasks.setData(queryKey, context.previousTasks);
+      }
+      toast.error("Failed to delete task.");
+    },
   });
 
   // UI State
@@ -128,7 +207,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   // Task form values
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
-  const [taskStatus, setTaskStatus] = useState<"backlog" | "todo" | "in_progress" | "done">("todo");
+  const [taskStatus, setTaskStatus] = useState<"backlog" | "todo" | "in_progress" | "done">("backlog");
   const [taskPriority, setTaskPriority] = useState<"low" | "medium" | "high">("medium");
   const [taskAssignee, setTaskAssignee] = useState("");
 
@@ -274,69 +353,61 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
           }
         });
       } else {
-        await createTask.mutateAsync(payload);
+        await createTask.mutateAsync(payload, {
+          onSuccess: () => {
+            setIsNewTaskOpen(false);
+            resetTaskForm();
+            toast.success("Task backlog item created!");
+          }
+        });
       }
     } catch (err: any) {
-      setFormError(err.message || "Failed to submit task. Please check parameters.");
+      setFormError("Failed to submit task. Please check parameters.");
     }
   };
 
-  const onDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId } = result;
-    if (!destination) return;
+const onDragEnd = async (result: DropResult) => {
+  const { destination, source, draggableId } = result;
+  if (!destination) return;
 
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
+  if (
+    destination.droppableId === source.droppableId &&
+    destination.index === source.index
+  ) {
+    return;
+  }
 
-    // Disallow drags while another drag update is in progress
-    if (loadingTaskIds.length > 0) return;
+  const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
+  const task = tasks?.find((t: any) => t.id === draggableId);
 
-    const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
-    const task = localTasks?.find((t: any) => t.id === draggableId);
+  if (task && task.status !== newStatus) {
+    // 1. Cancel active refetches so they don't break our state mid-drag
+    await utils.getTasks.cancel(queryKey);
 
-    if (task && task.status !== newStatus) {
-      const previousStatus = task.status;
-
-      setLoadingTaskIds((prev) => [...prev, draggableId]);
-
-      setLocalTasks((prevTasks) =>
-        prevTasks.map((t) =>
-          t.id === draggableId ? { ...t, status: newStatus } : t
-        )
+    // 2. Optimistically paint the UI immediately
+    utils.getTasks.setData(queryKey, (old: any) => {
+      if (!old) return old;
+      return old.map((t: any) =>
+        t.id === draggableId ? { ...t, status: newStatus } : t
       );
+    });
 
-      try {
-        await updateTask.mutateAsync({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          status: newStatus,
-          priority: (task.priority || "medium") as any,
-          user_id: task.user_id,
-          organization_id: task.organization_id,
-          project_id: task.project_id,
-          team_id: task.team_id,
-        });
-        toast.info(`Task status updated to ${newStatus}!`);
+    // 3. Fire-and-forget the update safely
+    updateTask.mutate({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: newStatus,
+      priority: (task.priority || "medium") as any,
+      user_id: task.user_id,
+      organization_id: task.organization_id,
+      project_id: task.project_id,
+      team_id: task.team_id,
+    });
 
-        // Invalidate the cache to ensure the server truth matches our optimistic update
-        await utils.invalidate();
-      } catch (err: any) {
-        setLocalTasks((prevTasks) =>
-          prevTasks.map((t) =>
-            t.id === draggableId ? { ...t, status: previousStatus } : t
-          )
-        );
-        toast.error(err.message || "Failed to update task status.");
-      } finally {
-        setLoadingTaskIds((prev) => prev.filter((id) => id !== draggableId));
-      }
-    }
-  };
+    toast.info(`Task status updated to ${newStatus}!`);
+  }
+};
 
   // Select active project if none selected yet
   const activeProjects = projects?.filter((p: any) => !p.deleted_at) || [];
@@ -344,7 +415,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   const currentProject = projects?.find((p: any) => p.id === currentProjectId);
 
   // Filter tasks for active project
-  const projectTasks = localTasks?.filter((t: any) => {
+  const projectTasks = tasks?.filter((t: any) => {
     if (t.project_id !== currentProjectId) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
     return true;
@@ -615,7 +686,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                   ))
                                 ) : (
                                   col.tasks.map((task: any, index: number) => (
-                                    <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={loadingTaskIds.length > 0}>
+                                    <Draggable key={task.id} draggableId={task.id} index={index}>
                                       {(providedDraggable, snapshotDraggable) => (
                                         <div
                                           ref={providedDraggable.innerRef}
@@ -625,7 +696,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                           className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${snapshotDraggable.isDragging
                                             ? "border-primary bg-surface-container-high shadow-lg"
                                             : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
-                                            } ${loadingTaskIds.includes(task.id) ? "opacity-60 pointer-events-none cursor-wait" : ""}`}
+                                            }`}
                                           style={{
                                             ...providedDraggable.draggableProps.style,
                                           }}
@@ -633,7 +704,6 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                         >
                                           <div className="flex justify-between items-start mb-unit-1">
                                             <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''} flex items-center gap-1.5`}>
-                                              {loadingTaskIds.includes(task.id) && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
                                               {task.title}
                                             </span>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
@@ -728,7 +798,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                               ))
                             ) : (
                               backlogTasks.map((task: any, index: number) => (
-                                <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={loadingTaskIds.length > 0}>
+                                <Draggable key={task.id} draggableId={task.id} index={index}>
                                   {(providedDraggable, snapshotDraggable) => (
                                     <div
                                       ref={providedDraggable.innerRef}
@@ -738,7 +808,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                       className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${snapshotDraggable.isDragging
                                         ? "border-primary bg-surface-container-high shadow-lg"
                                         : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
-                                        } ${loadingTaskIds.includes(task.id) ? "opacity-60 pointer-events-none cursor-wait" : ""}`}
+                                        }`}
                                       style={{
                                         ...providedDraggable.draggableProps.style,
                                       }}
@@ -746,7 +816,6 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                     >
                                       <div className="flex justify-between items-start mb-0.5">
                                         <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px] flex items-center gap-1.5">
-                                          {loadingTaskIds.includes(task.id) && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
                                           {task.title}
                                         </span>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
