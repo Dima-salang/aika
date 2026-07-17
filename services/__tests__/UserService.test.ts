@@ -1,28 +1,30 @@
 import { describe, test, expect, beforeEach, mock } from "bun:test";
-import { UserService } from "../auth/UserService";
+import { UserService, UserNotFoundError } from "../auth/UserService";
 import { clearDatabase, db } from "./db-helper";
-import { userSqlite } from "@/db/schema";
+import { userSqlite, memberSqlite, teamMembersSqlite, organizationSqlite, teamsSqlite, accountSqlite } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { DBInstance } from "@/db";
 import { OrganizationService } from "../auth/OrganizationService";
 import { TeamService } from "../auth/TeamService";
 
 describe("UserService", () => {
-  let mockOrganizationService: { getMembers: ReturnType<typeof mock> };
-  let mockTeamService: { getTeamMembers: ReturnType<typeof mock> };
+  let mockOrganizationService: { getMembers: ReturnType<typeof mock>; getOrganization: ReturnType<typeof mock> };
+  let mockTeamService: { getTeamMembers: ReturnType<typeof mock>; getTeam: ReturnType<typeof mock> };
   let userService: UserService;
-
+ 
   beforeEach(async () => {
     await clearDatabase();
-
+ 
     // Setup mock services
     mockOrganizationService = {
       getMembers: mock(() => Promise.resolve([])),
+      getOrganization: mock((id: string) => Promise.resolve({ id, name: "Mock Org " + id })),
     };
     mockTeamService = {
       getTeamMembers: mock(() => Promise.resolve([])),
+      getTeam: mock((id: string) => Promise.resolve({ id, name: "Mock Team " + id })),
     };
-
+ 
     userService = new UserService(
       mockOrganizationService as unknown as OrganizationService,
       mockTeamService as unknown as TeamService
@@ -256,5 +258,81 @@ describe("UserService", () => {
     // Should not show in getById anymore
     const user = await userService.getUserById("user-1");
     expect(user).toBeNull();
+  });
+
+  test("getManagedProfile should return empty lists when user manages nothing", async () => {
+    const profile = await userService.getManagedProfile("user-empty");
+    expect(profile.managedOrgs.length).toBe(0);
+    expect(profile.managedTeams.length).toBe(0);
+  });
+
+  test("getManagedProfile should return managed orgs and teams", async () => {
+    const now = new Date();
+    await db.insert(userSqlite).values({
+      id: "user-mgr",
+      name: "Manager",
+      email: "manager@example.com",
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await db.insert(organizationSqlite).values({
+      id: "org-1",
+      name: "Organization One",
+      slug: "org-1",
+      createdAt: now,
+    });
+
+    await db.insert(memberSqlite).values({
+      id: "member-1",
+      userId: "user-mgr",
+      organizationId: "org-1",
+      role: "admin",
+      createdAt: now,
+    });
+
+    await db.insert(teamsSqlite).values({
+      id: "team-1",
+      name: "Engineering",
+      organization_id: "org-1",
+      created_at: now,
+      updated_at: now,
+    });
+
+    await db.insert(teamMembersSqlite).values({
+      id: "tm-1",
+      team_id: "team-1",
+      user_id: "user-mgr",
+      role: "leader",
+      created_at: now,
+      updated_at: now,
+    });
+
+    const profile = await userService.getManagedProfile("user-mgr");
+    expect(profile.managedOrgs.length).toBe(1);
+    expect(profile.managedOrgs[0].id).toBe("org-1");
+    expect(profile.managedTeams.length).toBe(1);
+    expect(profile.managedTeams[0].id).toBe("team-1");
+  });
+
+  test("getUserProfileDetails should throw UserNotFoundError if user doesn't exist", async () => {
+    expect(userService.getUserProfileDetails("non-existent-user", "caller-1")).rejects.toThrow(UserNotFoundError);
+  });
+
+  test("getUserProfileDetails should return profile with canViewPrivateData as true for self", async () => {
+    const now = new Date();
+    await db.insert(userSqlite).values({
+      id: "user-self",
+      name: "Self",
+      email: "self@example.com",
+      emailVerified: true,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    const details = await userService.getUserProfileDetails("user-self", "user-self");
+    expect(details.user.id).toBe("user-self");
+    expect(details.canViewPrivateData).toBe(true);
   });
 });
