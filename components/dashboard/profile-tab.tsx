@@ -84,7 +84,7 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
     { enabled: isAuthorized && currentTab === "logs" }
   );
   const { data: tasks } = trpc.getTasks.useQuery(
-    { userId: viewingUserId },
+    { userId: viewingUserId, pagination: { limit: 1000, offset: 0 } },
     { enabled: isAuthorized && currentTab === "logs" }
   );
 

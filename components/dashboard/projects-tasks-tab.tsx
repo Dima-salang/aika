@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useRef, useState } from "react";
 import { trpc } from "@/utils/trpc";
 import { useLayoutStore } from "@/lib/store";
 import { toast } from "sonner";
@@ -34,6 +34,7 @@ interface ProjectsTasksTabProps {
 
 export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, onSelectTask }: ProjectsTasksTabProps) {
   const { viewMode, setViewMode } = useLayoutStore();
+  const utils = trpc.useUtils();
 
   const { showConfirm } = useConfirmStore();
 
@@ -42,17 +43,11 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     { organizationId, teamId: activeTeamId }
   );
 
-  const { data: tasks, refetch: refetchTasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
-    { userId }
+  const queryKey = { userId, pagination: { limit: 1000, offset: 0 } } as const;
+
+  const { data: tasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
+    queryKey
   );
-
-  const [localTasks, setLocalTasks] = useState<any[]>([]);
-
-  React.useEffect(() => {
-    if (tasks) {
-      setLocalTasks(tasks);
-    }
-  }, [tasks]);
 
   const { data: users } = trpc.admin.getUsers.useQuery();
 
@@ -63,10 +58,10 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
       setIsNewProjectOpen(false);
       setNewProjectName("");
       setNewProjectDesc("");
-      toast.success("Project instantiated successfully!");
+      toast.success("Project created successfully!");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to create project.");
+      toast.error("Failed to create project.");
     }
   });
 
@@ -76,45 +71,128 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
       if (selectedProjectId) {
         setSelectedProjectId(projects?.[0]?.id || "");
       }
-      toast.success("Project archived successfully!");
+      toast.success("Project deleted successfully!");
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to archive project.");
+      toast.error("Failed to delete project.");
     }
   });
 
   const createTask = trpc.createTask.useMutation({
-    onSuccess: () => {
-      refetchTasks();
-      setIsNewTaskOpen(false);
-      resetTaskForm();
-      toast.success("Task backlog item created!");
+    onMutate: async (newTaskInput) => {
+      await utils.getTasks.cancel(queryKey);
+      const previousTasks = utils.getTasks.getData(queryKey);
+
+      const optimisticTask = {
+        id: newTaskInput.id || crypto.randomUUID(),
+        title: newTaskInput.title,
+        description: newTaskInput.description || null,
+        status: "backlog", // Server forces backlog on creation
+        priority: newTaskInput.priority || "medium",
+        user_id: newTaskInput.user_id,
+        project_id: newTaskInput.project_id || null,
+        team_id: newTaskInput.team_id || null,
+        organization_id: newTaskInput.organization_id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        deleted_at: null,
+        due_date: null,
+      };
+
+      utils.getTasks.setData(queryKey, (old) => {
+        if (!old) return [optimisticTask];
+        return [optimisticTask, ...old];
+      });
+
+      return { previousTasks };
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to create task.");
-    }
+    onSuccess: (serverTask) => {
+      if (serverTask) {
+        utils.getTasks.setData(queryKey, (old) => {
+          if (!old) return [serverTask];
+          const exists = old.some((t) => t.id === serverTask.id);
+          if (exists) {
+            return old.map((t) => (t.id === serverTask.id ? serverTask : t));
+          }
+          return [serverTask, ...old];
+        });
+      }
+      toast.success("Task created successfully!");
+    },
+    onError: (err, newTask, context) => {
+      if (context?.previousTasks) {
+        utils.getTasks.setData(queryKey, context.previousTasks);
+      }
+      toast.error("Failed to create task.");
+    },
   });
 
   const updateTask = trpc.updateTask.useMutation({
-    onSuccess: () => {
-      refetchTasks();
-      setIsNewTaskOpen(false);
-      resetTaskForm();
+    onMutate: async (newTask) => {
+      await utils.getTasks.cancel(queryKey);
+      const previousTasks = utils.getTasks.getData(queryKey);
+
+      utils.getTasks.setData(queryKey, (old) => {
+        if (!old) return old;
+        return old.map((t) => {
+          if (t.id === newTask.id) {
+            const updated: any = { ...t };
+            Object.keys(newTask).forEach((key) => {
+              const val = (newTask as any)[key];
+              updated[key] = val instanceof Date ? val.toISOString() : val;
+            });
+            return updated;
+          }
+          return t;
+        });
+      });
+
+      return { previousTasks };
+    },
+    onSuccess: (serverTask) => {
+      if (serverTask) {
+        utils.getTasks.setData(queryKey, (old) => {
+          if (!old) return old;
+          return old.map((t) => (t.id === serverTask.id ? serverTask : t));
+        });
+      }
       toast.success("Task updated successfully!");
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to update task.");
-    }
+    onError: (err, newTask, context) => {
+      if (context?.previousTasks) {
+        utils.getTasks.setData(queryKey, context.previousTasks);
+      }
+      toast.error("Failed to update task.");
+    },
   });
 
   const deleteTask = trpc.deleteTask.useMutation({
-    onSuccess: () => {
-      refetchTasks();
+    onMutate: async (variables) => {
+      await utils.getTasks.cancel(queryKey);
+      const previousTasks = utils.getTasks.getData(queryKey);
+
+      utils.getTasks.setData(queryKey, (old) => {
+        if (!old) return [];
+        return old.filter((t) => t.id !== variables.id);
+      });
+
+      return { previousTasks };
+    },
+    onSuccess: (serverTask) => {
+      if (serverTask) {
+        utils.getTasks.setData(queryKey, (old) => {
+          if (!old) return [];
+          return old.filter((t) => t.id !== serverTask.id);
+        });
+      }
       toast.success("Task deleted successfully!");
     },
-    onError: (err) => {
-      toast.error(err.message || "Failed to delete task.");
-    }
+    onError: (err, variables, context) => {
+      if (context?.previousTasks) {
+        utils.getTasks.setData(queryKey, context.previousTasks);
+      }
+      toast.error("Failed to delete task.");
+    },
   });
 
   // UI State
@@ -129,7 +207,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   // Task form values
   const [taskTitle, setTaskTitle] = useState("");
   const [taskDesc, setTaskDesc] = useState("");
-  const [taskStatus, setTaskStatus] = useState<"backlog" | "todo" | "in_progress" | "done">("todo");
+  const [taskStatus, setTaskStatus] = useState<"backlog" | "todo" | "in_progress" | "done">("backlog");
   const [taskPriority, setTaskPriority] = useState<"low" | "medium" | "high">("medium");
   const [taskAssignee, setTaskAssignee] = useState("");
 
@@ -267,55 +345,69 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
         await updateTask.mutateAsync({
           id: editingTaskId,
           ...payload
+        }, {
+          onSuccess: () => {
+            setIsNewTaskOpen(false);
+            resetTaskForm();
+            toast.success("Task updated successfully!");
+          }
         });
       } else {
-        await createTask.mutateAsync(payload);
+        await createTask.mutateAsync(payload, {
+          onSuccess: () => {
+            setIsNewTaskOpen(false);
+            resetTaskForm();
+            toast.success("Task backlog item created!");
+          }
+        });
       }
     } catch (err: any) {
-      setFormError(err.message || "Failed to submit task. Please check parameters.");
+      setFormError("Failed to submit task. Please check parameters.");
     }
   };
 
-  const onDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId } = result;
-    if (!destination) return;
+const onDragEnd = async (result: DropResult) => {
+  const { destination, source, draggableId } = result;
+  if (!destination) return;
 
-    if (
-      destination.droppableId === source.droppableId &&
-      destination.index === source.index
-    ) {
-      return;
-    }
+  if (
+    destination.droppableId === source.droppableId &&
+    destination.index === source.index
+  ) {
+    return;
+  }
 
-    const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
-    const task = localTasks?.find((t: any) => t.id === draggableId);
+  const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
+  const task = tasks?.find((t: any) => t.id === draggableId);
 
-    if (task && task.status !== newStatus) {
-      // Optimistic update
-      setLocalTasks((prev) =>
-        prev.map((t) => (t.id === draggableId ? { ...t, status: newStatus } : t))
+  if (task && task.status !== newStatus) {
+    // 1. Cancel active refetches so they don't break our state mid-drag
+    await utils.getTasks.cancel(queryKey);
+
+    // 2. Optimistically paint the UI immediately
+    utils.getTasks.setData(queryKey, (old: any) => {
+      if (!old) return old;
+      return old.map((t: any) =>
+        t.id === draggableId ? { ...t, status: newStatus } : t
       );
+    });
 
-      try {
-        await updateTask.mutateAsync({
-          id: task.id,
-          title: task.title,
-          description: task.description,
-          status: newStatus,
-          priority: (task.priority || "medium") as any,
-          user_id: task.user_id,
-          organization_id: task.organization_id,
-          project_id: task.project_id,
-          team_id: task.team_id,
-        });
-        toast.info(`Task status updated to ${newStatus}!`);
-      } catch (err: any) {
-        // Rollback
-        setLocalTasks(tasks || []);
-        toast.error(err.message || "Failed to update task status.");
-      }
-    }
-  };
+    // 3. Fire-and-forget the update safely
+    updateTask.mutate({
+      id: task.id,
+      title: task.title,
+      description: task.description,
+      status: newStatus,
+      priority: (task.priority || "medium") as any,
+      user_id: task.user_id,
+      organization_id: task.organization_id,
+      project_id: task.project_id,
+      team_id: task.team_id,
+    });
+
+    toast.info(`Task status updated to ${newStatus}!`);
+  }
+};
 
   // Select active project if none selected yet
   const activeProjects = projects?.filter((p: any) => !p.deleted_at) || [];
@@ -323,7 +415,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   const currentProject = projects?.find((p: any) => p.id === currentProjectId);
 
   // Filter tasks for active project
-  const projectTasks = localTasks?.filter((t: any) => {
+  const projectTasks = tasks?.filter((t: any) => {
     if (t.project_id !== currentProjectId) return false;
     if (priorityFilter !== "all" && t.priority !== priorityFilter) return false;
     return true;
@@ -431,8 +523,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                   key={project.id}
                   onClick={() => setSelectedProjectId(project.id)}
                   className={`p-unit-3 border-b border-outline-variant/10 cursor-pointer transition-all relative group flex flex-col ${isSelected
-                      ? "bg-secondary-container/10 border-l-2 border-l-primary"
-                      : "hover:bg-surface-container-low"
+                    ? "bg-secondary-container/10 border-l-2 border-l-primary"
+                    : "hover:bg-surface-container-low"
                     }`}
                   role="button"
                   aria-selected={isSelected}
@@ -575,8 +667,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
                                 className={`flex-1 space-y-unit-2 overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-[background-color,border-color,box-shadow] duration-200 min-h-[150px] ${snapshot.isDraggingOver
-                                    ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)]"
-                                    : "bg-surface-container-lowest/30 border-outline-variant/30"
+                                  ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)]"
+                                  : "bg-surface-container-lowest/30 border-outline-variant/30"
                                   }`}
                               >
                                 {loadingTasks ? (
@@ -602,8 +694,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                           {...providedDraggable.dragHandleProps}
                                           onClick={() => onSelectTask?.(task)}
                                           className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${snapshotDraggable.isDragging
-                                              ? "border-primary bg-surface-container-high shadow-lg"
-                                              : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                            ? "border-primary bg-surface-container-high shadow-lg"
+                                            : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
                                             }`}
                                           style={{
                                             ...providedDraggable.draggableProps.style,
@@ -611,7 +703,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                           tabIndex={0}
                                         >
                                           <div className="flex justify-between items-start mb-unit-1">
-                                            <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''}`}>
+                                            <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''} flex items-center gap-1.5`}>
                                               {task.title}
                                             </span>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
@@ -714,8 +806,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                       {...providedDraggable.dragHandleProps}
                                       onClick={() => onSelectTask?.(task)}
                                       className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${snapshotDraggable.isDragging
-                                          ? "border-primary bg-surface-container-high shadow-lg"
-                                          : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                        ? "border-primary bg-surface-container-high shadow-lg"
+                                        : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
                                         }`}
                                       style={{
                                         ...providedDraggable.draggableProps.style,
@@ -723,7 +815,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                       tabIndex={0}
                                     >
                                       <div className="flex justify-between items-start mb-0.5">
-                                        <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px]">
+                                        <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px] flex items-center gap-1.5">
                                           {task.title}
                                         </span>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
@@ -835,8 +927,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                               </td>
                               <td className="p-unit-3">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${task.status === "done" ? "bg-green-500/15 text-green-400" :
-                                    task.status === "in_progress" ? "bg-primary/20 text-primary" :
-                                      task.status === "backlog" ? "bg-surface-container-highest text-outline" : "bg-secondary-container/20 text-on-secondary-container"
+                                  task.status === "in_progress" ? "bg-primary/20 text-primary" :
+                                    task.status === "backlog" ? "bg-surface-container-highest text-outline" : "bg-secondary-container/20 text-on-secondary-container"
                                   }`}>
                                   {task.status}
                                 </span>

@@ -27,7 +27,7 @@ export default function SharedLogPage() {
   );
 
   const { data: tasks } = trpc.getTasks.useQuery(
-    { userId: log?.user_id || "" },
+    { userId: log?.user_id || "", pagination: { limit: 1000, offset: 0 } },
     { enabled: !!log }
   );
 

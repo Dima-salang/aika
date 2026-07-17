@@ -724,7 +724,7 @@ export type NewTimeLogGithubLinkSqlite = typeof timeLogGithubLinksSqlite.$inferI
 // Pagination Schema
 export const paginationInputZodSchema = z.object({
   limit: z.number().positive().int().optional().default(10),
-  offset: z.number().positive().int().optional().default(0),
+  offset: z.number().nonnegative().int().optional().default(0),
 });
 
 export type PaginationInput = z.input<typeof paginationInputZodSchema>;
