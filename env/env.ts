@@ -23,6 +23,9 @@ export const env = createEnv({
         NOTION_CLIENT_SECRET: z.string().optional(),
         NOTION_REDIRECT_URI: z.string().optional(),
         NOTION_AUTHORIZATION_URL: z.string().optional(),
+        // ADMIN
+        ADMIN_EMAIL: z.string().optional(),
+        ADMIN_PASSWORD: z.string().optional(),
     },
     runtimeEnv: {
         DATABASE_URL: process.env.DATABASE_URL,
@@ -42,5 +45,8 @@ export const env = createEnv({
         NOTION_CLIENT_SECRET: process.env.NOTION_CLIENT_SECRET,
         NOTION_REDIRECT_URI: process.env.NOTION_REDIRECT_URI,
         NOTION_AUTHORIZATION_URL: process.env.NOTION_AUTHORIZATION_URL,
+        // ADMIN
+        ADMIN_EMAIL: process.env.ADMIN_EMAIL,
+        ADMIN_PASSWORD: process.env.ADMIN_PASSWORD,
     },
 });

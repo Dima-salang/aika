@@ -2,9 +2,11 @@ import { db } from "@/db";
 import { tables } from "@/db/tables";
 import { eq } from "drizzle-orm";
 import { auth } from "@/lib/auth";
+import { env } from "@/env/env";
 
 let isSeeding = false;
 let isSeeded = false;
+
 
 export async function ensureSeed() {
   if (isSeeded || isSeeding) return;
@@ -25,21 +27,21 @@ export async function ensureSeed() {
 
     // 2. Seed default admin account
     const userTable = tables.user;
-    const existingAdmin = await db.select().from(userTable).where(eq(userTable.email, "iozera_admin@gmail.com"));
+    const existingAdmin = await db.select().from(userTable).where(eq(userTable.email, env.ADMIN_EMAIL!));
     if (existingAdmin.length === 0) {
       console.log("[Aika Seeder] Registering admin account...");
       const newUser = await auth.api.signUpEmail({
         body: {
-          email: "iozera_admin@gmail.com",
-          password: "youshallnotpass",
-          name: "Iozera Admin",
+          email: env.ADMIN_EMAIL!,
+          password: env.ADMIN_PASSWORD!,
+          name: "Aika Admin",
         },
       });
       if (newUser && newUser.user) {
         await db.update(userTable)
           .set({ is_admin: true })
           .where(eq(userTable.id, newUser.user.id));
-        console.log("[Aika Seeder] Admin iozera_admin@gmail.com seeded successfully.");
+        console.log(`[Aika Seeder] Admin ${env.ADMIN_EMAIL} seeded successfully.`);
       }
     }
     isSeeded = true;
