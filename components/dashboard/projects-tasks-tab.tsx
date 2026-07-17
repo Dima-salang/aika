@@ -34,6 +34,7 @@ interface ProjectsTasksTabProps {
 
 export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, onSelectTask }: ProjectsTasksTabProps) {
   const { viewMode, setViewMode } = useLayoutStore();
+  const utils = trpc.useUtils();
 
   const { showConfirm } = useConfirmStore();
 
@@ -42,11 +43,12 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     { organizationId, teamId: activeTeamId }
   );
 
-  const { data: tasks, refetch: refetchTasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
-    { userId }
+  const { data: tasks, isLoading: loadingTasks } = trpc.getTasks.useQuery(
+    { userId, pagination: { limit: 1000, offset: 0 } }
   );
 
   const [localTasks, setLocalTasks] = useState<any[]>([]);
+  const [loadingTaskIds, setLoadingTaskIds] = useState<string[]>([]);
 
   React.useEffect(() => {
     if (tasks) {
@@ -85,7 +87,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
   const createTask = trpc.createTask.useMutation({
     onSuccess: () => {
-      refetchTasks();
+      utils.invalidate();
       setIsNewTaskOpen(false);
       resetTaskForm();
       toast.success("Task backlog item created!");
@@ -97,10 +99,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
   const updateTask = trpc.updateTask.useMutation({
     onSuccess: () => {
-      refetchTasks();
-      setIsNewTaskOpen(false);
-      resetTaskForm();
-      toast.success("Task updated successfully!");
+      utils.invalidate();
     },
     onError: (err) => {
       toast.error(err.message || "Failed to update task.");
@@ -109,7 +108,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
 
   const deleteTask = trpc.deleteTask.useMutation({
     onSuccess: () => {
-      refetchTasks();
+      utils.invalidate();
       toast.success("Task deleted successfully!");
     },
     onError: (err) => {
@@ -267,6 +266,12 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
         await updateTask.mutateAsync({
           id: editingTaskId,
           ...payload
+        }, {
+          onSuccess: () => {
+            setIsNewTaskOpen(false);
+            resetTaskForm();
+            toast.success("Task updated successfully!");
+          }
         });
       } else {
         await createTask.mutateAsync(payload);
@@ -287,13 +292,21 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
       return;
     }
 
+    // Disallow drags while another drag update is in progress
+    if (loadingTaskIds.length > 0) return;
+
     const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
     const task = localTasks?.find((t: any) => t.id === draggableId);
 
     if (task && task.status !== newStatus) {
-      // Optimistic update
-      setLocalTasks((prev) =>
-        prev.map((t) => (t.id === draggableId ? { ...t, status: newStatus } : t))
+      const previousStatus = task.status;
+
+      setLoadingTaskIds((prev) => [...prev, draggableId]);
+
+      setLocalTasks((prevTasks) =>
+        prevTasks.map((t) =>
+          t.id === draggableId ? { ...t, status: newStatus } : t
+        )
       );
 
       try {
@@ -309,10 +322,18 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
           team_id: task.team_id,
         });
         toast.info(`Task status updated to ${newStatus}!`);
+
+        // Invalidate the cache to ensure the server truth matches our optimistic update
+        await utils.invalidate();
       } catch (err: any) {
-        // Rollback
-        setLocalTasks(tasks || []);
+        setLocalTasks((prevTasks) =>
+          prevTasks.map((t) =>
+            t.id === draggableId ? { ...t, status: previousStatus } : t
+          )
+        );
         toast.error(err.message || "Failed to update task status.");
+      } finally {
+        setLoadingTaskIds((prev) => prev.filter((id) => id !== draggableId));
       }
     }
   };
@@ -431,8 +452,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                   key={project.id}
                   onClick={() => setSelectedProjectId(project.id)}
                   className={`p-unit-3 border-b border-outline-variant/10 cursor-pointer transition-all relative group flex flex-col ${isSelected
-                      ? "bg-secondary-container/10 border-l-2 border-l-primary"
-                      : "hover:bg-surface-container-low"
+                    ? "bg-secondary-container/10 border-l-2 border-l-primary"
+                    : "hover:bg-surface-container-low"
                     }`}
                   role="button"
                   aria-selected={isSelected}
@@ -575,8 +596,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                 ref={provided.innerRef}
                                 {...provided.droppableProps}
                                 className={`flex-1 space-y-unit-2 overflow-y-auto custom-scrollbar p-2 rounded-xl border transition-[background-color,border-color,box-shadow] duration-200 min-h-[150px] ${snapshot.isDraggingOver
-                                    ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)]"
-                                    : "bg-surface-container-lowest/30 border-outline-variant/30"
+                                  ? "bg-primary/5 border-primary shadow-[0_0_20px_rgba(192,193,255,0.15)]"
+                                  : "bg-surface-container-lowest/30 border-outline-variant/30"
                                   }`}
                               >
                                 {loadingTasks ? (
@@ -594,7 +615,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                   ))
                                 ) : (
                                   col.tasks.map((task: any, index: number) => (
-                                    <Draggable key={task.id} draggableId={task.id} index={index}>
+                                    <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={loadingTaskIds.length > 0}>
                                       {(providedDraggable, snapshotDraggable) => (
                                         <div
                                           ref={providedDraggable.innerRef}
@@ -602,16 +623,17 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                           {...providedDraggable.dragHandleProps}
                                           onClick={() => onSelectTask?.(task)}
                                           className={`p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary ${snapshotDraggable.isDragging
-                                              ? "border-primary bg-surface-container-high shadow-lg"
-                                              : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
-                                            }`}
+                                            ? "border-primary bg-surface-container-high shadow-lg"
+                                            : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                            } ${loadingTaskIds.includes(task.id) ? "opacity-60 pointer-events-none cursor-wait" : ""}`}
                                           style={{
                                             ...providedDraggable.draggableProps.style,
                                           }}
                                           tabIndex={0}
                                         >
                                           <div className="flex justify-between items-start mb-unit-1">
-                                            <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''}`}>
+                                            <span className={`text-xs font-bold text-on-surface group-hover:text-primary transition-colors ${col.id === 'done' ? 'line-through decoration-outline opacity-80' : ''} flex items-center gap-1.5`}>
+                                              {loadingTaskIds.includes(task.id) && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
                                               {task.title}
                                             </span>
                                             <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
@@ -706,7 +728,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                               ))
                             ) : (
                               backlogTasks.map((task: any, index: number) => (
-                                <Draggable key={task.id} draggableId={task.id} index={index}>
+                                <Draggable key={task.id} draggableId={task.id} index={index} isDragDisabled={loadingTaskIds.length > 0}>
                                   {(providedDraggable, snapshotDraggable) => (
                                     <div
                                       ref={providedDraggable.innerRef}
@@ -714,16 +736,17 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                                       {...providedDraggable.dragHandleProps}
                                       onClick={() => onSelectTask?.(task)}
                                       className={`flex-shrink-0 w-64 p-unit-3 border rounded-lg hover:border-outline hover:shadow-md cursor-pointer group relative focus-visible:outline focus-visible:outline-2 focus-visible:outline-primary pointer-events-auto ${snapshotDraggable.isDragging
-                                          ? "border-primary bg-surface-container-high shadow-lg"
-                                          : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
-                                        }`}
+                                        ? "border-primary bg-surface-container-high shadow-lg"
+                                        : "bg-surface-container-low border-outline-variant hover:-translate-y-[2px] transition-[background-color,border-color,box-shadow] duration-200"
+                                        } ${loadingTaskIds.includes(task.id) ? "opacity-60 pointer-events-none cursor-wait" : ""}`}
                                       style={{
                                         ...providedDraggable.draggableProps.style,
                                       }}
                                       tabIndex={0}
                                     >
                                       <div className="flex justify-between items-start mb-0.5">
-                                        <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px]">
+                                        <span className="text-xs font-bold text-on-surface group-hover:text-primary transition-colors truncate max-w-[140px] flex items-center gap-1.5">
+                                          {loadingTaskIds.includes(task.id) && <Loader2 className="h-3 w-3 animate-spin text-primary shrink-0" />}
                                           {task.title}
                                         </span>
                                         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity focus-within:opacity-100">
@@ -835,8 +858,8 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
                               </td>
                               <td className="p-unit-3">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[9px] font-extrabold uppercase ${task.status === "done" ? "bg-green-500/15 text-green-400" :
-                                    task.status === "in_progress" ? "bg-primary/20 text-primary" :
-                                      task.status === "backlog" ? "bg-surface-container-highest text-outline" : "bg-secondary-container/20 text-on-secondary-container"
+                                  task.status === "in_progress" ? "bg-primary/20 text-primary" :
+                                    task.status === "backlog" ? "bg-surface-container-highest text-outline" : "bg-secondary-container/20 text-on-secondary-container"
                                   }`}>
                                   {task.status}
                                 </span>
