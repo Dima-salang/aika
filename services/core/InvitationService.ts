@@ -16,6 +16,27 @@ import { TeamService } from "../auth/TeamService";
 import { tables } from "../../db/tables";
 import { z } from "zod";
 
+export class TokenNotFoundError extends Error {
+  constructor(message = "Invalid join token") {
+    super(message);
+    this.name = "TokenNotFoundError";
+  }
+}
+
+export class TokenExpiredError extends Error {
+  constructor(message = "Join token has expired") {
+    super(message);
+    this.name = "TokenExpiredError";
+  }
+}
+
+export class TokenLimitReachedError extends Error {
+  constructor(message = "Join token usage limit reached") {
+    super(message);
+    this.name = "TokenLimitReachedError";
+  }
+}
+
 
 
 const inviteUserSchema = z.object({
@@ -441,5 +462,57 @@ export class InvitationService {
     }
 
     return updatedReq || null;
+  }
+
+  /**
+   * Validates a join token and returns the organization and team details.
+   * 
+   * @throws {TokenNotFoundError} If token does not exist.
+   * @throws {TokenExpiredError} If token is expired.
+   * @throws {TokenLimitReachedError} If token has reached its usage limit.
+   */
+  async validateJoinToken(
+    tokenString: string,
+    tx: DBInstance = db
+  ): Promise<{
+    valid: boolean;
+    organizationId: string;
+    organizationName: string;
+    teamId: string | null;
+    teamName: string | null;
+    autoJoin: boolean;
+  }> {
+    z.string().parse(tokenString);
+    const tokenTable = tables.joinTokens;
+
+    const [tokenRecord] = await tx
+      .select()
+      .from(tokenTable)
+      .where(eq(tokenTable.id, tokenString))
+      .limit(1);
+
+    if (!tokenRecord) {
+      throw new TokenNotFoundError();
+    }
+
+    if (new Date() > new Date(tokenRecord.expiresAt)) {
+      throw new TokenExpiredError();
+    }
+
+    if (tokenRecord.maxUses !== null && tokenRecord.usesCount >= tokenRecord.maxUses) {
+      throw new TokenLimitReachedError();
+    }
+
+    const org = await this.organizationService.getOrganization(tokenRecord.organizationId, tx);
+    const team = tokenRecord.teamId ? await this.teamService.getTeam(tokenRecord.teamId, tx) : null;
+
+    return {
+      valid: true,
+      organizationId: tokenRecord.organizationId,
+      organizationName: org?.name || "Unknown Workspace",
+      teamId: tokenRecord.teamId,
+      teamName: team?.name || null,
+      autoJoin: tokenRecord.autoJoin,
+    };
   }
 }

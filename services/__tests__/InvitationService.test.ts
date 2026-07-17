@@ -1,5 +1,5 @@
 import { describe, test, expect, beforeEach } from "bun:test";
-import { InvitationService } from "../core/InvitationService";
+import { InvitationService, TokenNotFoundError, TokenExpiredError, TokenLimitReachedError } from "../core/InvitationService";
 import { clearDatabase, db } from "./db-helper";
 import {
   userSqlite,
@@ -257,5 +257,67 @@ describe("InvitationService", () => {
       .where(eq(notificationsSqlite.user_id, "applicant-1"));
     expect(applicantNotifs.length).toBe(1);
     expect(applicantNotifs[0].type).toBe("team_switch");
+  });
+
+  test("validateJoinToken should validate a correct token and throw on invalid/expired/limit-reached ones", async () => {
+    // Setup organization, admin
+    await db.insert(organizationSqlite).values({
+      id: "org-1",
+      name: "Org One",
+      slug: "org-one",
+      createdAt: new Date(),
+    });
+
+    await db.insert(userSqlite).values({
+      id: "admin-1",
+      name: "Admin User",
+      email: "admin@aika.com",
+      emailVerified: true,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+
+    // Generate valid token
+    const tokenRes = await invitationService.generateJoinToken(
+      "org-1",
+      null,
+      "admin-1",
+      3600, // 1 hour
+      2 // max uses
+    );
+
+    const validDetails = await invitationService.validateJoinToken(tokenRes!.id);
+    expect(validDetails.valid).toBe(true);
+    expect(validDetails.organizationId).toBe("org-1");
+
+    // Test TokenNotFoundError
+    expect(invitationService.validateJoinToken("invalid-token-id")).rejects.toThrow(TokenNotFoundError);
+
+    // Test TokenExpiredError
+    const expiredTokenRes = await invitationService.generateJoinToken(
+      "org-1",
+      null,
+      "admin-1"
+    );
+    await db.update(joinTokensSqlite)
+      .set({ expiresAt: new Date(Date.now() - 10 * 1000) })
+      .where(eq(joinTokensSqlite.id, expiredTokenRes!.id));
+    expect(invitationService.validateJoinToken(expiredTokenRes!.id)).rejects.toThrow(TokenExpiredError);
+
+    // Test TokenLimitReachedError
+    const limitedTokenRes = await invitationService.generateJoinToken(
+      "org-1",
+      null,
+      "admin-1",
+      3600,
+      1 // max 1 use
+    );
+
+    // Use it once
+    await db.update(joinTokensSqlite)
+      .set({ usesCount: 1 })
+      .where(eq(joinTokensSqlite.id, limitedTokenRes!.id));
+
+    expect(invitationService.validateJoinToken(limitedTokenRes!.id)).rejects.toThrow(TokenLimitReachedError);
   });
 });

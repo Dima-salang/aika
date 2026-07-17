@@ -5,11 +5,18 @@ import {
   userFilterZodSchema,
   updateUserInputZodSchema,
 } from "@/db/schema";
-import { eq, and, isNull, isNotNull, inArray, SQL } from "drizzle-orm";
+import { eq, and, or, isNull, isNotNull, inArray, desc, SQL } from "drizzle-orm";
 import { OrganizationService } from "./OrganizationService";
 import { TeamService } from "./TeamService";
 import { tables } from "../../db/tables";
 import { z } from "zod";
+
+export class UserNotFoundError extends Error {
+  constructor(message = "User not found") {
+    super(message);
+    this.name = "UserNotFoundError";
+  }
+}
 
 const createUserSchema = z.object({
   name: z.string().min(1),
@@ -162,5 +169,215 @@ export class UserService {
         .where(eq(sessionTable.id, sessionId));
     }
     return true;
+  }
+
+  /**
+   * Retrieves organizations and teams managed by a user.
+   */
+  async getManagedProfile(userId: string, tx: DBInstance = db) {
+    z.string().parse(userId);
+    const memberTable = tables.member;
+    const teamMembersTable = tables.teamMembers;
+
+    const orgMemberships = await tx
+      .select()
+      .from(memberTable)
+      .where(
+        and(
+          eq(memberTable.userId, userId),
+          or(
+            eq(memberTable.role, "admin"),
+            eq(memberTable.role, "owner"),
+            eq(memberTable.role, "system_admin")
+          )
+        )
+      );
+
+    const managedOrgs = [];
+    for (const m of orgMemberships) {
+      const orgObj = await this.organizationService.getOrganization(m.organizationId, tx);
+      if (orgObj) {
+        managedOrgs.push(orgObj);
+      }
+    }
+
+    const teamMemberships = await tx
+      .select()
+      .from(teamMembersTable)
+      .where(
+        and(
+          eq(teamMembersTable.user_id, userId),
+          eq(teamMembersTable.role, "leader")
+        )
+      );
+
+    const managedTeams = [];
+    for (const tm of teamMemberships) {
+      const teamObj = await this.teamService.getTeam(tm.team_id, tx);
+      if (teamObj) {
+        managedTeams.push(teamObj);
+      }
+    }
+
+    return {
+      managedOrgs,
+      managedTeams,
+    };
+  }
+
+  /**
+   * Fetches target/caller user profiles, checks viewing permissions, and gathers profile details.
+   * 
+   * @throws {UserNotFoundError} If target user does not exist or is deleted.
+   */
+  async getUserProfileDetails(
+    userId: string,
+    callerId: string,
+    tx: DBInstance = db
+  ): Promise<{
+    user: {
+      id: string;
+      name: string | null;
+      email: string;
+      image: string | null;
+      createdAt: Date;
+    };
+    canViewPrivateData: boolean;
+    evidence: any[];
+    isGithubConnected: boolean;
+  }> {
+    z.string().parse(userId);
+    z.string().parse(callerId);
+
+    const userTable = tables.user;
+    const memberTable = tables.member;
+    const teamMembersTable = tables.teamMembers;
+
+    const isSelf = userId === callerId;
+
+    const [targetUser, callerUser, orgLink, teamLink, githubLink] = await Promise.all([
+      // get target user
+      tx
+        .select()
+        .from(userTable)
+        .where(and(eq(userTable.id, userId), isNull(userTable.deleted_at)))
+        .limit(1)
+        .then((r) => r[0]),
+      // get caller user
+      tx
+        .select()
+        .from(userTable)
+        .where(eq(userTable.id, callerId))
+        .limit(1)
+        .then((r) => r[0]),
+      // check if caller is org admin or owner
+      isSelf
+        ? Promise.resolve(null)
+        : tx
+            .select({ id: memberTable.id })
+            .from(memberTable)
+            .where(
+              and(
+                eq(memberTable.userId, userId),
+                inArray(
+                  memberTable.organizationId,
+                  tx
+                    .select({ orgId: memberTable.organizationId })
+                    .from(memberTable)
+                    .where(
+                      and(
+                        eq(memberTable.userId, callerId),
+                        or(eq(memberTable.role, "admin"), eq(memberTable.role, "owner"))
+                      )
+                    )
+                )
+              )
+            )
+            .limit(1)
+            .then((r) => r[0]),
+      // check if caller is team leader
+      isSelf
+        ? Promise.resolve(null)
+        : tx
+            .select({ id: teamMembersTable.id })
+            .from(teamMembersTable)
+            .where(
+              and(
+                eq(teamMembersTable.user_id, userId),
+                isNull(teamMembersTable.deleted_at),
+                inArray(
+                  teamMembersTable.team_id,
+                  tx
+                    .select({ teamId: teamMembersTable.team_id })
+                    .from(teamMembersTable)
+                    .where(
+                      and(
+                        eq(teamMembersTable.user_id, callerId),
+                        eq(teamMembersTable.role, "leader"),
+                        isNull(teamMembersTable.deleted_at)
+                      )
+                    )
+                )
+              )
+            )
+            .limit(1)
+            .then((r) => r[0]),
+      // check if GitHub is linked
+      tx
+        .select({ id: tables.account.id })
+        .from(tables.account)
+        .where(and(eq(tables.account.userId, userId), eq(tables.account.providerId, "github")))
+        .limit(1)
+        .then((r) => r[0] || null),
+    ]);
+
+    if (!targetUser) {
+      throw new UserNotFoundError();
+    }
+
+    const isSysAdmin = callerUser?.is_admin === true;
+    const canViewPrivateData = isSelf || isSysAdmin || !!orgLink || !!teamLink;
+
+    // get user evidence if allowed
+    let evidence: any[] = [];
+    if (canViewPrivateData) {
+      const docTable = tables.documentEvidences;
+      const logTable = tables.timeLogs;
+      evidence = await tx
+        .select({
+          id: docTable.id,
+          time_log_id: docTable.time_log_id,
+          file_url: docTable.file_url,
+          file_name: docTable.file_name,
+          file_size: docTable.file_size,
+          created_at: docTable.created_at,
+          mime_type: docTable.mime_type,
+          time_log_title: logTable.title,
+          time_log_description: logTable.description,
+        })
+        .from(docTable)
+        .innerJoin(logTable, eq(docTable.time_log_id, logTable.id))
+        .where(
+          and(
+            eq(logTable.user_id, userId),
+            isNull(docTable.deleted_at),
+            isNull(logTable.deleted_at)
+          )
+        )
+        .orderBy(desc(docTable.created_at));
+    }
+
+    return {
+      user: {
+        id: targetUser.id,
+        name: targetUser.name,
+        email: targetUser.email,
+        image: targetUser.image,
+        createdAt: targetUser.createdAt,
+      },
+      canViewPrivateData,
+      evidence,
+      isGithubConnected: !!githubLink,
+    };
   }
 }

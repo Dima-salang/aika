@@ -20,6 +20,7 @@ import {
   joinTokensSqlite,
   joinRequestsSqlite,
   commentsSqlite,
+  timeLogGithubLinksSqlite,
 } from "@/db/schema";
 import { sql } from "drizzle-orm";
 import { LibSQLDatabase } from "drizzle-orm/libsql";
@@ -39,6 +40,7 @@ export async function clearDatabase() {
 
   // Delete in correct order to respect foreign key constraints if active
   await db.delete(commentsSqlite);
+  await db.delete(timeLogGithubLinksSqlite);
   await db.delete(timeLogTasksSqlite);
   await db.delete(documentEvidencesSqlite);
   await db.delete(timeLogsSqlite);

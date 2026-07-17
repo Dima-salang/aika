@@ -198,16 +198,16 @@ export function ProfileTab({ targetUserId, onSelectLog, onEdit, onDelete, onShar
       <div className="glass-card rounded-xl p-6 bg-surface-container-low text-on-surface border border-outline-variant shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
           {targetUser.image ? (
-            <img src={targetUser.image} alt={targetUser.name} className="h-16 w-16 rounded-full border border-outline-variant" />
+            <img src={targetUser.image} alt={targetUser.name ?? undefined} className="h-16 w-16 rounded-full border border-outline-variant" />
           ) : (
             <div className="h-16 w-16 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-xl uppercase border border-outline-variant">
-              {targetUser.name.charAt(0)}
+              {targetUser.name?.charAt(0) || "?"}
             </div>
           )}
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-headline-sm font-headline-sm font-black text-on-surface">
-                {targetUser.name}
+                {targetUser.name || "Unknown User"}
               </h3>
               {isSelf && (
                 <span className="px-2 py-0.5 rounded bg-primary/15 text-primary text-[10px] font-black uppercase tracking-wider">
