@@ -1,18 +1,22 @@
-import { router, publicProcedure } from "../trpc";
+import { router, protectedProcedure } from "../trpc";
 import { z } from "zod";
 import { NotificationService } from "@/services/core/NotificationService";
 import { handleDbError } from "@/utils/db-errors";
+import { TRPCError } from "@trpc/server";
 
 const notificationService = new NotificationService();
 
 export const notificationsRouter = router({
-  getNotifications: publicProcedure
+  getNotifications: protectedProcedure
     .input(
       z.object({
         userId: z.string(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await notificationService.listNotifications({ userId: input.userId });
       } catch (error) {
@@ -20,27 +24,37 @@ export const notificationsRouter = router({
       }
     }),
 
-  markAsRead: publicProcedure
+  markAsRead: protectedProcedure
     .input(
       z.object({
         id: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
+        const notif = await notificationService.getNotificationById(input.id);
+        if (!notif) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Notification not found" });
+        }
+        if (notif.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this notification" });
+        }
         return await notificationService.updateNotification(input.id, { is_read: true });
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  markAllAsRead: publicProcedure
+  markAllAsRead: protectedProcedure
     .input(
       z.object({
         userId: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         const notifs = await notificationService.listNotifications({ userId: input.userId, isRead: false });
         const results = [];
@@ -54,17 +68,25 @@ export const notificationsRouter = router({
       }
     }),
 
-  deleteNotification: publicProcedure
+  deleteNotification: protectedProcedure
     .input(
       z.object({
         id: z.string(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
+        const notif = await notificationService.getNotificationById(input.id);
+        if (!notif) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Notification not found" });
+        }
+        if (notif.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this notification" });
+        }
         return await notificationService.deleteNotification(input.id);
       } catch (error) {
         handleDbError(error);
       }
     }),
 });
+

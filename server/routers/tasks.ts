@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "../trpc";
+import { router, protectedProcedure } from "../trpc";
 import { z } from "zod";
 import {
   newTaskZodSchema,
@@ -8,23 +8,39 @@ import {
 } from "@/db/schema";
 import { TaskService } from "@/services/core/TaskService";
 import { handleDbError } from "@/utils/db-errors";
+import { db } from "@/db";
+import { tables } from "@/db/tables";
+import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 const taskService = new TaskService();
 
 export const tasksRouter = router({
-  getTask: publicProcedure
+  getTask: protectedProcedure
     .input(idInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
-        return await taskService.getTaskById(input.id);
+        const task = await taskService.getTaskById(input.id);
+        if (!task) return null;
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, task.organization_id)));
+        if (!m && task.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this task" });
+        }
+        return task;
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  getTasks: publicProcedure
+  getTasks: protectedProcedure
     .input(getTasksInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only list your own tasks" });
+      }
       try {
         return await taskService.listTasks({ userId: input.userId }, input.pagination);
       } catch (error) {
@@ -32,9 +48,19 @@ export const tasksRouter = router({
       }
     }),
 
-  createTask: publicProcedure
+  createTask: protectedProcedure
     .input(newTaskZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const [m] = await db
+        .select()
+        .from(tables.member)
+        .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, input.organization_id)));
+      if (!m) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You must belong to the organization to create a task" });
+      }
+      if (input.user_id !== ctx.session.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only create tasks assigned to yourself" });
+      }
       try {
         return await taskService.createTask({
           status: "backlog",
@@ -46,23 +72,38 @@ export const tasksRouter = router({
       }
     }),
 
-  updateTask: publicProcedure
+  updateTask: protectedProcedure
     .input(updateTaskRouterInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
+        const task = await taskService.getTaskById(input.id);
+        if (!task) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+        }
+        if (task.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this task" });
+        }
         return await taskService.updateTask(input.id, input);
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  deleteTask: publicProcedure
+  deleteTask: protectedProcedure
     .input(idInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
+        const task = await taskService.getTaskById(input.id);
+        if (!task) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Task not found" });
+        }
+        if (task.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this task" });
+        }
         return await taskService.deleteTask(input.id);
       } catch (error) {
         handleDbError(error);
       }
     }),
 });
+

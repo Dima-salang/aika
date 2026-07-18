@@ -228,15 +228,15 @@ export class InvitationService {
       .limit(1);
 
     if (!token) {
-      throw new Error("Invalid join token");
+      throw new TokenNotFoundError();
     }
 
     if (new Date() > new Date(token.expiresAt)) {
-      throw new Error("Join token has expired");
+      throw new TokenExpiredError();
     }
 
     if (token.maxUses !== null && token.usesCount >= token.maxUses) {
-      throw new Error("Join token use limit reached");
+      throw new TokenLimitReachedError();
     }
 
     // Check if user is already in the organization

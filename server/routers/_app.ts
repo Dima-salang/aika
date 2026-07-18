@@ -1,8 +1,9 @@
-import { router, publicProcedure, mergeRouters } from "../trpc";
+import { router, publicProcedure, mergeRouters, protectedProcedure } from "../trpc";
 import { ensureSeed } from "@/db/seed";
 import { z } from "zod";
 import { tokenInputZodSchema, tokenAndUserIdInputZodSchema, userIdInputZodSchema } from "@/db/schema";
 import { TRPCError } from "@trpc/server";
+import { handleDbError } from "@/utils/db-errors";
 
 // Router Imports
 import { adminRouter } from "./admin";
@@ -78,6 +79,12 @@ const baseRouter = router({
           result,
         };
       } catch (err: any) {
+        if (err instanceof TokenNotFoundError) {
+          throw new TRPCError({ code: "NOT_FOUND", message: err.message });
+        }
+        if (err instanceof TokenExpiredError || err instanceof TokenLimitReachedError) {
+          throw new TRPCError({ code: "BAD_REQUEST", message: err.message });
+        }
         throw new TRPCError({
           code: "BAD_REQUEST",
           message: err?.message || "Failed to apply join token",
@@ -85,25 +92,32 @@ const baseRouter = router({
       }
     }),
 
-  getMyManageProfile: publicProcedure
+  getMyManageProfile: protectedProcedure
     .input(userIdInputZodSchema)
-    .query(async ({ input }) => {
-      return await userService.getManagedProfile(input.userId);
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Unauthorized access to profile" });
+      }
+      try {
+        return await userService.getManagedProfile(input.userId);
+      } catch (error) {
+        handleDbError(error);
+      }
     }),
 
-  getUserProfileDetails: publicProcedure
+  getUserProfileDetails: protectedProcedure
     .input(z.object({ userId: z.string(), callerId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.callerId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Unauthorized access to profile" });
+      }
       try {
         return await userService.getUserProfileDetails(input.userId, input.callerId);
       } catch (err: any) {
         if (err instanceof UserNotFoundError) {
           throw new TRPCError({ code: "NOT_FOUND", message: err.message });
         }
-        throw new TRPCError({
-          code: "INTERNAL_SERVER_ERROR",
-          message: err?.message || "Failed to retrieve user profile details",
-        });
+        handleDbError(err);
       }
     }),
 

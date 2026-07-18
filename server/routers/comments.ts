@@ -1,6 +1,6 @@
 import { CommentService } from "@/services/core/CommentService";
 import { z } from "zod";
-import { publicProcedure, router } from "../trpc";
+import { protectedProcedure, router } from "../trpc";
 import { handleDbError } from "@/utils/db-errors";
 import { TRPCError } from "@trpc/server";
 
@@ -12,7 +12,7 @@ const listCommentsFilterSchema = z.object({
 });
 
 export const commentRouter = router({
-    listComments: publicProcedure
+    listComments: protectedProcedure
         .input(z.object({
             filter: listCommentsFilterSchema.optional(),
             offset: z.number().int().nonnegative().optional().default(0),
@@ -29,7 +29,7 @@ export const commentRouter = router({
                 handleDbError(error);
             }
         }),
-    getCommentById: publicProcedure
+    getCommentById: protectedProcedure
         .input(z.object({
             id: z.string(),
         }))
@@ -44,14 +44,17 @@ export const commentRouter = router({
                 handleDbError(error);
             }
         }),
-    createComment: publicProcedure
+    createComment: protectedProcedure
         .input(z.object({
             log_id: z.string(),
             user_id: z.string(),
             parent_id: z.string().optional(),
             comment: z.string().min(1),
         }))
-        .mutation(async ({ input }) => {
+        .mutation(async ({ ctx, input }) => {
+            if (ctx.session.user.id !== input.user_id) {
+                throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create comment as another user" });
+            }
             try {
                 return await service.createComment(input);
             } catch (error) {
@@ -61,13 +64,20 @@ export const commentRouter = router({
                 handleDbError(error);
             }
         }),
-    updateComment: publicProcedure
+    updateComment: protectedProcedure
         .input(z.object({
             id: z.string().min(1),
             comment: z.string().min(1),
         }))
-        .mutation(async ({ input }) => {
+        .mutation(async ({ ctx, input }) => {
             try {
+                const existing = await service.getCommentById(input.id);
+                if (!existing) {
+                    throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found" });
+                }
+                if (existing.user_id !== ctx.session.user.id) {
+                    throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this comment" });
+                }
                 return await service.updateComment(input.id, { comment: input.comment });
             } catch (error) {
                 if (error instanceof z.ZodError) {
@@ -76,12 +86,19 @@ export const commentRouter = router({
                 handleDbError(error);
             }
         }),
-    deleteComment: publicProcedure
+    deleteComment: protectedProcedure
         .input(z.object({
             id: z.string(),
         }))
-        .mutation(async ({ input }) => {
+        .mutation(async ({ ctx, input }) => {
             try {
+                const existing = await service.getCommentById(input.id);
+                if (!existing) {
+                    throw new TRPCError({ code: "NOT_FOUND", message: "Comment not found" });
+                }
+                if (existing.user_id !== ctx.session.user.id) {
+                    throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this comment" });
+                }
                 const { id } = input;
                 return await service.deleteComment(id);
             } catch (error) {
