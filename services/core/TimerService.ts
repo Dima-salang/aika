@@ -197,19 +197,22 @@ export class TimerService {
       throw new Error("Validation Error: No active running timer found for this user");
     }
 
-    await db.delete(tables.timers).where(eq(tables.timers.user_id, userId));
+    return await runTransaction(async (tx: DBInstance) => {
+      await tx.delete(tables.timers).where(eq(tables.timers.user_id, userId));
 
-    await this.auditService.createAuditLog(
-      userId,
-      "timer_discard",
-      "timers",
-      userId,
-      "Discarded active running timer",
-      undefined,
-      ipAddress,
-      userAgent
-    );
+      await this.auditService.createAuditLog(
+        userId,
+        "timer_discard",
+        "timers",
+        userId,
+        "Discarded active running timer",
+        undefined,
+        ipAddress,
+        userAgent,
+        tx
+      );
 
-    return true;
+      return true;
+    });
   }
 }

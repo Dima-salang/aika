@@ -28,10 +28,11 @@ const handler = (req: Request) =>
           };
         }
 
-        // Private/user-specific queries should allow browser cache but bypass shared CDNs
+        // By default, private/user-specific queries should not be cached by the browser
+        // to prevent stale state collisions during client-side invalidations
         return {
           headers: {
-            "Cache-Control": "private, max-age=10, stale-while-revalidate=30",
+            "Cache-Control": "no-store, no-cache, must-revalidate, proxy-revalidate, max-age=0",
           },
         };
       }

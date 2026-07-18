@@ -209,6 +209,11 @@ export default function Dashboard() {
     onSuccess: () => {
       utils.getRunningTimer.setData({ userId }, null);
       utils.getRunningTimer.invalidate({ userId });
+      refetchTimer();
+    },
+    onError: (err) => {
+      toast.error("Failed to discard timer");
+      refetchTimer();
     },
   });
 
@@ -223,11 +228,22 @@ export default function Dashboard() {
 
   const handleDiscardTimer = async () => {
     if (!userId) return;
-    if (confirm("Are you sure you want to discard this clock-in session? All untracked time will be lost.")) {
-      await discardTimerMutation.mutateAsync({ userId });
-      useTimeLogDraftStore.getState().clearDraft(editingLog?.id || "new");
-      setIsDialogOpen(false);
-    }
+    showConfirm({
+      title: "Discard Clock-in Session?",
+      description: "Are you sure you want to discard this clock-in session? All untracked time will be lost.",
+      onConfirm: async () => {
+        // Optimistically clear running timer cache immediately to stop the clock in the UI
+        utils.getRunningTimer.setData({ userId }, null);
+        try {
+          await discardTimerMutation.mutateAsync({ userId });
+          useTimeLogDraftStore.getState().clearDraft(editingLog?.id || "new");
+          setIsDialogOpen(false);
+        } catch (e) {
+          // Restore running timer state on failure
+          refetchTimer();
+        }
+      },
+    });
   };
 
   // Theme Sync

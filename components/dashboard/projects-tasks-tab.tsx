@@ -87,7 +87,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
         id: newTaskInput.id || crypto.randomUUID(),
         title: newTaskInput.title,
         description: newTaskInput.description || null,
-        status: "backlog", // Server forces backlog on creation
+        status: newTaskInput.status || "backlog",
         priority: newTaskInput.priority || "medium",
         user_id: newTaskInput.user_id,
         project_id: newTaskInput.project_id || null,
@@ -156,7 +156,6 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
           return old.map((t) => (t.id === serverTask.id ? serverTask : t));
         });
       }
-      toast.success("Task updated successfully!");
     },
     onError: (err, newTask, context) => {
       if (context?.previousTasks) {
@@ -227,7 +226,7 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
   const resetTaskForm = () => {
     setTaskTitle("");
     setTaskDesc("");
-    setTaskStatus("todo");
+    setTaskStatus("backlog");
     setTaskPriority("medium");
     setTaskAssignee(userId);
     setEditingTaskId(null);
@@ -349,11 +348,13 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
           onSuccess: () => {
             setIsNewTaskOpen(false);
             resetTaskForm();
-            toast.success("Task updated successfully!");
           }
         });
       } else {
-        await createTask.mutateAsync(payload, {
+        await createTask.mutateAsync({
+          id: crypto.randomUUID(),
+          ...payload
+        }, {
           onSuccess: () => {
             setIsNewTaskOpen(false);
             resetTaskForm();
@@ -366,48 +367,45 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     }
   };
 
-const onDragEnd = async (result: DropResult) => {
-  const { destination, source, draggableId } = result;
-  if (!destination) return;
+  const onDragEnd = async (result: DropResult) => {
+    const { destination, source, draggableId } = result;
+    if (!destination) return;
 
-  if (
-    destination.droppableId === source.droppableId &&
-    destination.index === source.index
-  ) {
-    return;
-  }
+    if (
+      destination.droppableId === source.droppableId &&
+      destination.index === source.index
+    ) {
+      return;
+    }
 
-  const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
-  const task = tasks?.find((t: any) => t.id === draggableId);
+    const newStatus = destination.droppableId as "backlog" | "todo" | "in_progress" | "done";
+    const task = tasks?.find((t: any) => t.id === draggableId);
 
-  if (task && task.status !== newStatus) {
-    // 1. Cancel active refetches so they don't break our state mid-drag
-    await utils.getTasks.cancel(queryKey);
+    if (task && task.status !== newStatus) {
+      await utils.getTasks.cancel(queryKey);
 
-    // 2. Optimistically paint the UI immediately
-    utils.getTasks.setData(queryKey, (old: any) => {
-      if (!old) return old;
-      return old.map((t: any) =>
-        t.id === draggableId ? { ...t, status: newStatus } : t
-      );
-    });
+      utils.getTasks.setData(queryKey, (old: any) => {
+        if (!old) return old;
+        return old.map((t: any) =>
+          t.id === draggableId ? { ...t, status: newStatus } : t
+        );
+      });
 
-    // 3. Fire-and-forget the update safely
-    updateTask.mutate({
-      id: task.id,
-      title: task.title,
-      description: task.description,
-      status: newStatus,
-      priority: (task.priority || "medium") as any,
-      user_id: task.user_id,
-      organization_id: task.organization_id,
-      project_id: task.project_id,
-      team_id: task.team_id,
-    });
+      updateTask.mutate({
+        id: task.id,
+        title: task.title,
+        description: task.description,
+        status: newStatus,
+        priority: (task.priority || "medium") as any,
+        user_id: task.user_id,
+        organization_id: task.organization_id,
+        project_id: task.project_id,
+        team_id: task.team_id,
+      });
 
-    toast.info(`Task status updated to ${newStatus}!`);
-  }
-};
+      toast.info(`Task status updated to ${newStatus}!`);
+    }
+  };
 
   // Select active project if none selected yet
   const activeProjects = projects?.filter((p: any) => !p.deleted_at) || [];
@@ -587,7 +585,7 @@ const onDragEnd = async (result: DropResult) => {
                   <span className="text-primary font-semibold">{currentProject.name}</span>
                 </div>
                 <h2 className="text-body-lg font-extrabold text-on-surface">
-                  {currentProject.description || "Active Deliverables"}
+                  {currentProject.description || "Tasks"}
                 </h2>
               </div>
 
