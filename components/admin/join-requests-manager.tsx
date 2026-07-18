@@ -51,22 +51,10 @@ export function JoinRequestsManager({
     setErrorMsg(null);
     setProcessingId(requestId);
 
-    let currentUserId = "admin-user"; // Fallback
-    try {
-      const sessRes = await fetch("/api/auth/get-session");
-      if (sessRes.ok) {
-        const sessData = await sessRes.json();
-        if (sessData?.user?.id) {
-          currentUserId = sessData.user.id;
-        }
-      }
-    } catch (err) {}
-
     try {
       await reviewRequest.mutateAsync({
         requestId,
         status,
-        adminId: currentUserId,
       });
     } catch (err) {
       setErrorMsg((err as Error)?.message || "Failed to process approval decision.");
