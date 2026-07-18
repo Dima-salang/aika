@@ -180,8 +180,8 @@ export function LogComments({ logId, onCommentCountChange }: LogCommentsProps) {
         className="space-y-3"
       >
         <div 
-          className={`flex gap-3 p-3 bg-surface-container-low/30 border border-outline-variant/30 rounded-xl transition-all duration-200 hover:border-primary/40 hover:bg-surface-container-low/60 hover:shadow-sm hover:-translate-y-0.5 relative ${
-            isAuthor ? "border-primary/20 bg-primary/5" : ""
+          className={`flex gap-3 p-3 bg-surface-container-low/30 border border-outline-variant/30 rounded-xl transition-colors duration-200 hover:border-primary/30 relative ${
+            isAuthor ? "border-primary/20 bg-primary/[3%]" : ""
           }`}
         >
           {/* User avatar */}
