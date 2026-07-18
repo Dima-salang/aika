@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useState, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { LexicalComposer } from "@lexical/react/LexicalComposer";
 import { RichTextPlugin } from "@lexical/react/LexicalRichTextPlugin";
 import { ContentEditable } from "@lexical/react/LexicalContentEditable";
@@ -467,20 +468,23 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
         ul: "list-disc list-outside mb-2 text-xs text-on-surface",
         ol: "list-decimal list-outside mb-2 text-xs text-on-surface",
         ulDepth: [
-          "pl-5",
-          "pl-5",
-          "pl-5",
-          "pl-5",
-          "pl-5"
+          "pl-5 list-disc",
+          "pl-5 list-[circle]",
+          "pl-5 list-[square]",
+          "pl-5 list-disc",
+          "pl-5 list-[circle]",
         ],
         olDepth: [
-          "pl-5",
-          "pl-5",
-          "pl-5",
-          "pl-5",
-          "pl-5"
+          "pl-5 list-decimal",
+          "pl-5 list-[lower-alpha]",
+          "pl-5 list-[lower-roman]",
+          "pl-5 list-decimal",
+          "pl-5 list-[lower-alpha]",
         ],
         listitem: "text-xs text-on-surface",
+        nested: {
+          listitem: "list-none",
+        },
       },
       heading: {
         h1: "text-lg font-bold text-on-surface mt-2 mb-1",
@@ -518,51 +522,58 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
     ],
   };
 
+  const editorContent = (
+    <div className={
+      isFullscreen
+        ? "fixed inset-0 z-[9999] bg-surface dark:bg-[#131315] p-6 flex flex-col h-screen w-screen animate-in fade-in duration-200"
+        : "relative bg-transparent min-h-[140px] focus-within:ring-0 p-0 transition-all flex flex-col"
+    }>
+      <ToolbarPlugin isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen} />
+
+      <div className={isFullscreen ? "flex-1 flex flex-col mt-4 min-h-0 relative" : "relative flex-1"}>
+        <RichTextPlugin
+          contentEditable={
+            <ContentEditable className={
+              isFullscreen
+                ? "outline-none text-xs flex-1 resize-none text-on-surface font-sans overflow-y-auto h-full p-4 border border-outline-variant rounded-xl bg-surface-container-low/50"
+                : "outline-none text-xs min-h-[70px] resize-none text-on-surface font-sans"
+            } />
+          }
+          placeholder={
+            <div className={
+              isFullscreen
+                ? "absolute top-4 left-4 text-xs text-outline pointer-events-none select-none font-sans"
+                : "absolute top-0 left-0 text-xs text-outline pointer-events-none select-none font-sans"
+            }>
+              {placeholder || "Enter description..."}
+            </div>
+          }
+          ErrorBoundary={LexicalErrorBoundary}
+        />
+        <HistoryPlugin />
+        <MarkdownShortcutPlugin transformers={EDITOR_TRANSFORMERS} />
+        <ListPlugin />
+        <LinkPlugin />
+        <TabIndentationPlugin />
+        <OnChangePlugin
+          onChange={(editorState) => {
+            editorState.read(() => {
+              const markdown = $convertToMarkdownString(EDITOR_TRANSFORMERS);
+              onChange(markdown);
+            });
+          }}
+        />
+        <InitialValuePlugin value={value} />
+      </div>
+    </div>
+  );
+
   return (
     <LexicalComposer initialConfig={initialConfig}>
-      <div className={
-        isFullscreen
-          ? "fixed inset-0 z-[100] bg-surface/95 dark:bg-[#0a0a0c]/98 backdrop-blur-md p-6 flex flex-col h-screen w-screen animate-in fade-in duration-200"
-          : "relative bg-transparent min-h-[140px] focus-within:ring-0 p-0 transition-all flex flex-col"
-      }>
-        <ToolbarPlugin isFullscreen={isFullscreen} toggleFullscreen={toggleFullscreen} />
-
-        <div className={isFullscreen ? "flex-1 flex flex-col mt-4 min-h-0 relative" : "relative flex-1"}>
-          <RichTextPlugin
-            contentEditable={
-              <ContentEditable className={
-                isFullscreen
-                  ? "outline-none text-xs flex-1 resize-none text-on-surface font-sans overflow-y-auto h-full p-4 border border-outline-variant rounded-xl bg-surface-container-low/50"
-                  : "outline-none text-xs min-h-[70px] resize-none text-on-surface font-sans"
-              } />
-            }
-            placeholder={
-              <div className={
-                isFullscreen
-                  ? "absolute top-4 left-4 text-xs text-outline pointer-events-none select-none font-sans"
-                  : "absolute top-0 left-0 text-xs text-outline pointer-events-none select-none font-sans"
-              }>
-                {placeholder || "Enter description..."}
-              </div>
-            }
-            ErrorBoundary={LexicalErrorBoundary}
-          />
-          <HistoryPlugin />
-          <MarkdownShortcutPlugin transformers={EDITOR_TRANSFORMERS} />
-          <ListPlugin />
-          <LinkPlugin />
-          <TabIndentationPlugin />
-          <OnChangePlugin
-            onChange={(editorState) => {
-              editorState.read(() => {
-                const markdown = $convertToMarkdownString(EDITOR_TRANSFORMERS);
-                onChange(markdown);
-              });
-            }}
-          />
-          <InitialValuePlugin value={value} />
-        </div>
-      </div>
+      {isFullscreen && typeof window !== "undefined"
+        ? createPortal(editorContent, document.body)
+        : editorContent
+      }
     </LexicalComposer>
   );
 }
