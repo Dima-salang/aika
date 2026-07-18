@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "../trpc";
+import { router, publicProcedure, protectedProcedure } from "../trpc";
 import { z } from "zod";
 import {
   createLogInputZodSchema,
@@ -12,6 +12,7 @@ import {
 } from "@/db/schema";
 import { handleDbError } from "@/utils/db-errors";
 import { importedLogZodSchema } from "@/services/import-export/types";
+import { TRPCError } from "@trpc/server";
 
 // Service Imports & Instantiation
 import { AuditService } from "@/services/core/AuditService";
@@ -76,9 +77,12 @@ export const logsRouter = router({
       }
     }),
 
-  getUserLogs: publicProcedure
+  getUserLogs: protectedProcedure
     .input(getUserLogsInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await logQueryService.getUserLogs(
           input.userId,
@@ -97,13 +101,16 @@ export const logsRouter = router({
       }
     }),
 
-  getUserLogsInfinite: publicProcedure
+  getUserLogsInfinite: protectedProcedure
     .input(
       getUserLogsInputZodSchema.extend({
         cursor: z.number().nullish(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         const limit = input.limit ?? 10;
         const offset = input.cursor ?? 0;
@@ -133,9 +140,12 @@ export const logsRouter = router({
       }
     }),
 
-  createLog: publicProcedure
+  createLog: protectedProcedure
     .input(createLogInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await logService.createLog(input);
       } catch (error) {
@@ -143,7 +153,7 @@ export const logsRouter = router({
       }
     }),
 
-  importLogs: publicProcedure
+  importLogs: protectedProcedure
     .input(
       z.object({
         userId: z.string(),
@@ -152,7 +162,10 @@ export const logsRouter = router({
         logs: z.array(importedLogZodSchema),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await logService.importLogs(
           input.userId,
@@ -165,9 +178,12 @@ export const logsRouter = router({
       }
     }),
 
-  updateLog: publicProcedure
+  updateLog: protectedProcedure
     .input(updateLogParentInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await logService.updateLog(input.logId, input.userId, input.input);
       } catch (error) {
@@ -175,9 +191,12 @@ export const logsRouter = router({
       }
     }),
 
-  deleteLog: publicProcedure
+  deleteLog: protectedProcedure
     .input(logIdAndUserIdInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await logService.deleteLog(input.logId, input.userId);
       } catch (error) {
@@ -186,9 +205,12 @@ export const logsRouter = router({
     }),
 
   // Timer procedures
-  startTimer: publicProcedure
+  startTimer: protectedProcedure
     .input(startTimerInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await timerService.startTimer(input.userId, input.projectId, input.description);
       } catch (error) {
@@ -196,9 +218,12 @@ export const logsRouter = router({
       }
     }),
 
-  stopTimer: publicProcedure
+  stopTimer: protectedProcedure
     .input(stopTimerInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await timerService.stopTimer(
           input.userId,
@@ -219,9 +244,12 @@ export const logsRouter = router({
       }
     }),
 
-  getRunningTimer: publicProcedure
+  getRunningTimer: protectedProcedure
     .input(userIdInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await timerService.getRunningTimer(input.userId);
       } catch (error) {
@@ -229,9 +257,12 @@ export const logsRouter = router({
       }
     }),
 
-  discardTimer: publicProcedure
+  discardTimer: protectedProcedure
     .input(userIdInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await timerService.discardTimer(input.userId);
       } catch (error) {
@@ -239,9 +270,12 @@ export const logsRouter = router({
       }
     }),
 
-  disconnectNotion: publicProcedure
+  disconnectNotion: protectedProcedure
     .input(z.object({ userId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         const { db, isSQLite } = await import("@/db");
         const { user, userSqlite } = await import("@/db/schema");
@@ -268,9 +302,12 @@ export const logsRouter = router({
       }
     }),
 
-  disconnectGithub: publicProcedure
+  disconnectGithub: protectedProcedure
     .input(z.object({ userId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         const { db } = await import("@/db");
         const { eq, and } = await import("drizzle-orm");
@@ -289,9 +326,12 @@ export const logsRouter = router({
       }
     }),
 
-  resetNotionDatabase: publicProcedure
+  resetNotionDatabase: protectedProcedure
     .input(z.object({ userId: z.string() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         const { db, isSQLite } = await import("@/db");
         const { user, userSqlite } = await import("@/db/schema");
@@ -316,9 +356,12 @@ export const logsRouter = router({
       }
     }),
 
-  getGitHubUserRepos: publicProcedure
+  getGitHubUserRepos: protectedProcedure
     .input(z.object({ userId: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await githubService.getRepos(input.userId);
       } catch (error) {
@@ -326,9 +369,12 @@ export const logsRouter = router({
       }
     }),
 
-  getGitHubRepoCommits: publicProcedure
+  getGitHubRepoCommits: protectedProcedure
     .input(z.object({ userId: z.string(), repoName: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await githubService.getCommits(input.userId, input.repoName);
       } catch (error) {
@@ -336,9 +382,12 @@ export const logsRouter = router({
       }
     }),
 
-  getGitHubRepoPRs: publicProcedure
+  getGitHubRepoPRs: protectedProcedure
     .input(z.object({ userId: z.string(), repoName: z.string() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await githubService.getPullRequests(input.userId, input.repoName);
       } catch (error) {
@@ -346,3 +395,4 @@ export const logsRouter = router({
       }
     }),
 });
+

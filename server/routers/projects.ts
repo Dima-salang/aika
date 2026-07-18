@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "../trpc";
+import { router, protectedProcedure } from "../trpc";
 import { z } from "zod";
 import {
   getProjectInputZodSchema,
@@ -9,25 +9,45 @@ import {
 } from "@/db/schema";
 import { ProjectService } from "@/services/core/ProjectService";
 import { handleDbError } from "@/utils/db-errors";
+import { db } from "@/db";
+import { tables } from "@/db/tables";
+import { eq, and } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 
 const projectService = new ProjectService();
 
 export const projectsRouter = router({
-  getProject: publicProcedure
+  getProject: protectedProcedure
     .input(getProjectInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
       try {
-        return await projectService.getProject(input.id);
+        const project = await projectService.getProject(input.id);
+        if (!project) return null;
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
+        if (!m && project.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this project" });
+        }
+        return project;
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  getProjects: publicProcedure
+  getProjects: protectedProcedure
     .input(getProjectsInputZodSchema)
     .query(async ({ input, ctx }) => {
       try {
-        const userId = ctx.session?.user?.id;
+        const userId = ctx.session.user.id;
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, userId), eq(tables.member.organizationId, input.organizationId)));
+        if (!m) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not belong to this organization" });
+        }
         return await projectService.listProjects(input.pagination, {
           organizationId: input.organizationId,
           teamId: input.teamId,
@@ -38,40 +58,74 @@ export const projectsRouter = router({
       }
     }),
 
-  createProject: publicProcedure
+  createProject: protectedProcedure
     .input(createProjectRouterInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
         const { userId, ...projectData } = input;
+        const targetUserId = userId || ctx.session.user.id;
+        if (targetUserId !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create project for another user" });
+        }
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, projectData.organization_id)));
+        if (!m) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not belong to this organization" });
+        }
         return await projectService.createProject(
           {
             ...projectData,
             id: projectData.id || crypto.randomUUID(),
           },
-          userId
+          targetUserId
         );
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  updateProject: publicProcedure
+  updateProject: protectedProcedure
     .input(updateProjectRouterInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
+        const project = await projectService.getProject(input.id);
+        if (!project) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
+        if (!m && project.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to manage this project" });
+        }
         return await projectService.updateProject(input.id, input);
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  deleteProject: publicProcedure
+  deleteProject: protectedProcedure
     .input(idInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       try {
+        const project = await projectService.getProject(input.id);
+        if (!project) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
+        }
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
+        if (!m && project.user_id !== ctx.session.user.id) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to manage this project" });
+        }
         return await projectService.deleteProject(input.id);
       } catch (error) {
         handleDbError(error);
       }
     }),
 });
+

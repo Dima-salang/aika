@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "../trpc";
+import { router, protectedProcedure } from "../trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
@@ -24,9 +24,12 @@ const userService = new UserService(organizationService, teamService);
 const logQueryService = new LogQueryService();
 
 export const teamsRouter = router({
-  getTeamTimeline: publicProcedure
+  getTeamTimeline: protectedProcedure
     .input(getTeamTimelineInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
           throw new TRPCError({
@@ -49,13 +52,16 @@ export const teamsRouter = router({
       }
     }),
 
-  getTeamTimelineInfinite: publicProcedure
+  getTeamTimelineInfinite: protectedProcedure
     .input(
       getTeamTimelineInputZodSchema.extend({
         cursor: z.number().nullish(),
       })
     )
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
           throw new TRPCError({
@@ -89,9 +95,12 @@ export const teamsRouter = router({
       }
     }),
 
-  getTeamMembers: publicProcedure
+  getTeamMembers: protectedProcedure
     .input(getTeamMembersInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         if (!(await teamService.verifyTeamMember(input.teamId, input.userId))) {
           throw new TRPCError({
@@ -105,9 +114,12 @@ export const teamsRouter = router({
       }
     }),
 
-  removeTeamMember: publicProcedure
+  removeTeamMember: protectedProcedure
     .input(removeTeamMemberInputZodSchema)
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         if (!(await teamService.verifyLeader(input.teamId, input.userId))) {
           throw new TRPCError({
@@ -122,9 +134,12 @@ export const teamsRouter = router({
       }
     }),
 
-  getUserTeams: publicProcedure
+  getUserTeams: protectedProcedure
     .input(getUserTeamsInputZodSchema)
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
         return await teamService.getUserTeamsInOrg(input.userId, input.organizationId);
       } catch (error) {
@@ -132,14 +147,18 @@ export const teamsRouter = router({
       }
     }),
 
-  setActiveTeam: publicProcedure
+  setActiveTeam: protectedProcedure
     .input(setActiveTeamInputZodSchema)
-    .mutation(async ({ input, ctx }) => {
+    .mutation(async ({ ctx, input }) => {
+      if (ctx.session.user.id !== input.userId) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "User ID mismatch" });
+      }
       try {
-        const sessionId = ctx.session?.session?.id;
+        const sessionId = ctx.session.session?.id;
         return await userService.setActiveTeam(input.userId, sessionId, input.teamId);
       } catch (error) {
         handleDbError(error);
       }
     }),
 });
+
