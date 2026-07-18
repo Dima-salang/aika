@@ -859,6 +859,7 @@ export const githubLinkInputSchema = z.object({
 });
 
 export const createLogInputZodSchema = z.object({
+  id: z.string().optional(),
   userId: z.string(),
   organizationId: z.string(),
   teamId: z.string().nullable().optional(),
@@ -1063,6 +1064,7 @@ export const updateLogParentInputZodSchema = z.object({
 export const getUserLogsInputZodSchema = z.object({
   userId: z.string(),
   organizationId: z.string().optional(),
+  teamId: z.string().nullable().optional(),
   startDate: z.coerce.date().optional(),
   endDate: z.coerce.date().optional(),
   search: z.string().optional(),
@@ -1079,6 +1081,7 @@ export const startTimerInputZodSchema = z.object({
 });
 
 export const stopTimerInputZodSchema = z.object({
+  logId: z.string().optional(),
   userId: z.string(),
   organizationId: z.string(),
   teamId: z.string().nullable().optional(),

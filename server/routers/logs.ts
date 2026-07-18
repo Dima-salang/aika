@@ -211,7 +211,8 @@ export const logsRouter = router({
           undefined,
           input.projectId,
           input.title,
-          input.githubLinks
+          input.githubLinks,
+          input.logId
         );
       } catch (error) {
         handleDbError(error);

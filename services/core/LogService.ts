@@ -156,7 +156,7 @@ export class LogService {
         throw new Error("Validation Error: Time log overlaps with an existing active log");
       }
 
-      const logId = crypto.randomUUID();
+      const logId = parsedInput.id || crypto.randomUUID();
 
       const logData: NewTimeLog = {
         id: logId,
