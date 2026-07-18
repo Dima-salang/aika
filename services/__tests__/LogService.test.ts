@@ -4,7 +4,7 @@ import { LogQueryService } from "../core/LogQueryService";
 import { AuditService } from "../core/AuditService";
 import { TaskService } from "../core/TaskService";
 import { clearDatabase, db } from "./db-helper";
-import { userSqlite, tasksSqlite, organizationSqlite, projectsSqlite } from "@/db/schema";
+import { userSqlite, tasksSqlite, organizationSqlite, projectsSqlite, memberSqlite } from "@/db/schema";
 import { eq, sql } from "drizzle-orm";
 import { StorageService } from "@/services/integrations/StorageService";
 import { MockProvider } from "./StorageService.test";
@@ -48,6 +48,14 @@ describe("LogService", () => {
       emailVerified: true,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await db.insert(memberSqlite).values({
+      id: `${testOrgId}-${testUserId}`,
+      organizationId: testOrgId,
+      userId: testUserId,
+      role: "member",
+      createdAt: now,
     });
 
     await db.insert(projectsSqlite).values([
@@ -125,7 +133,7 @@ describe("LogService", () => {
         description: "Valid log",
         evidence: [{ fileUrl: "https://x.com/a.png", fileKey: "k", fileName: "a.png", fileSize: 100, mimeType: "image/png" }],
       })
-    ).rejects.toThrow("Failed query");
+    ).rejects.toThrow("Security Error: Not a member of this organization");
   });
 
   test("createLog should validate evidence size and mime types", async () => {

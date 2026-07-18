@@ -7,7 +7,7 @@ import { UserService } from "../auth/UserService";
 import { OrganizationService } from "../auth/OrganizationService";
 import { TeamService } from "../auth/TeamService";
 import { clearDatabase, db } from "./db-helper";
-import { userSqlite, timeLogsSqlite, documentEvidencesSqlite, organizationSqlite } from "@/db/schema";
+import { userSqlite, timeLogsSqlite, documentEvidencesSqlite, organizationSqlite, memberSqlite } from "@/db/schema";
 import { StorageService, StorageProvider } from "@/services/integrations/StorageService";
 
 // Mock providers
@@ -85,6 +85,14 @@ describe("Storage Service and Log Evidence Deletion", () => {
       emailVerified: true,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await db.insert(memberSqlite).values({
+      id: `${testOrgId}-${testUserId}`,
+      organizationId: testOrgId,
+      userId: testUserId,
+      role: "member",
+      createdAt: now,
     });
   });
 
