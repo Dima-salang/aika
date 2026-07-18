@@ -26,7 +26,7 @@ export const env = createEnv({
                     });
                 }
             })
-            .default("secret-phrase-for-local-development-must-be-min-32-chars"),
+            .prefault("secret-phrase-for-local-development-must-be-min-32-chars"),
         BETTER_AUTH_URL: z.url().default("http://localhost:3020"),
         GITHUB_CLIENT_ID: z.string().optional(),
         GITHUB_CLIENT_SECRET: z.string().optional(),
