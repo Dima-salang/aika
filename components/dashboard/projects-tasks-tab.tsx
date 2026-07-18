@@ -384,23 +384,9 @@ export function ProjectsTasksTab({ userId, organizationId, activeTeamId = null, 
     if (task && task.status !== newStatus) {
       await utils.getTasks.cancel(queryKey);
 
-      utils.getTasks.setData(queryKey, (old: any) => {
-        if (!old) return old;
-        return old.map((t: any) =>
-          t.id === draggableId ? { ...t, status: newStatus } : t
-        );
-      });
-
       updateTask.mutate({
         id: task.id,
-        title: task.title,
-        description: task.description,
         status: newStatus,
-        priority: (task.priority || "medium") as any,
-        user_id: task.user_id,
-        organization_id: task.organization_id,
-        project_id: task.project_id,
-        team_id: task.team_id,
       });
 
       toast.info(`Task status updated to ${newStatus}!`);
