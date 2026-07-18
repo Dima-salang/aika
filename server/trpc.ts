@@ -1,17 +1,13 @@
-import { initTRPC } from "@trpc/server";
+import { initTRPC, TRPCError } from "@trpc/server";
 import { headers } from "next/headers";
 import { auth } from "@/lib/auth";
-
 import { cache } from "react";
 
 // Memoize session resolution per-request to deduplicate DB queries
 const getCachedSession = cache(async (headersList: Headers) => {
-  console.time("[tRPC Session Cache] DB Lookup");
-  const session = await auth.api.getSession({
+  return await auth.api.getSession({
     headers: headersList,
   });
-  console.timeEnd("[tRPC Session Cache] DB Lookup");
-  return session;
 });
 
 // Define the tRPC request context
@@ -23,7 +19,7 @@ export const createContext = async () => {
   };
 };
 
-type Context = Awaited<ReturnType<typeof createContext>>;
+export type Context = Awaited<ReturnType<typeof createContext>>;
 
 // Initialize tRPC
 const t = initTRPC.context<Context>().create();
@@ -33,4 +29,24 @@ export const router = t.router;
 export const publicProcedure = t.procedure;
 export const middleware = t.middleware;
 export const mergeRouters = t.mergeRouters;
+
+// Protected procedure that ensures user is authenticated
+export const protectedProcedure = t.procedure.use(async ({ ctx, next }) => {
+  if (!ctx.session?.user) {
+    throw new TRPCError({
+      code: "UNAUTHORIZED",
+      message: "You must be logged in to access this resource",
+    });
+  }
+  return next({
+    ctx: {
+      ...ctx,
+      session: {
+        ...ctx.session,
+        user: ctx.session.user,
+      },
+    },
+  });
+});
+
 
