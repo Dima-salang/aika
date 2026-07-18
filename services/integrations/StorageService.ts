@@ -213,8 +213,8 @@ export class SupabaseStorageProvider implements StorageProvider {
   private getStoragePath(url: string): string | null {
     if (!url.includes("supabase.co") && !url.includes("supabase-storage.co")) return null;
     try {
-      const match = url.match(/\/object\/public\/[^\/]+\/(.+)$/);
-      return match ? match[1] : null;
+      const match = url.match(/\/object\/(?:public|sign)\/[^/]+\/([^?]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
     } catch {
       return null;
     }

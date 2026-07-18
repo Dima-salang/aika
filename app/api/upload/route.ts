@@ -4,10 +4,11 @@ import { headers } from "next/headers";
 import crypto from "crypto";
 import { isSupportedMimeType } from "@/utils/file";
 import { StorageService } from "@/services/integrations/StorageService";
+import { assertOwnedStorageUrl } from "@/utils/storage-path";
+import { isOrgMember } from "@/services/auth/membership";
 
 export async function POST(req: NextRequest) {
   try {
-    // 1. Session & Auth checks
     const session = await auth.api.getSession({
       headers: await headers(),
     });
@@ -18,7 +19,6 @@ export async function POST(req: NextRequest) {
 
     const userId = session.user.id;
 
-    // 2. Parse payload
     const formData = await req.formData();
     const files = formData.getAll("file") as File[];
     const organizationId = formData.get("organizationId") as string | null;
@@ -31,9 +31,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No organization context provided" }, { status: 400 });
     }
 
+    if (!(await isOrgMember(userId, organizationId))) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     const storageService = StorageService.getInstance();
 
-    // 3. Pre-validate all files before starting uploads
     for (const file of files) {
       if (file.size > 10 * 1024 * 1024) {
         return NextResponse.json({ error: `File ${file.name} size exceeds 10MB limit` }, { status: 400 });
@@ -45,7 +48,6 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Process uploads in parallel
     const uploadPromises = files.map(async (file) => {
       const mimeType = file.type;
       const fileKey = crypto.randomUUID();
@@ -91,10 +93,10 @@ export async function DELETE(req: NextRequest) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    const userId = session.user.id;
     const { searchParams } = new URL(req.url);
     const fileUrls = searchParams.getAll("fileUrl");
 
-    // Also parse JSON body if no URLs are in search query
     if (fileUrls.length === 0) {
       const body = await req.json().catch(() => ({}));
       if (Array.isArray(body.fileUrls)) {
@@ -106,6 +108,22 @@ export async function DELETE(req: NextRequest) {
 
     if (fileUrls.length === 0) {
       return NextResponse.json({ error: "No fileUrl provided" }, { status: 400 });
+    }
+
+    const orgIds = new Set<string>();
+    for (const fileUrl of fileUrls) {
+      try {
+        const ownership = assertOwnedStorageUrl(fileUrl, userId);
+        orgIds.add(ownership.organizationId);
+      } catch {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
+    for (const organizationId of orgIds) {
+      if (!(await isOrgMember(userId, organizationId))) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
     }
 
     const storageService = StorageService.getInstance();

@@ -4,7 +4,7 @@ import { TimerService } from "../core/TimerService";
 import { AuditService } from "../core/AuditService";
 import { TaskService } from "../core/TaskService";
 import { clearDatabase, db } from "./db-helper";
-import { userSqlite, organizationSqlite, projectsSqlite, tasksSqlite, timersSqlite } from "@/db/schema";
+import { userSqlite, organizationSqlite, projectsSqlite, tasksSqlite, timersSqlite, memberSqlite } from "@/db/schema";
 import { StorageService } from "@/services/integrations/StorageService";
 import { MockProvider } from "./StorageService.test";
 
@@ -46,6 +46,14 @@ describe("TimerService", () => {
       emailVerified: true,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await db.insert(memberSqlite).values({
+      id: `${testOrgId}-${testUserId}`,
+      organizationId: testOrgId,
+      userId: testUserId,
+      role: "member",
+      createdAt: now,
     });
 
     await db.insert(projectsSqlite).values([

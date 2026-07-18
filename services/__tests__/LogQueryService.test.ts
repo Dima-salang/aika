@@ -4,7 +4,7 @@ import { LogQueryService } from "../core/LogQueryService";
 import { AuditService } from "../core/AuditService";
 import { TaskService } from "../core/TaskService";
 import { clearDatabase, db } from "./db-helper";
-import { userSqlite, organizationSqlite, projectsSqlite, tasksSqlite, teamsSqlite, teamMembersSqlite } from "@/db/schema";
+import { userSqlite, organizationSqlite, projectsSqlite, tasksSqlite, teamsSqlite, teamMembersSqlite, memberSqlite } from "@/db/schema";
 import { StorageService } from "@/services/integrations/StorageService";
 import { MockProvider } from "./StorageService.test";
 
@@ -46,6 +46,14 @@ describe("LogQueryService", () => {
       emailVerified: true,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await db.insert(memberSqlite).values({
+      id: `${testOrgId}-${testUserId}`,
+      organizationId: testOrgId,
+      userId: testUserId,
+      role: "member",
+      createdAt: now,
     });
 
     await db.insert(projectsSqlite).values([
@@ -112,6 +120,14 @@ describe("LogQueryService", () => {
       emailVerified: true,
       createdAt: now,
       updatedAt: now,
+    });
+
+    await db.insert(memberSqlite).values({
+      id: `${testOrgId}-${user2Id}`,
+      organizationId: testOrgId,
+      userId: user2Id,
+      role: "member",
+      createdAt: now,
     });
 
     await db.insert(teamsSqlite).values({

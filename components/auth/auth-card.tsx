@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,11 +10,15 @@ import { authClient } from "@/lib/auth-client";
 import { AlertCircle, Loader2, Key, Mail, UserCircle, Eye, EyeOff } from "lucide-react";
 import { useSearchParams } from "next/navigation";
 import { toast } from "sonner";
+import { safeRedirectPath } from "@/utils/safe-redirect";
 
 export function AuthCard() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirect = searchParams.get("redirect") || "/";
+  const redirect = useMemo(
+    () => safeRedirectPath(searchParams.get("redirect")),
+    [searchParams]
+  );
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   
   // Form states

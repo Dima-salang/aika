@@ -135,7 +135,6 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
     await createToken.mutateAsync({
       organizationId,
       teamId: activeTeamId || null,
-      createdBy: userId,
       expiresInSeconds,
       maxUses,
       autoJoin,
@@ -148,7 +147,6 @@ export function TeamSpaceView({ userId, organizationId, activeTeamId: propActive
       await reviewRequest.mutateAsync({
         requestId,
         status,
-        adminId: userId,
       });
     } finally {
       setProcessingId(null);

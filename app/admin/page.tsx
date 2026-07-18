@@ -150,6 +150,7 @@ export default async function AdminPage() {
   return (
     <AdminShell
       session={session}
+      isSysAdmin={isSysAdmin}
       users={usersList}
       orgs={orgsList}
       teams={teamsList}

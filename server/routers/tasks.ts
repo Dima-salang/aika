@@ -22,10 +22,13 @@ export const tasksRouter = router({
       try {
         const task = await taskService.getTaskById(input.id);
         if (!task) return null;
-        const [m] = await db
-          .select()
-          .from(tables.member)
-          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, task.organization_id)));
+        const isDefaultOrg = task.organization_id === "org-default";
+        const [m] = isDefaultOrg
+          ? [undefined]
+          : await db
+              .select()
+              .from(tables.member)
+              .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, task.organization_id)));
         if (!m && task.user_id !== ctx.session.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this task" });
         }
@@ -51,12 +54,14 @@ export const tasksRouter = router({
   createTask: protectedProcedure
     .input(newTaskZodSchema)
     .mutation(async ({ ctx, input }) => {
-      const [m] = await db
-        .select()
-        .from(tables.member)
-        .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, input.organization_id)));
-      if (!m) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "You must belong to the organization to create a task" });
+      if (input.organization_id !== "org-default") {
+        const [m] = await db
+          .select()
+          .from(tables.member)
+          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, input.organization_id)));
+        if (!m) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "You must belong to the organization to create a task" });
+        }
       }
       if (input.user_id !== ctx.session.user.id) {
         throw new TRPCError({ code: "FORBIDDEN", message: "You can only create tasks assigned to yourself" });

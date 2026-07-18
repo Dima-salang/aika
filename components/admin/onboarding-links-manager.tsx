@@ -73,23 +73,10 @@ export function OnboardingLinksManager({
     e.preventDefault();
     setErrorMsg(null);
 
-    // Get current session user id
-    let currentUserId = "admin-user"; // Fallback
-    try {
-      const sessRes = await fetch("/api/auth/get-session");
-      if (sessRes.ok) {
-        const sessData = await sessRes.json();
-        if (sessData?.user?.id) {
-          currentUserId = sessData.user.id;
-        }
-      }
-    } catch (err) {}
-
     try {
       await createToken.mutateAsync({
         organizationId: orgId,
         teamId: teamId || null,
-        createdBy: currentUserId,
         expiresInSeconds: parseInt(expiresPreset),
         maxUses: maxUses ? parseInt(maxUses) : null,
         autoJoin,

@@ -23,10 +23,13 @@ export const projectsRouter = router({
       try {
         const project = await projectService.getProject(input.id);
         if (!project) return null;
-        const [m] = await db
-          .select()
-          .from(tables.member)
-          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
+        const isDefaultOrg = project.organization_id === "org-default";
+        const [m] = isDefaultOrg
+          ? [undefined]
+          : await db
+              .select()
+              .from(tables.member)
+              .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
         if (!m && project.user_id !== ctx.session.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You do not have access to this project" });
         }
@@ -41,12 +44,14 @@ export const projectsRouter = router({
     .query(async ({ input, ctx }) => {
       try {
         const userId = ctx.session.user.id;
-        const [m] = await db
-          .select()
-          .from(tables.member)
-          .where(and(eq(tables.member.userId, userId), eq(tables.member.organizationId, input.organizationId)));
-        if (!m) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You do not belong to this organization" });
+        if (input.organizationId !== "org-default") {
+          const [m] = await db
+            .select()
+            .from(tables.member)
+            .where(and(eq(tables.member.userId, userId), eq(tables.member.organizationId, input.organizationId)));
+          if (!m) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "You do not belong to this organization" });
+          }
         }
         return await projectService.listProjects(input.pagination, {
           organizationId: input.organizationId,
@@ -67,12 +72,14 @@ export const projectsRouter = router({
         if (targetUserId !== ctx.session.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create project for another user" });
         }
-        const [m] = await db
-          .select()
-          .from(tables.member)
-          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, projectData.organization_id)));
-        if (!m) {
-          throw new TRPCError({ code: "FORBIDDEN", message: "You do not belong to this organization" });
+        if (projectData.organization_id !== "org-default") {
+          const [m] = await db
+            .select()
+            .from(tables.member)
+            .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, projectData.organization_id)));
+          if (!m) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "You do not belong to this organization" });
+          }
         }
         return await projectService.createProject(
           {
@@ -94,10 +101,13 @@ export const projectsRouter = router({
         if (!project) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
-        const [m] = await db
-          .select()
-          .from(tables.member)
-          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
+        const isDefaultOrg = project.organization_id === "org-default";
+        const [m] = isDefaultOrg
+          ? [undefined]
+          : await db
+              .select()
+              .from(tables.member)
+              .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
         if (!m && project.user_id !== ctx.session.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to manage this project" });
         }
@@ -115,10 +125,13 @@ export const projectsRouter = router({
         if (!project) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Project not found" });
         }
-        const [m] = await db
-          .select()
-          .from(tables.member)
-          .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
+        const isDefaultOrg = project.organization_id === "org-default";
+        const [m] = isDefaultOrg
+          ? [undefined]
+          : await db
+              .select()
+              .from(tables.member)
+              .where(and(eq(tables.member.userId, ctx.session.user.id), eq(tables.member.organizationId, project.organization_id)));
         if (!m && project.user_id !== ctx.session.user.id) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You do not have permission to manage this project" });
         }

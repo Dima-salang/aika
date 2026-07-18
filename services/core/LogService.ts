@@ -21,6 +21,7 @@ import { tables } from "../../db/tables";
 import crypto from "crypto";
 import { z } from "zod";
 import { ImportedLogInput } from "../import-export/types";
+import { assertOrgWriteAccess } from "@/services/auth/membership";
 
 export const bulkLogItemSchema = createLogInputZodSchema
   .omit({ organizationId: true, teamId: true, userId: true })
@@ -125,6 +126,13 @@ export class LogService {
     let successfulLogId: string | null = null;
 
     const execute = async (tx: DBInstance) => {
+      await assertOrgWriteAccess(
+        parsedInput.userId,
+        parsedInput.organizationId,
+        parsedInput.teamId,
+        tx
+      );
+
       // Verify tasks exist
       if (parsedInput.taskIds && parsedInput.taskIds.length > 0) {
         const existingTasks = await this.taskService.getTasksByIds(parsedInput.taskIds, tx);
@@ -276,6 +284,11 @@ export class LogService {
       if (existing.user_id !== userId) {
         throw new Error("Security Error: Unauthorized to modify this time log");
       }
+
+      const targetOrgId = parsedInput.organizationId ?? existing.organization_id;
+      const targetTeamId =
+        parsedInput.teamId !== undefined ? parsedInput.teamId : existing.team_id;
+      await assertOrgWriteAccess(userId, targetOrgId, targetTeamId, tx);
 
       const startTime = parsedInput.startTime ?? existing.start_time;
       const endTime = parsedInput.endTime ?? existing.end_time;
@@ -568,6 +581,8 @@ export class LogService {
     outerTx?: DBInstance
   ): Promise<{ successCount: number }> {
     const execute = async (tx: DBInstance) => {
+      await assertOrgWriteAccess(userId, organizationId, teamId, tx);
+
       if (logs.length === 0) return { successCount: 0 };
 
       const timeLogValues: NewTimeLog[] = [];
@@ -673,6 +688,8 @@ export class LogService {
     ipAddress?: string,
     userAgent?: string
   ): Promise<{ successCount: number; errors: Array<{ title: string; error: string }> }> {
+    await assertOrgWriteAccess(userId, organizationId, teamId);
+
     const errors: Array<{ title: string; error: string }> = [];
     const uniqueProjNames = Array.from(new Set(logs.map((l) => l.projectName?.trim()).filter(Boolean) as string[]));
     const uniqueTaskTitles = Array.from(

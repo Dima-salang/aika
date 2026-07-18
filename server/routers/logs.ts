@@ -88,6 +88,7 @@ export const logsRouter = router({
           input.userId,
           {
             organizationId: input.organizationId,
+            teamId: input.teamId,
             startDate: input.startDate,
             endDate: input.endDate,
             search: input.search,
@@ -118,6 +119,7 @@ export const logsRouter = router({
           input.userId,
           {
             organizationId: input.organizationId,
+            teamId: input.teamId,
             startDate: input.startDate,
             endDate: input.endDate,
             search: input.search,

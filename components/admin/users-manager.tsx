@@ -8,9 +8,10 @@ import { toast } from "sonner";
 
 interface UsersManagerProps {
   initialData?: any[];
+  canSetGlobalAdmin?: boolean;
 }
 
-export function UsersManager({ initialData }: UsersManagerProps) {
+export function UsersManager({ initialData, canSetGlobalAdmin = false }: UsersManagerProps) {
   const { data: users, isLoading, refetch } = trpc.admin.getUsers.useQuery(undefined, {
     initialData,
   });
@@ -141,9 +142,18 @@ export function UsersManager({ initialData }: UsersManagerProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
-      await updateUser.mutateAsync({ id: editingId, name, email, is_admin: isAdmin });
+      await updateUser.mutateAsync({
+        id: editingId,
+        name,
+        email,
+        ...(canSetGlobalAdmin ? { is_admin: isAdmin } : {}),
+      });
     } else {
-      await createUser.mutateAsync({ name, email, is_admin: isAdmin });
+      await createUser.mutateAsync({
+        name,
+        email,
+        ...(canSetGlobalAdmin ? { is_admin: isAdmin } : { is_admin: false }),
+      });
     }
   };
 
@@ -296,10 +306,11 @@ export function UsersManager({ initialData }: UsersManagerProps) {
               type="checkbox"
               id="is-admin"
               checked={isAdmin}
+              disabled={!canSetGlobalAdmin}
               onChange={(e) => setIsAdmin(e.target.checked)}
-              className="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4 bg-surface"
+              className="rounded border-outline-variant text-primary focus:ring-primary h-4 w-4 bg-surface disabled:opacity-50 disabled:cursor-not-allowed"
             />
-            <label htmlFor="is-admin" className="text-xs font-bold text-on-surface cursor-pointer select-none flex items-center gap-1.5">
+            <label htmlFor="is-admin" className={`text-xs font-bold text-on-surface select-none flex items-center gap-1.5 ${canSetGlobalAdmin ? "cursor-pointer" : "cursor-not-allowed opacity-50"}`}>
               <ShieldAlert className="h-3.5 w-3.5 text-tertiary" /> Assign Administrator Privileges (Global Console Admin)
             </label>
           </div>

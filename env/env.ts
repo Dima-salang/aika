@@ -11,8 +11,22 @@ export const env = createEnv({
         SUPABASE_URL: z.url(),
         SUPABASE_ANON_KEY: z.string(),
         SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
-        // Better Auth variables
-        BETTER_AUTH_SECRET: z.string().default("secret-phrase-for-local-development-must-be-min-32-chars"),
+        // Better Auth variables — production must set a real secret (no default)
+        BETTER_AUTH_SECRET: z
+            .string()
+            .min(32)
+            .superRefine((val, ctx) => {
+                if (
+                    process.env.NODE_ENV === "production" &&
+                    val === "secret-phrase-for-local-development-must-be-min-32-chars"
+                ) {
+                    ctx.addIssue({
+                        code: z.ZodIssueCode.custom,
+                        message: "BETTER_AUTH_SECRET must not use the development default in production.",
+                    });
+                }
+            })
+            .prefault("secret-phrase-for-local-development-must-be-min-32-chars"),
         BETTER_AUTH_URL: z.url().default("http://localhost:3020"),
         GITHUB_CLIENT_ID: z.string().optional(),
         GITHUB_CLIENT_SECRET: z.string().optional(),

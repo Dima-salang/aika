@@ -5,6 +5,7 @@ import { z } from "zod";
 import { AuditService } from "./AuditService";
 import { LogService } from "./LogService";
 import { Timer, TimerSqlite, TimeLog, TimeLogSqlite } from "@/db/schema";
+import { assertOrgWriteAccess } from "@/services/auth/membership";
 
 const githubLinkInputSchema = z.object({
   repoName: z.string(),
@@ -65,13 +66,18 @@ export class TimerService {
 
     if (projectId && projectId.trim() !== "") {
       const [existingProject] = await db
-        .select({ id: tables.projects.id })
+        .select({
+          id: tables.projects.id,
+          organization_id: tables.projects.organization_id,
+          team_id: tables.projects.team_id,
+        })
         .from(tables.projects)
         .where(and(eq(tables.projects.id, projectId), isNull(tables.projects.deleted_at)))
         .limit(1);
       if (!existingProject) {
         throw new Error(`Validation Error: Project with ID ${projectId} does not exist or is deleted`);
       }
+      await assertOrgWriteAccess(userId, existingProject.organization_id, existingProject.team_id);
     }
 
     const timerData = {

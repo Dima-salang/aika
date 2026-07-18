@@ -80,7 +80,6 @@ export function DashboardManageControls({ userId }: DashboardManageControlsProps
       await reviewRequest.mutateAsync({
         requestId,
         status,
-        adminId: userId,
       });
     } catch (err: any) {
       setErrorMsg(err?.message || "Failed to process request.");
@@ -169,7 +168,6 @@ export function DashboardManageControls({ userId }: DashboardManageControlsProps
             await createToken.mutateAsync({
               organizationId: resolvedOrgId,
               teamId: teamId || null,
-              createdBy: userId,
               expiresInSeconds: parseInt(expiresPreset),
               maxUses: maxUses ? parseInt(maxUses) : null,
               autoJoin,

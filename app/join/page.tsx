@@ -52,10 +52,7 @@ function JoinContent() {
     setIsProcessing(true);
 
     try {
-      const res = await applyToken.mutateAsync({
-        token,
-        userId: session.user.id,
-      });
+      const res = await applyToken.mutateAsync({ token });
 
       if (res.success) {
         if (tokenInfo.autoJoin) {

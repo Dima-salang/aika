@@ -33,6 +33,7 @@ type Section = "users" | "orgs" | "teams" | "projects" | "tasks" | "timelogs" | 
 
 interface AdminShellProps {
   session: any;
+  isSysAdmin: boolean;
   users: any[];
   orgs: any[];
   teams: any[];
@@ -47,6 +48,7 @@ interface AdminShellProps {
 
 export function AdminShell({
   session,
+  isSysAdmin,
   users: initialUsers,
   orgs: initialOrgs,
   teams: initialTeams,
@@ -97,7 +99,7 @@ export function AdminShell({
   const renderSection = () => {
     switch (activeSection) {
       case "users":
-        return <UsersManager initialData={initialUsers} />;
+        return <UsersManager initialData={initialUsers} canSetGlobalAdmin={isSysAdmin} />;
       case "orgs":
         return <OrganizationsManager initialData={initialOrgs} />;
       case "teams":
@@ -117,7 +119,7 @@ export function AdminShell({
       case "requests":
         return <JoinRequestsManager initialData={initialRequests} initialUsers={initialUsers} initialOrgs={initialOrgs} initialTeams={initialTeams} />;
       default:
-        return <UsersManager initialData={initialUsers} />;
+        return <UsersManager initialData={initialUsers} canSetGlobalAdmin={isSysAdmin} />;
     }
   };
 
