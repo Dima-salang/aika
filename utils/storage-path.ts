@@ -8,27 +8,37 @@ export type StorageOwnership = {
   relativePath: string;
 };
 
-const OWNERSHIP_RE = /(?:^|\/)organizations\/([^/]+)\/users\/([^/]+)(?:\/|$)/;
+const OWNERSHIP_RE = /^organizations\/([^/]+)\/users\/([^/]+)(?:\/|$)/;
 
 function extractPathFromUrl(fileUrl: string): string | null {
   try {
     const url = new URL(fileUrl);
+    const hostname = url.hostname.toLowerCase();
+    const isCloudinary = hostname === "cloudinary.com" || hostname.endsWith(".cloudinary.com");
+    const isSupabase =
+      hostname === "supabase.co" ||
+      hostname.endsWith(".supabase.co") ||
+      hostname === "supabase-storage.co" ||
+      hostname.endsWith(".supabase-storage.co") ||
+      hostname === "mock-supabase-storage.co";
+
+    if (!isCloudinary && !isSupabase) return null;
+
     const pathname = decodeURIComponent(url.pathname);
 
-    // Cloudinary: /<cloud>/image/upload[/v123]/organizations/...
-    const cloudinaryParts = pathname.split("/image/upload/");
-    if (cloudinaryParts.length >= 2) {
-      const rest = cloudinaryParts[1].replace(/^v\d+\//, "");
-      return rest;
+    if (isCloudinary) {
+      // Cloudinary: /<cloud>/image/upload[/v123]/organizations/...
+      const match = pathname.match(/^\/[^/]+\/image\/upload\/(?:v\d+\/)?(.+)$/);
+      if (match) return match[1];
     }
 
-    // Supabase public or signed: /object/(public|sign)/bucket/path
-    const supabaseMatch = pathname.match(/\/object\/(?:public|sign)\/[^/]+\/(.+)$/);
-    if (supabaseMatch) {
-      return supabaseMatch[1];
+    if (isSupabase) {
+      // Supabase public or signed: /object/(public|sign)/documents/path
+      const match = pathname.match(/^\/object\/(?:public|sign)\/documents\/(.+)$/);
+      if (match) return match[1];
     }
 
-    return pathname.replace(/^\//, "");
+    return null;
   } catch {
     return null;
   }
