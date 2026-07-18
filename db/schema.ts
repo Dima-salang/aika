@@ -1165,7 +1165,6 @@ export const getTasksInputZodSchema = z.object({
 export const createJoinTokenInputZodSchema = z.object({
   organizationId: z.string(),
   teamId: z.string().nullable(),
-  createdBy: z.string(),
   expiresInSeconds: z.number().int().positive().default(86400),
   maxUses: z.number().int().positive().nullable().optional(),
   autoJoin: z.boolean().default(false),
@@ -1174,7 +1173,6 @@ export const createJoinTokenInputZodSchema = z.object({
 export const reviewJoinRequestInputZodSchema = z.object({
   requestId: z.string(),
   status: z.enum(["approved", "rejected"]),
-  adminId: z.string(),
 });
 
 export const getProjectInputZodSchema = projectZodSchema.pick({ id: true });
