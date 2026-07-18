@@ -15,6 +15,7 @@ const githubLinkInputSchema = z.object({
 });
 
 const stopTimerSchema = z.object({
+  logId: z.string().optional(),
   userId: z.string(),
   organizationId: z.string(),
   teamId: z.string().nullable(),
@@ -117,9 +118,11 @@ export class TimerService {
     userAgent?: string,
     projectId?: string | null,
     title?: string,
-    githubLinks?: any[]
+    githubLinks?: any[],
+    logId?: string
   ): Promise<TimeLog | TimeLogSqlite> {
     const parsed = stopTimerSchema.parse({
+      logId,
       userId,
       organizationId,
       teamId,
@@ -145,6 +148,7 @@ export class TimerService {
 
       const log = await this.logService.createLog(
         {
+          id: parsed.logId || undefined,
           userId: parsed.userId,
           organizationId: parsed.organizationId,
           teamId: parsed.teamId,
