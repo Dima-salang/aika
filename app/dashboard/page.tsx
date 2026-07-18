@@ -72,7 +72,7 @@ export default function Dashboard() {
   const activeTeamId = (session?.session as any)?.activeTeamId || (session?.user as any)?.last_active_team_id || null;
 
   const { data: rawLogs, refetch: refetchLogs, isLoading: loadingLogs } = trpc.getUserLogs.useQuery(
-    { userId, organizationId: activeOrgId },
+    { userId, organizationId: activeOrgId, teamId: activeTeamId },
     { enabled: !!userId }
   );
 
@@ -87,6 +87,7 @@ export default function Dashboard() {
     {
       userId: userId || "",
       organizationId: activeOrgId,
+      teamId: activeTeamId,
       search: searchQuery,
       projectId: logFilterProjectId !== "all" ? logFilterProjectId : undefined,
       startDate: logFilterStartDate ? new Date(logFilterStartDate) : undefined,
@@ -117,7 +118,10 @@ export default function Dashboard() {
   const setActiveTeamMutation = trpc.setActiveTeam.useMutation({
     onSuccess: async () => {
       await refetchSession();
-      await utils.invalidate();
+      utils.getProjects.invalidate();
+      utils.getUserLogs.invalidate();
+      utils.getUserLogsInfinite.invalidate();
+      utils.getTasks.invalidate();
     }
   });
 
@@ -178,30 +182,417 @@ export default function Dashboard() {
     },
   });
 
+  const logsQueryKey = { userId, organizationId: activeOrgId, teamId: activeTeamId } as const;
+  const logsInfiniteQueryKey = {
+    userId: userId || "",
+    organizationId: activeOrgId,
+    teamId: activeTeamId,
+    search: searchQuery,
+    projectId: logFilterProjectId !== "all" ? logFilterProjectId : undefined,
+    startDate: logFilterStartDate ? new Date(logFilterStartDate) : undefined,
+    endDate: logFilterEndDate ? new Date(logFilterEndDate) : undefined,
+    limit: 10,
+  } as const;
+
+  const patchBothLogCaches = (
+    action: "create" | "update" | "delete",
+    serverLog: any
+  ) => {
+    utils.getUserLogs.setData(logsQueryKey, (old) => {
+      if (!old) return action === "create" ? [serverLog] : [];
+      if (action === "create") {
+        const exists = old.some((l) => l.id === serverLog.id);
+        if (exists) return old.map((l) => (l.id === serverLog.id ? serverLog : l));
+        return [serverLog, ...old];
+      }
+      if (action === "update") {
+        return old.map((l) => (l.id === serverLog.id ? serverLog : l));
+      }
+      if (action === "delete") {
+        return old.filter((l) => l.id !== serverLog.id);
+      }
+      return old;
+    });
+
+    utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, (old: any) => {
+      if (!old) {
+        if (action === "create") {
+          return {
+            pages: [{ items: [serverLog], nextCursor: null }],
+            pageParams: [null],
+          };
+        }
+        return old;
+      }
+      if (action === "create") {
+        const updatedPages = [...old.pages];
+        if (updatedPages.length > 0) {
+          const exists = updatedPages[0].items.some((l: any) => l.id === serverLog.id);
+          if (exists) {
+            updatedPages[0] = {
+              ...updatedPages[0],
+              items: updatedPages[0].items.map((l: any) => (l.id === serverLog.id ? serverLog : l)),
+            };
+          } else {
+            updatedPages[0] = {
+              ...updatedPages[0],
+              items: [serverLog, ...updatedPages[0].items],
+            };
+          }
+        } else {
+          updatedPages.push({ items: [serverLog], nextCursor: null });
+        }
+        return { ...old, pages: updatedPages };
+      }
+      if (action === "update") {
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.map((l: any) => (l.id === serverLog.id ? serverLog : l)),
+          })),
+        };
+      }
+      if (action === "delete") {
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.filter((l: any) => l.id !== serverLog.id),
+          })),
+        };
+      }
+      return old;
+    });
+  };
+
   const stopTimerMutation = trpc.stopTimer.useMutation({
-    onSuccess: () => {
+    onMutate: async (stopTimerInput) => {
+      await utils.getRunningTimer.cancel({ userId });
+      await utils.getUserLogs.cancel(logsQueryKey);
+      await utils.getUserLogsInfinite.cancel(logsInfiniteQueryKey);
+
+      const previousRunning = utils.getRunningTimer.getData({ userId });
+      const previousLogs = utils.getUserLogs.getData(logsQueryKey);
+      const previousInfiniteLogs = utils.getUserLogsInfinite.getInfiniteData(logsInfiniteQueryKey);
+
       utils.getRunningTimer.setData({ userId }, null);
+
+      const startTime = previousRunning?.start_time ? new Date(previousRunning.start_time) : new Date();
+      const endTime = new Date();
+      const duration = Math.floor((endTime.getTime() - startTime.getTime()) / 1000);
+
+      const optimisticLog: any = {
+        id: stopTimerInput.logId || crypto.randomUUID(),
+        user_id: stopTimerInput.userId,
+        organization_id: stopTimerInput.organizationId,
+        team_id: stopTimerInput.teamId || null,
+        project_id: stopTimerInput.projectId || previousRunning?.project_id || null,
+        start_time: startTime,
+        end_time: endTime,
+        title: stopTimerInput.title || stopTimerInput.description || previousRunning?.description || "Timer-logged hours",
+        description: stopTimerInput.description || previousRunning?.description || "Logged via active running timer.",
+        created_at: new Date(),
+        updated_at: new Date(),
+        deleted_at: null,
+        duration: duration > 0 ? duration : 0,
+        is_public: false,
+        tasks: stopTimerInput.taskIds || [],
+        evidence: (stopTimerInput.evidence || []).map((ev: any, idx: number) => ({
+          id: `opt-ev-${idx}-${Date.now()}`,
+          time_log_id: stopTimerInput.logId,
+          file_url: ev.fileUrl,
+          file_key: ev.fileKey,
+          file_name: ev.fileName,
+          file_size: ev.fileSize,
+          mime_type: ev.mimeType,
+          created_at: new Date(),
+          deleted_at: null,
+        })),
+        githubLinks: (stopTimerInput.githubLinks || []).map((link: any, idx: number) => ({
+          id: `opt-git-${idx}-${Date.now()}`,
+          time_log_id: stopTimerInput.logId,
+          repo_name: link.repoName,
+          link_type: link.linkType,
+          entity_id: link.entityId,
+          title: link.title,
+          url: link.url,
+          created_at: new Date(),
+        })),
+      };
+
+      utils.getUserLogs.setData(logsQueryKey, (old) => {
+        if (!old) return [optimisticLog];
+        return [optimisticLog, ...old];
+      });
+
+      utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, (old: any) => {
+        if (!old) {
+          return {
+            pages: [{ items: [optimisticLog], nextCursor: null }],
+            pageParams: [null],
+          };
+        }
+        const updatedPages = [...old.pages];
+        if (updatedPages.length > 0) {
+          updatedPages[0] = {
+            ...updatedPages[0],
+            items: [optimisticLog, ...updatedPages[0].items],
+          };
+        } else {
+          updatedPages.push({ items: [optimisticLog], nextCursor: null });
+        }
+        return {
+          ...old,
+          pages: updatedPages,
+        };
+      });
+
+      return { previousRunning, previousLogs, previousInfiniteLogs };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousRunning !== undefined) {
+        utils.getRunningTimer.setData({ userId }, context.previousRunning);
+      }
+      if (context?.previousLogs) {
+        utils.getUserLogs.setData(logsQueryKey, context.previousLogs);
+      }
+      if (context?.previousInfiniteLogs) {
+        utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, context.previousInfiniteLogs);
+      }
+      toast.error("Failed to stop timer.");
+    },
+    onSuccess: (serverLog) => {
+      toast.success("Timer stopped and log created successfully!");
+      setIsDialogOpen(false);
+      setEditingLog(null);
+      useTimeLogDraftStore.getState().clearDraft("new");
+      if (serverLog) {
+        patchBothLogCaches("create", serverLog);
+      }
+    },
+    onSettled: () => {
       utils.getRunningTimer.invalidate({ userId });
-      refetchLogs();
-      refetchPaginatedLogs();
     },
   });
 
   const createLogMutation = trpc.createLog.useMutation({
-    onSuccess: () => {
-      utils.invalidate();
+    onMutate: async (newLogInput) => {
+      await utils.getUserLogs.cancel(logsQueryKey);
+      await utils.getUserLogsInfinite.cancel(logsInfiniteQueryKey);
+
+      const previousLogs = utils.getUserLogs.getData(logsQueryKey);
+      const previousInfiniteLogs = utils.getUserLogsInfinite.getInfiniteData(logsInfiniteQueryKey);
+
+      const optimisticLog: any = {
+        id: newLogInput.id || crypto.randomUUID(),
+        user_id: newLogInput.userId,
+        organization_id: newLogInput.organizationId,
+        team_id: newLogInput.teamId || null,
+        project_id: newLogInput.projectId || null,
+        start_time: newLogInput.startTime,
+        end_time: newLogInput.endTime,
+        title: newLogInput.title || "Untitled Task",
+        description: newLogInput.description || "",
+        created_at: new Date(),
+        updated_at: new Date(),
+        deleted_at: null,
+        duration: Math.floor((new Date(newLogInput.endTime as any).getTime() - new Date(newLogInput.startTime as any).getTime()) / 1000),
+        is_public: newLogInput.isPublic || false,
+        tasks: newLogInput.taskIds || [],
+        evidence: (newLogInput.evidence || []).map((ev: any, idx: number) => ({
+          id: `opt-ev-${idx}-${Date.now()}`,
+          time_log_id: newLogInput.id,
+          file_url: ev.fileUrl,
+          file_key: ev.fileKey,
+          file_name: ev.fileName,
+          file_size: ev.fileSize,
+          mime_type: ev.mimeType,
+          created_at: new Date(),
+          deleted_at: null,
+        })),
+        githubLinks: (newLogInput.githubLinks || []).map((link: any, idx: number) => ({
+          id: `opt-git-${idx}-${Date.now()}`,
+          time_log_id: newLogInput.id,
+          repo_name: link.repoName,
+          link_type: link.linkType,
+          entity_id: link.entityId,
+          title: link.title,
+          url: link.url,
+          created_at: new Date(),
+        })),
+      };
+
+      utils.getUserLogs.setData(logsQueryKey, (old) => {
+        if (!old) return [optimisticLog];
+        return [optimisticLog, ...old];
+      });
+
+      utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, (old: any) => {
+        if (!old) {
+          return {
+            pages: [{ items: [optimisticLog], nextCursor: null }],
+            pageParams: [null],
+          };
+        }
+        const updatedPages = [...old.pages];
+        if (updatedPages.length > 0) {
+          updatedPages[0] = {
+            ...updatedPages[0],
+            items: [optimisticLog, ...updatedPages[0].items],
+          };
+        } else {
+          updatedPages.push({ items: [optimisticLog], nextCursor: null });
+        }
+        return {
+          ...old,
+          pages: updatedPages,
+        };
+      });
+
+      return { previousLogs, previousInfiniteLogs };
+    },
+    onError: (err, newLog, context) => {
+      if (context?.previousLogs) {
+        utils.getUserLogs.setData(logsQueryKey, context.previousLogs);
+      }
+      if (context?.previousInfiniteLogs) {
+        utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, context.previousInfiniteLogs);
+      }
+      toast.error("Failed to create log.");
+    },
+    onSuccess: (serverLog) => {
+      setIsDialogOpen(false);
+      setEditingLog(null);
+      useTimeLogDraftStore.getState().clearDraft("new");
+      if (serverLog) {
+        patchBothLogCaches("create", serverLog);
+      }
     },
   });
 
   const updateLogMutation = trpc.updateLog.useMutation({
-    onSuccess: () => {
-      utils.invalidate();
+    onMutate: async ({ logId, input }) => {
+      await utils.getUserLogs.cancel(logsQueryKey);
+      await utils.getUserLogsInfinite.cancel(logsInfiniteQueryKey);
+
+      const previousLogs = utils.getUserLogs.getData(logsQueryKey);
+      const previousInfiniteLogs = utils.getUserLogsInfinite.getInfiniteData(logsInfiniteQueryKey);
+
+      const applyUpdates = (log: any) => {
+        const updated = { ...log };
+        if (input.projectId !== undefined) updated.project_id = input.projectId;
+        if (input.startTime !== undefined) updated.start_time = input.startTime;
+        if (input.endTime !== undefined) updated.end_time = input.endTime;
+        if (input.title !== undefined) updated.title = input.title;
+        if (input.description !== undefined) updated.description = input.description;
+        if (input.taskIds !== undefined) updated.tasks = input.taskIds;
+        if (input.isPublic !== undefined) updated.is_public = input.isPublic;
+        if (input.evidence !== undefined) {
+          updated.evidence = input.evidence.map((ev: any, idx: number) => ({
+            id: ev.id || `opt-ev-${idx}-${Date.now()}`,
+            time_log_id: logId,
+            file_url: ev.fileUrl,
+            file_key: ev.fileKey,
+            file_name: ev.fileName,
+            file_size: ev.fileSize,
+            mime_type: ev.mimeType,
+            created_at: new Date(),
+            deleted_at: null,
+          }));
+        }
+        if (input.githubLinks !== undefined) {
+          updated.githubLinks = input.githubLinks.map((link: any, idx: number) => ({
+            id: link.id || `opt-git-${idx}-${Date.now()}`,
+            time_log_id: logId,
+            repo_name: link.repoName,
+            link_type: link.linkType,
+            entity_id: link.entityId,
+            title: link.title,
+            url: link.url,
+            created_at: new Date(),
+          }));
+        }
+        if (updated.start_time && updated.end_time) {
+          updated.duration = Math.floor((new Date(updated.end_time).getTime() - new Date(updated.start_time).getTime()) / 1000);
+        }
+        return updated;
+      };
+
+      utils.getUserLogs.setData(logsQueryKey, (old) => {
+        if (!old) return old;
+        return old.map((l) => (l.id === logId ? applyUpdates(l) : l));
+      });
+
+      utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.map((l: any) => (l.id === logId ? applyUpdates(l) : l)),
+          })),
+        };
+      });
+
+      return { previousLogs, previousInfiniteLogs };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousLogs) {
+        utils.getUserLogs.setData(logsQueryKey, context.previousLogs);
+      }
+      if (context?.previousInfiniteLogs) {
+        utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, context.previousInfiniteLogs);
+      }
+      toast.error("Failed to update log.");
+    },
+    onSuccess: (serverLog) => {
+      setIsDialogOpen(false);
+      setEditingLog(null);
+      if (serverLog) {
+        useTimeLogDraftStore.getState().clearDraft(serverLog.id);
+        patchBothLogCaches("update", serverLog);
+      }
     },
   });
 
   const deleteLogMutation = trpc.deleteLog.useMutation({
-    onSuccess: () => {
-      utils.invalidate();
+    onMutate: async ({ logId }) => {
+      await utils.getUserLogs.cancel(logsQueryKey);
+      await utils.getUserLogsInfinite.cancel(logsInfiniteQueryKey);
+
+      const previousLogs = utils.getUserLogs.getData(logsQueryKey);
+      const previousInfiniteLogs = utils.getUserLogsInfinite.getInfiniteData(logsInfiniteQueryKey);
+
+      utils.getUserLogs.setData(logsQueryKey, (old) => {
+        if (!old) return [];
+        return old.filter((l) => l.id !== logId);
+      });
+
+      utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, (old: any) => {
+        if (!old) return old;
+        return {
+          ...old,
+          pages: old.pages.map((page: any) => ({
+            ...page,
+            items: page.items.filter((l: any) => l.id !== logId),
+          })),
+        };
+      });
+
+      return { previousLogs, previousInfiniteLogs };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousLogs) {
+        utils.getUserLogs.setData(logsQueryKey, context.previousLogs);
+      }
+      if (context?.previousInfiniteLogs) {
+        utils.getUserLogsInfinite.setInfiniteData(logsInfiniteQueryKey, context.previousInfiniteLogs);
+      }
+      toast.error("Failed to delete log.");
+    },
+    onSuccess: (result, variables) => {
+      patchBothLogCaches("delete", { id: variables.logId });
     },
   });
 
@@ -219,11 +610,15 @@ export default function Dashboard() {
 
   const handleStartTimer = async () => {
     if (!userId) return;
-    await startTimerMutation.mutateAsync({
-      userId,
-      projectId: timerProjId || null,
-      description: timerDesc || "Work session",
-    });
+    try {
+      await startTimerMutation.mutateAsync({
+        userId,
+        projectId: timerProjId || null,
+        description: timerDesc || "Work session",
+      });
+    } catch (e) {
+      // Handled by onError callback
+    }
   };
 
   const handleDiscardTimer = async () => {
@@ -433,7 +828,9 @@ export default function Dashboard() {
 
   const handleStopTimerWithEvidence = async (evidenceData: any) => {
     if (!userId) return;
+    const logId = crypto.randomUUID();
     await stopTimerMutation.mutateAsync({
+      logId,
       userId,
       organizationId: activeOrgId,
       teamId: activeTeamId,
@@ -447,11 +844,30 @@ export default function Dashboard() {
   };
 
   const handleDialogSubmit = async (data: any) => {
-    if (editingLog) {
-      await updateLogMutation.mutateAsync({
-        logId: editingLog.id,
-        userId,
-        input: {
+    try {
+      if (editingLog) {
+        await updateLogMutation.mutateAsync({
+          logId: editingLog.id,
+          userId,
+          input: {
+            organizationId: activeOrgId,
+            teamId: activeTeamId,
+            projectId: data.projectId,
+            startTime: data.startTime,
+            endTime: data.endTime,
+            title: data.title,
+            description: data.description,
+            taskIds: data.taskIds,
+            evidence: data.evidence,
+            isPublic: data.isPublic,
+            githubLinks: data.githubLinks,
+          },
+        });
+      } else {
+        const generatedId = crypto.randomUUID();
+        await createLogMutation.mutateAsync({
+          id: generatedId,
+          userId,
           organizationId: activeOrgId,
           teamId: activeTeamId,
           projectId: data.projectId,
@@ -463,23 +879,10 @@ export default function Dashboard() {
           evidence: data.evidence,
           isPublic: data.isPublic,
           githubLinks: data.githubLinks,
-        },
-      });
-    } else {
-      await createLogMutation.mutateAsync({
-        userId,
-        organizationId: activeOrgId,
-        teamId: activeTeamId,
-        projectId: data.projectId,
-        startTime: data.startTime,
-        endTime: data.endTime,
-        title: data.title,
-        description: data.description,
-        taskIds: data.taskIds,
-        evidence: data.evidence,
-        isPublic: data.isPublic,
-        githubLinks: data.githubLinks,
-      });
+        });
+      }
+    } catch (err) {
+      throw err;
     }
   };
 
@@ -496,7 +899,6 @@ export default function Dashboard() {
       await navigator.clipboard.writeText(shareUrl);
 
       if (!log.is_public) {
-        log.is_public = true;
         await updateLogMutation.mutateAsync({
           logId: log.id,
           userId,
@@ -713,8 +1115,8 @@ export default function Dashboard() {
               )}
 
               {activeTab === "profile" && (
-                <ProfileTab 
-                  targetUserId={selectedProfileUserId || session.user.id} 
+                <ProfileTab
+                  targetUserId={selectedProfileUserId || session.user.id}
                   onSelectLog={(log) => {
                     setDetailLog(log);
                     setDetailTask(null);
