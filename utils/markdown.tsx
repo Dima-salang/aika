@@ -2,6 +2,7 @@ import React from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeSanitize, { defaultSchema } from "rehype-sanitize";
+import rehypeRaw from "rehype-raw";
 
 /** Allow underline/strikethrough tags from the editor; strip scripts/events. */
 const sanitizeSchema = {
@@ -22,7 +23,7 @@ export function renderMarkdown(md: string | null | undefined): React.ReactNode {
   return (
     <ReactMarkdown
       remarkPlugins={[remarkGfm]}
-      rehypePlugins={[[rehypeSanitize, sanitizeSchema]]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, sanitizeSchema]]}
       components={{
         strong: ({ node, ...props }) => <strong className="font-bold text-on-surface" {...props} />,
         em: ({ node, ...props }) => <em className="italic text-on-surface" {...props} />,
