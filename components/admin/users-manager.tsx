@@ -8,9 +8,10 @@ import { toast } from "sonner";
 
 interface UsersManagerProps {
   initialData?: any[];
+  canSetGlobalAdmin?: boolean;
 }
 
-export function UsersManager({ initialData }: UsersManagerProps) {
+export function UsersManager({ initialData, canSetGlobalAdmin = false }: UsersManagerProps) {
   const { data: users, isLoading, refetch } = trpc.admin.getUsers.useQuery(undefined, {
     initialData,
   });
@@ -141,9 +142,18 @@ export function UsersManager({ initialData }: UsersManagerProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (editingId) {
-      await updateUser.mutateAsync({ id: editingId, name, email, is_admin: isAdmin });
+      await updateUser.mutateAsync({
+        id: editingId,
+        name,
+        email,
+        ...(canSetGlobalAdmin ? { is_admin: isAdmin } : {}),
+      });
     } else {
-      await createUser.mutateAsync({ name, email, is_admin: isAdmin });
+      await createUser.mutateAsync({
+        name,
+        email,
+        ...(canSetGlobalAdmin ? { is_admin: isAdmin } : { is_admin: false }),
+      });
     }
   };
 
