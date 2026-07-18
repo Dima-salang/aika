@@ -14,8 +14,7 @@ const handler = (req: Request) =>
       const isQuery = type === "query";
 
       if (isQuery && !hasErrors) {
-        // Check if any query in the request is a public/static endpoint
-        const isPublic = paths && paths.some(path => 
+        const isPublic = paths && paths.length > 0 && paths.every(path => 
           path.includes("validateJoinToken") || 
           path.includes("healthCheck")
         );
