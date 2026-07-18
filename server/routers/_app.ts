@@ -1,7 +1,7 @@
 import { router, publicProcedure, mergeRouters, protectedProcedure } from "../trpc";
 import { ensureSeed } from "@/db/seed";
 import { z } from "zod";
-import { tokenInputZodSchema, tokenAndUserIdInputZodSchema, userIdInputZodSchema } from "@/db/schema";
+import { tokenInputZodSchema, userIdInputZodSchema } from "@/db/schema";
 import { TRPCError } from "@trpc/server";
 import { handleDbError } from "@/utils/db-errors";
 
@@ -69,11 +69,14 @@ const baseRouter = router({
       }
     }),
 
-  applyJoinToken: publicProcedure
-    .input(tokenAndUserIdInputZodSchema)
-    .mutation(async ({ input }) => {
+  applyJoinToken: protectedProcedure
+    .input(tokenInputZodSchema)
+    .mutation(async ({ ctx, input }) => {
       try {
-        const result = await invitationService.applyWithToken(input.token, input.userId);
+        const result = await invitationService.applyWithToken(
+          input.token,
+          ctx.session.user.id
+        );
         return {
           success: true,
           result,

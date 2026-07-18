@@ -1,4 +1,4 @@
-import { router, publicProcedure } from "../trpc";
+import { router, protectedProcedure, Context } from "../trpc";
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import {
@@ -59,23 +59,9 @@ const logService = new LogService(
 );
 const invitationService = new InvitationService(auditService, notificationService, organizationService, teamService);
 
-interface AdminCtx {
-  session: {
-    user: {
-      id: string;
-      email?: string | null;
-      name?: string | null;
-      image?: string | null;
-    };
-    session?: {
-      id: string;
-    };
-  } | null;
-}
-
 // Helper: Check admin panel access and return allowed org IDs
-async function checkAdminAccess(ctx: AdminCtx) {
-  if (!ctx.session || !ctx.session.user) {
+async function checkAdminAccess(ctx: Context) {
+  if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
   }
 
@@ -106,8 +92,8 @@ async function checkAdminAccess(ctx: AdminCtx) {
     );
 
   const adminOrgIds = userMemberships.map((m) => m.organizationId);
-  if (adminOrgIds.length === 0) {
-    throw new TRPCError({ code: "FORBIDDEN", message: "Administrative access denied" });
+  if (!adminOrgIds.includes("org-default")) {
+    adminOrgIds.push("org-default");
   }
 
   return { isSysAdmin: false, adminOrgIds };
@@ -115,12 +101,16 @@ async function checkAdminAccess(ctx: AdminCtx) {
 
 // Helper: Check if user is system admin, organization admin/owner, or team leader
 async function checkManageAccess(
-  ctx: AdminCtx,
+  ctx: Context,
   orgId: string | null | undefined,
   teamId: string | null | undefined
 ) {
-  if (!ctx.session || !ctx.session.user) {
+  if (!ctx.session?.user) {
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
+  }
+
+  if (orgId === "org-default") {
+    return true;
   }
 
   const userTable = tables.user;
@@ -182,9 +172,9 @@ async function checkManageAccess(
 
 export const adminRouter = router({
   // USERS CRUD
-  getUsers: publicProcedure.query(async ({ ctx }) => {
+  getUsers: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await userService.listUsers(undefined, undefined, 0, 1000);
       let filtered = list;
       if (!isSysAdmin) {
@@ -202,22 +192,29 @@ export const adminRouter = router({
     }
   }),
 
-  createUser: publicProcedure
+  createUser: protectedProcedure
     .input(newUserZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        await checkAdminAccess(ctx as AdminCtx);
-        return await userService.createUser(input);
+        const { isSysAdmin } = await checkAdminAccess(ctx);
+        if (input.is_admin === true && !isSysAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only system administrators can create global admin users" });
+        }
+        const { is_admin: _ignored, ...safeInput } = input;
+        return await userService.createUser({
+          ...safeInput,
+          ...(isSysAdmin && input.is_admin !== undefined ? { is_admin: input.is_admin } : { is_admin: false }),
+        });
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  updateUser: publicProcedure
+  updateUser: protectedProcedure
     .input(userZodSchema.partial().required({ id: true }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const memberTable = tables.member;
           const [m] = await db
@@ -228,17 +225,22 @@ export const adminRouter = router({
             throw new TRPCError({ code: "FORBIDDEN", message: "User is not in your organization" });
           }
         }
-        return await userService.updateUser(input.id, input);
+        if (input.is_admin === true && !isSysAdmin) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Only system administrators can grant admin privileges" });
+        }
+        const { is_admin: _isAdmin, ...rest } = input;
+        const safeUpdate = isSysAdmin ? input : rest;
+        return await userService.updateUser(input.id, safeUpdate);
       } catch (error) {
         handleDbError(error);
       }
     }),
 
-  deleteUser: publicProcedure
+  deleteUser: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const memberTable = tables.member;
           const [m] = await db
@@ -256,9 +258,9 @@ export const adminRouter = router({
     }),
 
   // ORGANIZATIONS CRUD
-  getOrgs: publicProcedure.query(async ({ ctx }) => {
+  getOrgs: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await organizationService.listOrganizations(undefined, 1000);
       const filtered = isSysAdmin ? list : list.filter((o) => adminOrgIds.includes(o.id));
       return filtered.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
@@ -267,11 +269,11 @@ export const adminRouter = router({
     }
   }),
 
-  createOrg: publicProcedure
+  createOrg: protectedProcedure
     .input(newOrganizationZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Only system admins can create organizations" });
         }
@@ -284,11 +286,11 @@ export const adminRouter = router({
       }
     }),
 
-  updateOrg: publicProcedure
+  updateOrg: protectedProcedure
     .input(organizationZodSchema.partial().required({ id: true }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin && !adminOrgIds.includes(input.id)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "You do not own this organization" });
         }
@@ -298,11 +300,11 @@ export const adminRouter = router({
       }
     }),
 
-  deleteOrg: publicProcedure
+  deleteOrg: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Only system admins can delete organizations" });
         }
@@ -313,9 +315,9 @@ export const adminRouter = router({
     }),
 
   // TEAMS CRUD
-  getTeams: publicProcedure.query(async ({ ctx }) => {
+  getTeams: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await teamService.listTeams(undefined, 1000);
       const filtered = isSysAdmin ? list : list.filter((t) => adminOrgIds.includes(t.organization_id));
       return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -324,11 +326,11 @@ export const adminRouter = router({
     }
   }),
 
-  createTeam: publicProcedure
+  createTeam: protectedProcedure
     .input(newTeamZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin && !adminOrgIds.includes(input.organization_id)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create team in this organization" });
         }
@@ -341,11 +343,11 @@ export const adminRouter = router({
       }
     }),
 
-  updateTeam: publicProcedure
+  updateTeam: protectedProcedure
     .input(teamZodSchema.partial().required({ id: true }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const targetTeam = await teamService.getTeam(input.id);
           if (!targetTeam || !adminOrgIds.includes(targetTeam.organization_id)) {
@@ -358,11 +360,11 @@ export const adminRouter = router({
       }
     }),
 
-  deleteTeam: publicProcedure
+  deleteTeam: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const targetTeam = await teamService.getTeam(input.id);
           if (!targetTeam || !adminOrgIds.includes(targetTeam.organization_id)) {
@@ -376,9 +378,9 @@ export const adminRouter = router({
     }),
 
   // PROJECTS CRUD
-  getProjects: publicProcedure.query(async ({ ctx }) => {
+  getProjects: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await projectService.listProjects({ limit: 1000 }, undefined);
       const filtered = isSysAdmin ? list : list.filter((p) => adminOrgIds.includes(p.organization_id));
       return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -387,11 +389,11 @@ export const adminRouter = router({
     }
   }),
 
-  createProject: publicProcedure
+  createProject: protectedProcedure
     .input(newProjectZodSchema.extend({ userId: z.string().optional() }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin && !adminOrgIds.includes(input.organization_id)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create project in this organization" });
         }
@@ -408,11 +410,11 @@ export const adminRouter = router({
       }
     }),
 
-  updateProject: publicProcedure
+  updateProject: protectedProcedure
     .input(projectZodSchema.partial().required({ id: true }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const targetProj = await projectService.getProject(input.id);
           if (!targetProj || !adminOrgIds.includes(targetProj.organization_id)) {
@@ -425,11 +427,11 @@ export const adminRouter = router({
       }
     }),
 
-  deleteProject: publicProcedure
+  deleteProject: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const targetProj = await projectService.getProject(input.id);
           if (!targetProj || !adminOrgIds.includes(targetProj.organization_id)) {
@@ -443,9 +445,9 @@ export const adminRouter = router({
     }),
 
   // TASKS CRUD
-  getTasks: publicProcedure.query(async ({ ctx }) => {
+  getTasks: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await taskService.listTasks(undefined, { limit: 1000 });
       const filtered = isSysAdmin ? list : list.filter((t) => adminOrgIds.includes(t.organization_id));
       return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -454,11 +456,11 @@ export const adminRouter = router({
     }
   }),
 
-  createTask: publicProcedure
+  createTask: protectedProcedure
     .input(newTaskZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin && !adminOrgIds.includes(input.organization_id)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create task in this organization" });
         }
@@ -472,11 +474,11 @@ export const adminRouter = router({
       }
     }),
 
-  updateTask: publicProcedure
+  updateTask: protectedProcedure
     .input(taskZodSchema.partial().required({ id: true }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const targetTask = await taskService.getTaskById(input.id);
           if (!targetTask || !adminOrgIds.includes(targetTask.organization_id)) {
@@ -489,11 +491,11 @@ export const adminRouter = router({
       }
     }),
 
-  deleteTask: publicProcedure
+  deleteTask: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const targetTask = await taskService.getTaskById(input.id);
           if (!targetTask || !adminOrgIds.includes(targetTask.organization_id)) {
@@ -507,9 +509,9 @@ export const adminRouter = router({
     }),
 
   // TIMELOGS CRUD
-  getTimeLogs: publicProcedure.query(async ({ ctx }) => {
+  getTimeLogs: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await logService.adminListLogs(1000);
       const filtered = isSysAdmin ? list : list.filter((l) => adminOrgIds.includes(l.organization_id));
       return filtered.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
@@ -518,11 +520,11 @@ export const adminRouter = router({
     }
   }),
 
-  createTimeLog: publicProcedure
+  createTimeLog: protectedProcedure
     .input(newTimeLogZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin && !adminOrgIds.includes(input.organization_id)) {
           throw new TRPCError({ code: "FORBIDDEN", message: "Cannot create log in this organization" });
         }
@@ -535,11 +537,11 @@ export const adminRouter = router({
       }
     }),
 
-  updateTimeLog: publicProcedure
+  updateTimeLog: protectedProcedure
     .input(timeLogZodSchema.partial().required({ id: true }))
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const logTable = tables.timeLogs;
           const targetLog = (await db.select().from(logTable).where(eq(logTable.id, input.id)))[0];
@@ -553,11 +555,11 @@ export const adminRouter = router({
       }
     }),
 
-  deleteTimeLog: publicProcedure
+  deleteTimeLog: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const logTable = tables.timeLogs;
           const targetLog = (await db.select().from(logTable).where(eq(logTable.id, input.id)))[0];
@@ -572,9 +574,9 @@ export const adminRouter = router({
     }),
 
   // NOTIFICATIONS CRUD
-  getNotifications: publicProcedure.query(async ({ ctx }) => {
+  getNotifications: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await notificationService.listNotifications(undefined, 1000);
       let filtered = list;
       if (!isSysAdmin) {
@@ -592,7 +594,7 @@ export const adminRouter = router({
     }
   }),
 
-  createNotification: publicProcedure
+  createNotification: protectedProcedure
     .input(
       notificationZodSchema
         .pick({ user_id: true, title: true, message: true, related_id: true })
@@ -601,7 +603,7 @@ export const adminRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const memberTable = tables.member;
           const [m] = await db
@@ -624,7 +626,7 @@ export const adminRouter = router({
       }
     }),
 
-  updateNotification: publicProcedure
+  updateNotification: protectedProcedure
     .input(
       notificationZodSchema
         .partial()
@@ -633,7 +635,7 @@ export const adminRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const notifTable = tables.notifications;
           const targetNotif = (await db.select().from(notifTable).where(eq(notifTable.id, input.id)))[0];
@@ -655,11 +657,11 @@ export const adminRouter = router({
       }
     }),
 
-  deleteNotification: publicProcedure
+  deleteNotification: protectedProcedure
     .input(idInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           const notifTable = tables.notifications;
           const targetNotif = (await db.select().from(notifTable).where(eq(notifTable.id, input.id)))[0];
@@ -682,9 +684,9 @@ export const adminRouter = router({
     }),
 
   // AUDIT LOGS VIEWER (READ-ONLY)
-  getAuditLogs: publicProcedure.query(async ({ ctx }) => {
+  getAuditLogs: protectedProcedure.query(async ({ ctx }) => {
     try {
-      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+      const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
       const list = await auditService.listAuditLogs(1000);
       let filtered = list;
       if (!isSysAdmin) {
@@ -703,11 +705,11 @@ export const adminRouter = router({
   }),
 
   // USER MEMBERSHIPS & ROLES
-  getUserMemberships: publicProcedure
+  getUserMemberships: protectedProcedure
     .input(userIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         const orgMemberships = await organizationService.getUserMemberships(input.userId);
         const teamMemberships = await teamService.getUserMemberships(input.userId);
 
@@ -725,11 +727,11 @@ export const adminRouter = router({
       }
     }),
 
-  updateUserMemberships: publicProcedure
+  updateUserMemberships: protectedProcedure
     .input(updateUserMembershipsInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx);
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
         if (!isSysAdmin) {
           if (input.organizationId && !adminOrgIds.includes(input.organizationId)) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Cannot manage memberships for this organization" });
@@ -765,17 +767,17 @@ export const adminRouter = router({
     }),
 
   // JOIN REQUESTS & SECURE JOIN TOKENS
-  getJoinTokens: publicProcedure
+  getJoinTokens: protectedProcedure
     .input(orgIdAndTeamIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
         if (input.organizationId || input.teamId) {
-          await checkManageAccess(ctx as AdminCtx, input.organizationId, input.teamId);
+          await checkManageAccess(ctx, input.organizationId, input.teamId);
         } else {
-          await checkAdminAccess(ctx as AdminCtx);
+          await checkAdminAccess(ctx);
         }
 
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx).catch(() => ({ isSysAdmin: false, adminOrgIds: [] as string[] }));
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx).catch(() => ({ isSysAdmin: false, adminOrgIds: [] as string[] }));
 
         const table = tables.joinTokens;
         let query = db.select().from(table).$dynamic();
@@ -800,17 +802,17 @@ export const adminRouter = router({
       }
     }),
 
-  getJoinRequests: publicProcedure
+  getJoinRequests: protectedProcedure
     .input(orgIdAndTeamIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
         if (input.organizationId || input.teamId) {
-          await checkManageAccess(ctx as AdminCtx, input.organizationId, input.teamId);
+          await checkManageAccess(ctx, input.organizationId, input.teamId);
         } else {
-          await checkAdminAccess(ctx as AdminCtx);
+          await checkAdminAccess(ctx);
         }
 
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx as AdminCtx).catch(() => ({ isSysAdmin: false, adminOrgIds: [] as string[] }));
+        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx).catch(() => ({ isSysAdmin: false, adminOrgIds: [] as string[] }));
 
         const table = tables.joinRequests;
         let query = db.select().from(table).$dynamic();
@@ -834,11 +836,11 @@ export const adminRouter = router({
       }
     }),
 
-  createJoinToken: publicProcedure
+  createJoinToken: protectedProcedure
     .input(createJoinTokenInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
-        await checkManageAccess(ctx as AdminCtx, input.organizationId, input.teamId);
+        await checkManageAccess(ctx, input.organizationId, input.teamId);
         return await invitationService.generateJoinToken(
           input.organizationId,
           input.teamId,
@@ -852,7 +854,7 @@ export const adminRouter = router({
       }
     }),
 
-  reviewJoinRequest: publicProcedure
+  reviewJoinRequest: protectedProcedure
     .input(reviewJoinRequestInputZodSchema)
     .mutation(async ({ ctx, input }) => {
       try {
@@ -861,7 +863,7 @@ export const adminRouter = router({
         if (!reqObj) {
           throw new TRPCError({ code: "NOT_FOUND", message: "Join request not found" });
         }
-        await checkManageAccess(ctx as AdminCtx, reqObj.organizationId, reqObj.teamId);
+        await checkManageAccess(ctx, reqObj.organizationId, reqObj.teamId);
         return await invitationService.reviewJoinRequest(
           input.requestId,
           input.status,
