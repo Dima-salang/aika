@@ -24,7 +24,7 @@ export const tasksRouter = router({
         if (!task) return null;
         const isDefaultOrg = task.organization_id === "org-default";
         const [m] = isDefaultOrg
-          ? [true]
+          ? [undefined]
           : await db
               .select()
               .from(tables.member)

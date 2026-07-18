@@ -25,7 +25,7 @@ export const projectsRouter = router({
         if (!project) return null;
         const isDefaultOrg = project.organization_id === "org-default";
         const [m] = isDefaultOrg
-          ? [true]
+          ? [undefined]
           : await db
               .select()
               .from(tables.member)
@@ -103,7 +103,7 @@ export const projectsRouter = router({
         }
         const isDefaultOrg = project.organization_id === "org-default";
         const [m] = isDefaultOrg
-          ? [true]
+          ? [undefined]
           : await db
               .select()
               .from(tables.member)
@@ -127,7 +127,7 @@ export const projectsRouter = router({
         }
         const isDefaultOrg = project.organization_id === "org-default";
         const [m] = isDefaultOrg
-          ? [true]
+          ? [undefined]
           : await db
               .select()
               .from(tables.member)

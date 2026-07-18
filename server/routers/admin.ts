@@ -92,9 +92,6 @@ async function checkAdminAccess(ctx: Context) {
     );
 
   const adminOrgIds = userMemberships.map((m) => m.organizationId);
-  if (!adminOrgIds.includes("org-default")) {
-    adminOrgIds.push("org-default");
-  }
 
   return { isSysAdmin: false, adminOrgIds };
 }
@@ -109,8 +106,14 @@ async function checkManageAccess(
     throw new TRPCError({ code: "UNAUTHORIZED", message: "Not authenticated" });
   }
 
-  if (orgId === "org-default") {
-    return true;
+  if (orgId && teamId) {
+    const team = await teamService.getTeam(teamId);
+    if (!team || team.organization_id !== orgId) {
+      throw new TRPCError({
+        code: "FORBIDDEN",
+        message: "Team and organization relationship is invalid",
+      });
+    }
   }
 
   const userTable = tables.user;
@@ -215,6 +218,17 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
+        const [targetUser] = await db
+          .select()
+          .from(tables.user)
+          .where(eq(tables.user.id, input.id))
+          .limit(1);
+        if (!targetUser) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        if (!isSysAdmin && targetUser.is_admin === true) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot modify a system administrator" });
+        }
         if (!isSysAdmin) {
           const memberTable = tables.member;
           const [m] = await db
@@ -241,6 +255,17 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
+        const [targetUser] = await db
+          .select()
+          .from(tables.user)
+          .where(eq(tables.user.id, input.id))
+          .limit(1);
+        if (!targetUser) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "User not found" });
+        }
+        if (!isSysAdmin && targetUser.is_admin === true) {
+          throw new TRPCError({ code: "FORBIDDEN", message: "Cannot modify a system administrator" });
+        }
         if (!isSysAdmin) {
           const memberTable = tables.member;
           const [m] = await db
@@ -714,9 +739,17 @@ export const adminRouter = router({
         const teamMemberships = await teamService.getUserMemberships(input.userId);
 
         const filteredOrgs = isSysAdmin ? orgMemberships : orgMemberships.filter((m) => adminOrgIds.includes(m.organizationId));
-        const filteredTeams = isSysAdmin ? teamMemberships : teamMemberships.filter(() => {
-          return true;
-        });
+        const filteredTeams = [];
+        if (isSysAdmin) {
+          filteredTeams.push(...teamMemberships);
+        } else {
+          for (const tm of teamMemberships) {
+            const team = await teamService.getTeam(tm.team_id);
+            if (team && adminOrgIds.includes(team.organization_id)) {
+              filteredTeams.push(tm);
+            }
+          }
+        }
 
         return {
           orgMemberships: filteredOrgs,
@@ -732,6 +765,15 @@ export const adminRouter = router({
     .mutation(async ({ ctx, input }) => {
       try {
         const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx);
+        if (input.teamId) {
+          const team = await teamService.getTeam(input.teamId);
+          if (!team) {
+            throw new TRPCError({ code: "NOT_FOUND", message: "Team not found" });
+          }
+          if (!isSysAdmin && !adminOrgIds.includes(team.organization_id)) {
+            throw new TRPCError({ code: "FORBIDDEN", message: "Cannot manage memberships for this team" });
+          }
+        }
         if (!isSysAdmin) {
           if (input.organizationId && !adminOrgIds.includes(input.organizationId)) {
             throw new TRPCError({ code: "FORBIDDEN", message: "Cannot manage memberships for this organization" });
@@ -771,13 +813,12 @@ export const adminRouter = router({
     .input(orgIdAndTeamIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
+        const auth = await checkAdminAccess(ctx);
         if (input.organizationId || input.teamId) {
           await checkManageAccess(ctx, input.organizationId, input.teamId);
-        } else {
-          await checkAdminAccess(ctx);
         }
 
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx).catch(() => ({ isSysAdmin: false, adminOrgIds: [] as string[] }));
+        const { isSysAdmin, adminOrgIds } = auth;
 
         const table = tables.joinTokens;
         let query = db.select().from(table).$dynamic();
@@ -806,13 +847,12 @@ export const adminRouter = router({
     .input(orgIdAndTeamIdInputZodSchema)
     .query(async ({ ctx, input }) => {
       try {
+        const auth = await checkAdminAccess(ctx);
         if (input.organizationId || input.teamId) {
           await checkManageAccess(ctx, input.organizationId, input.teamId);
-        } else {
-          await checkAdminAccess(ctx);
         }
 
-        const { isSysAdmin, adminOrgIds } = await checkAdminAccess(ctx).catch(() => ({ isSysAdmin: false, adminOrgIds: [] as string[] }));
+        const { isSysAdmin, adminOrgIds } = auth;
 
         const table = tables.joinRequests;
         let query = db.select().from(table).$dynamic();
@@ -844,7 +884,7 @@ export const adminRouter = router({
         return await invitationService.generateJoinToken(
           input.organizationId,
           input.teamId,
-          input.createdBy,
+          ctx.session.user.id,
           input.expiresInSeconds,
           input.maxUses || null,
           input.autoJoin
@@ -867,7 +907,7 @@ export const adminRouter = router({
         return await invitationService.reviewJoinRequest(
           input.requestId,
           input.status,
-          input.adminId
+          ctx.session.user.id
         );
       } catch (error) {
         handleDbError(error);
