@@ -15,9 +15,20 @@ export const ALLOWED_MIME_TYPES = [
   "application/x-rar-compressed",
 ];
 
+/** Raster images only — SVG is XML and can carry XSS when rendered inline. */
+const ALLOWED_IMAGE_MIME_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/jpg",
+  "image/webp",
+  "image/gif",
+]);
+
 export function isSupportedMimeType(mime: string): boolean {
-  const normalized = mime.toLowerCase();
-  if (normalized.startsWith("image/")) return true;
+  const normalized = mime.toLowerCase().split(";")[0].trim();
+  if (normalized.startsWith("image/")) {
+    return ALLOWED_IMAGE_MIME_TYPES.has(normalized);
+  }
   return ALLOWED_MIME_TYPES.includes(normalized);
 }
 
