@@ -213,20 +213,8 @@ export class SupabaseStorageProvider implements StorageProvider {
   private getStoragePath(url: string): string | null {
     if (!url.includes("supabase.co") && !url.includes("supabase-storage.co")) return null;
     try {
-      const urlObj = new URL(url);
-      const parts = urlObj.pathname.split("/");
-      const objectIdx = parts.indexOf("object");
-      if (
-        objectIdx !== -1 &&
-        (parts[objectIdx + 1] === "public" || parts[objectIdx + 1] === "sign") &&
-        parts[objectIdx + 2] // Ensure bucket name segment exists
-      ) {
-        const pathSegments = parts.slice(objectIdx + 3);
-        if (pathSegments.length > 0) {
-          return decodeURIComponent(pathSegments.join("/"));
-        }
-      }
-      return null;
+      const match = url.match(/\/object\/(?:public|sign)\/[^/]+\/([^?]+)/);
+      return match ? decodeURIComponent(match[1]) : null;
     } catch {
       return null;
     }
