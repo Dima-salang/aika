@@ -9,10 +9,9 @@ import { HistoryPlugin } from "@lexical/react/LexicalHistoryPlugin";
 import { OnChangePlugin } from "@lexical/react/LexicalOnChangePlugin";
 import { MarkdownShortcutPlugin } from "@lexical/react/LexicalMarkdownShortcutPlugin";
 import { ListPlugin } from "@lexical/react/LexicalListPlugin";
+import { AutoLinkPlugin } from "@lexical/react/LexicalAutoLinkPlugin";
 import { LinkPlugin } from "@lexical/react/LexicalLinkPlugin";
-import {
-  FORMAT_TEXT_COMMAND,
-  $getSelection,
+import { FORMAT_TEXT_COMMAND, $getSelection,
   $isRangeSelection,
   SELECTION_CHANGE_COMMAND,
   $createParagraphNode,
@@ -59,7 +58,7 @@ import { useLexicalComposerContext } from "@lexical/react/LexicalComposerContext
 import { $convertFromMarkdownString, $convertToMarkdownString } from "@lexical/markdown";
 import { LexicalErrorBoundary } from "@lexical/react/LexicalErrorBoundary";
 import { ListNode, ListItemNode } from "@lexical/list";
-import { LinkNode, TOGGLE_LINK_COMMAND, $createLinkNode } from "@lexical/link";
+import { LinkNode, TOGGLE_LINK_COMMAND, $createLinkNode, createLinkMatcherWithRegExp, AutoLinkNode } from "@lexical/link";
 import { HeadingNode, QuoteNode, $createHeadingNode, $createQuoteNode } from "@lexical/rich-text";
 import { CodeNode } from "@lexical/code";
 import { $setBlocksType } from "@lexical/selection";
@@ -502,7 +501,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
         underline: "underline text-on-surface",
         strikethrough: "line-through text-on-surface",
         code: "px-1 py-0.5 bg-surface-container-high rounded font-mono text-[11px] text-primary",
-        link: "text-primary hover:underline",
+        link: "text-primary underline",
         blockquote: "text-xs text-on-surface italic ml-2 pl-2 border-l-2 border-outline-variant",
         codeblock: "text-xs text-on-surface",
         hashtag: "text-primary font-bold",
@@ -516,6 +515,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
       ListNode,
       ListItemNode,
       LinkNode,
+      AutoLinkNode,
       HeadingNode,
       QuoteNode,
       CodeNode,
@@ -554,6 +554,7 @@ export function RichTextEditor({ value, onChange, placeholder }: RichTextEditorP
         <MarkdownShortcutPlugin transformers={EDITOR_TRANSFORMERS} />
         <ListPlugin />
         <LinkPlugin />
+        <AutoLinkPlugin matchers={[createLinkMatcherWithRegExp(/https?:\/\/[^\s]+/)]} />
         <TabIndentationPlugin />
         <OnChangePlugin
           onChange={(editorState) => {
